@@ -69,7 +69,7 @@ class summary_table:
 
 class sequence:
     def __init__(self, id, start, end):
-        self.id = id
+        self.seqname = id
         self.start = start
         self.end = end
         self.genes = list() 
@@ -130,7 +130,7 @@ class transcript:
         '''
         # TODO: implement for sequence and gene level (Faster but no that accuarate)
 
-        if len(ref.genes) == 1 and len(ref.genes[0].trascripts) == 0:
+        if len(ref.genes) == 1 and len(ref.genes[0].transcripts) == 0:
             self.SC = 'Intergenic'
             return
 
@@ -139,8 +139,6 @@ class transcript:
         #      UNSPLICED TRANSCRIPT        #
         #                                  #
         #----------------------------------#
-        if self.id == 'ENST00000426177.1':
-            print('AQUI', len(ref.genes), len(ref.genes[0].transcripts))
         if self.is_monoexon():
             self.get_trans_hits(ref)
 
@@ -191,6 +189,9 @@ class transcript:
                             self.eval_new_SC('NIC', hit)
                     else:
                         self.eval_new_SC('Genic-genomic', hit)
+                
+                if self.SC == 'Unclassified':
+                    self.eval_new_SC('Intergenic')
         
         #----------------------------------#
         #                                  #
@@ -201,7 +202,9 @@ class transcript:
             for g_index, g in enumerate(ref.genes):
                 for t_index, trans in enumerate(g.transcripts):
                     if len(trans.SJ) == 0:
-                        self.eval_new_SC('GeneOverlap', trans)
+                        # TODO: add that they at least overlap
+                        pass
+                        #self.eval_new_SC('GeneOverlap', trans)
 
                     else:
                         match_type = self.compare_junctions(trans)
@@ -262,11 +265,10 @@ class transcript:
                                     else:
                                         self.eval_new_SC('Genic-genomic', t)
                     else:
-                        self.eval_new_SC('Intergenic', ref.genes[0].transcripts[0]) # TODO: ref not correct it shouldnt have
-                       
+                        self.eval_new_SC('Intergenic', ref.genes[0].transcripts[0]) # TODO: ref not correct it shouldnt have       
             #END
 
-    def eval_new_SC(self, new_SC, ref_trans):
+    def eval_new_SC(self, new_SC, ref_trans = None):
         SCrank ={
             'FSM':1, 'ISM':2, 'Fusion':3,
             'NIC': 4, 'NNC':5, 'Antisense': 6,
@@ -276,8 +278,9 @@ class transcript:
         
         if SCrank[self.SC] > SCrank[new_SC]:
             self.SC = new_SC
-            self.ref_trans = ref_trans.id
-            self.ref_gene = ref_trans.gene_id
+            if ref_trans:
+                self.ref_trans = ref_trans.id
+                self.ref_gene = ref_trans.gene_id
             if self.SC in ['FSM', 'ISM']: # diff TSS and TTS not calculated for non-FSM/ISM
                 self.diff_TSS = self.TSS - ref_trans.TSS
                 self.diff_TTS = self.TTS -ref_trans.TTS
@@ -286,8 +289,9 @@ class transcript:
             if self.SC in ['FSM', 'ISM'] and \
                (abs(self.diff_TSS) + abs(self.diff_TTS)) > (abs(self.TSS - ref_trans.TSS) + abs(self.TTS -ref_trans.TTS)):
                 self.SC = new_SC
-                self.ref_trans = ref_trans.id
-                self.ref_gene = ref_trans.gene_id
+                if ref_trans:
+                    self.ref_trans = ref_trans.id
+                    self.ref_gene = ref_trans.gene_id
                 self.diff_TSS = self.TSS - ref_trans.TSS
                 self.diff_TTS = self.TTS -ref_trans.TTS
             else:
@@ -461,9 +465,12 @@ def readgtf(gtf: str)-> list:
     gene_start = None
     gene_end = None
 
+    # Progress bar
+    num_lines = sum(1 for line in open(gtf,'r'))
     # Read GTF file line by line
     with open(gtf, 'r') as f_in:
-        for line in f_in:
+        for line in tqdm(f_in, total=num_lines):
+        #for line in f_in:
             if not line.startswith('#'):
                 line_split = line.split()
                 feature = line_split[2]
@@ -495,7 +502,7 @@ def readgtf(gtf: str)-> list:
                         gene_end = end
                         l_coords = [start, end]
                         g = gene(gene_id, seqname_id, strand, start, end) # TODO: start and end
-                        region = sequence(seqname_id, 0, 0) # TODO: start and end
+                        res.append(sequence(seqname_id, start, end)) # TODO: start and end
                         
                     # If reading same transcript add exon start and end
                     elif prev_trans == trans_id:
@@ -506,36 +513,50 @@ def readgtf(gtf: str)-> list:
                     else:
                         t = transcript(prev_trans, prev_gene, prev_strand, l_coords)
                         g.transcripts.append(t)
-                        prev_trans = trans_id
-                        l_coords = [start, end]
-    
+                        
                         if prev_gene != gene_id:
                             g.end = gene_end
-                            region.genes.append(g)
 
-                            for i in g.transcripts:
-                                if i.id == 'ENST00000426177.1':
-                                    print(g.start, g.end, gene_start)
-                                    pass
+                            for r_index, r in enumerate(res):
+                                if r.seqname == prev_seqname:
+                                    if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
+                                        res[r_index].genes.append(g)
+                                        res[r_index].start = min(r.start, g.start)
+                                        res[r_index].end = min(r.end, g.end)
+                                        break
+                            else:
+                                res.append(sequence(prev_seqname, g.start, g.end))
+                                res[-1].genes.append(g)
 
                             g = gene(gene_id, seqname_id, strand, gene_start, gene_end) # TODO: start and end
                             prev_gene = gene_id
+                            prev_strand = strand
                             gene_start = start
 
                             #if prev_seqname != seqname_id:
-                            if gene_end < gene_start:
-                                res.append(region)
+                            #if gene_end < gene_start:
+                            #    res.append(region)
                                 #region = sequence(seqname_id, 0, 0) # TODO: start and end
-                                region = sequence(seqname_id, 0, 0)
-                                prev_seqname = seqname_id
+                            #    region = sequence(seqname_id, 0, 0)
+                            #    prev_seqname = seqname_id
+                        
+                        prev_trans = trans_id
+                        l_coords = [start, end]
                         gene_end = end
-
     f_in.close()
     # Save last transcript    
     t = transcript(prev_trans, prev_gene, prev_strand, l_coords)
     g.transcripts.append(t)
-    region.genes.append(g)
-    res.append(region)
+    for r_index, r in enumerate(res):
+        if r.seqname == prev_seqname:
+            if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
+                res[r_index].genes.append(g)
+                res[r_index].start = min(r.start, g.start)
+                res[r_index].end = min(r.end, g.end)
+                break
+    else:
+        res.append(sequence(prev_seqname, g.start, g.end))
+        res[-1].genes.append(g)
 
     return res
 
@@ -562,14 +583,27 @@ def write_output(data, out_name):
 
 
 def main():
+    print(
+        '''
+        ######   #######     ###    ##    ## ######## ####          ######  #### ##     ## 
+       ##    ## ##     ##   ## ##   ###   ##    ##     ##          ##    ##  ##  ###   ### 
+       ##       ##     ##  ##   ##  ####  ##    ##     ##          ##        ##  #### #### 
+        ######  ##     ## ##     ## ## ## ##    ##     ##  #######  ######   ##  ## ### ## 
+             ## ##  ## ## ######### ##  ####    ##     ##                ##  ##  ##     ## 
+       ##    ## ##    ##  ##     ## ##   ###    ##     ##          ##    ##  ##  ##     ## 
+        ######   ##### ## ##     ## ##    ##    ##    ####          ######  #### ##     ## 
+        '''
+    )
     os.chdir('/home/jorge/Desktop')
 
-    f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    #f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
 
     # Read GTF file
-    print('Reading the GTF reference annotation file\n')
+    print('Reading the GTF reference annotation file')
     data = readgtf(f_name)
+    print('COMPLETED\n')
 
     # Classify transcripts in each different sequence
     print('Classifying transcripts according to its SQANTI3 structural category')
@@ -577,13 +611,15 @@ def main():
         #print('\t-Classifying transcripts from sequence "%s" (%s/%s)' %(data[seq].id, seq+1, len(data)))
         data[seq].classify_trans()
         pass # TODO: run the comaprisson
+    print('COMPLETED\n')
 
     # Write output file
     print("\nWritting output file")
     write_output(data, out_name)
+    print('COMPLETED\n')
 
     # Show output
-    print('\nBuilding summary table...')
+    print('Building summary table...')
     terminal_output = summary_table()
     terminal_output.addCounts(data)
     print(terminal_output)
