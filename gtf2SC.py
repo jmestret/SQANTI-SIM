@@ -7,7 +7,7 @@ category not taking into account himself in the reference.
 
 Author: Jorge Mestre Tomas
 Date: 19/01/2020
-Last update: 25/01/2021 by Jorge Mestre
+Last update: 26/01/2021 by Jorge Mestre
 '''
 
 __author__ = 'jormart2@alumni.uv.es'
@@ -591,22 +591,42 @@ def write_output(data, out_name):
 #####################################
 
 def main():
+    # Welcome
     print(
         '''
-        ######   #######     ###    ##    ## ######## ####          ######  #### ##     ## 
-       ##    ## ##     ##   ## ##   ###   ##    ##     ##          ##    ##  ##  ###   ### 
-       ##       ##     ##  ##   ##  ####  ##    ##     ##          ##        ##  #### #### 
-        ######  ##     ## ##     ## ## ## ##    ##     ##  #######  ######   ##  ## ### ## 
-             ## ##  ## ## ######### ##  ####    ##     ##                ##  ##  ##     ## 
-       ##    ## ##    ##  ##     ## ##   ###    ##     ##          ##    ##  ##  ##     ## 
-        ######   ##### ## ##     ## ##    ##    ##    ####          ######  #### ##     ## 
+        
+        ########################################################################
+        ##                                                                    ##
+        ##                                                                    ##
+        ##       ___   ___      _    _   _ _____ ___     ____ ___ __  __      ##
+        ##     / ___| / _ \    / \  | \ | |_   _|_ _|   / ___|_ _|  \/  |     ##
+        ##     \___ \| | | |  / _ \ |  \| | | |  | |____\___ \| || |\/| |     ##
+        ##      ___) | |_| | / ___ \| |\  | | |  | |_____|__) | || |  | |     ##
+        ##     |____/ \__\_\/_/   \_\_| \_| |_| |___|   |____/___|_|  |_|     ##
+        ##                                                                    ##
+        ##          A SIMULATOR OF CONTROLLED NOVELTY AND DEGRADATION         ##
+        ##                OF TRNASCRIPTS SEQUENCED BY LONG-READS              ##
+        ##                                                                    ##
+        ########################################################################
         '''
     )
-    os.chdir('/home/jorge/Desktop')
+    
+    # Arguments
+    parser = argparse.ArgumentParser(description="SQANTI-SIM: a simulator of controlled novelty and degradation of transcripts sequence by long-reads")
+    parser.add_argument('--gtf', help = '\t\tReference annotation in GTF format')
+    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
+    
+    args = parser.parse_args()
 
-    f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    f_name = args.gtf
+    dir = args.dir
+
+    dir = '/home/jorge/Desktop'
+    #f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
     #f_name = '/home/jorge/Desktop/prueba.gtf'
-    #f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
 
     # Read GTF file
@@ -623,6 +643,7 @@ def main():
     print('COMPLETED\n')
 
     # Write output file
+    os.chdir(dir)
     print("\nWritting output file")
     write_output(data, out_name)
     print('COMPLETED\n')
