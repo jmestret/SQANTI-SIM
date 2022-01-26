@@ -79,6 +79,8 @@ class sequence:
             for t_index in range(len(self.genes[g_index].transcripts)):
                 ref = copy.deepcopy(self)
                 del ref.genes[g_index].transcripts[t_index]
+                if len(ref.genes[g_index].transcripts) == 0:
+                    del ref.genes[g_index]
                 self.genes[g_index].transcripts[t_index].get_SC(ref)
 
 
@@ -128,9 +130,10 @@ class transcript:
         Given a group of reference trasncripts (sequence class) elucidate the SC of the
         target transcript
         '''
-        # TODO: implement for sequence and gene level (Faster but no that accuarate)
 
-        if len(ref.genes) == 1 and len(ref.genes[0].transcripts) == 0:
+        # TODO: implement for sequence and gene level (Faster but no that accuarate)
+        #if len(ref.genes) == 1 and len(ref.genes[0].transcripts) == 0:
+        if len(ref.genes) == 0:
             self.SC = 'Intergenic'
             return
 
@@ -202,9 +205,7 @@ class transcript:
             for g_index, g in enumerate(ref.genes):
                 for t_index, trans in enumerate(g.transcripts):
                     if len(trans.SJ) == 0:
-                        # TODO: add that they at least overlap
-                        pass
-                        #self.eval_new_SC('GeneOverlap', trans)
+                        self.eval_new_SC('GeneOverlap', trans)
 
                     else:
                         match_type = self.compare_junctions(trans)
@@ -359,7 +360,7 @@ class transcript:
            not trans.in_intron(self.TSS) and not trans.in_intron(self.TSS):
            return 'subset'
         
-        elif self.TTS <= trans.TSS or self.TSS >= trans.TTS:
+        elif self.TTS <= trans.TSS or self.TSS >= trans.TTS or self.is_within_intron(trans):
             return 'no_match'
         
         else:
@@ -377,7 +378,7 @@ class transcript:
     def hits_a_gene(self, ref):
         genes = []
         for g_index, g in enumerate(ref.genes):
-            if g.start <= self.TSS <= g.end or g.start <= self.TTS <= g.end:
+            if (self.TSS <= g.start <= self.TTS) or (self.TSS <= g.end <= self.TTS) or (g.start <= self.TSS < self.TTS <= g.end):
                 genes.append(g_index)
         return genes
     
@@ -420,9 +421,9 @@ class transcript:
         for i in range(0, len(coords), 2):
             exons_ref.append((coords[i], coords[i+1]))
         
-        coords = [st for SJ in trans.SJ for st in SJ]
-        coords.insert(0, trans.TSS)
-        coords.append(trans.TTS)
+        coords = [st for SJ in self.SJ for st in SJ]
+        coords.insert(0, self.TSS)
+        coords.append(self.TTS)
 
         exons_self=[]
         for i in range(0, len(coords), 2):
@@ -430,7 +431,7 @@ class transcript:
 
         for i in exons_ref:
             for j in exons_self:
-                if i[0] < j[0] < i[1] or i[0] < j[1] < i[1]:
+                if j[0] <= i[0] <= j[1] or j[0] <= i[1] <= j[1] or i[0] <= j[0] < j[1] <= i[1]:
                     return True
         return False
         
@@ -458,12 +459,7 @@ def readgtf(gtf: str)-> list:
     
     l_coords = list()
     res = list()
-    prev_seqname = None
-    prev_gene = None
-    prev_trans = None
-    prev_strand = None
-    gene_start = None
-    gene_end = None
+    trans_id = None
 
     # Progress bar
     num_lines = sum(1 for line in open(gtf,'r'))
@@ -477,85 +473,91 @@ def readgtf(gtf: str)-> list:
 
                 # Get only features that are 'exon'
                 if feature == 'exon':
-                    seqname_id = line_split[0]
-                    gene_id = line_split[line_split.index('gene_id') + 1]
-                    gene_id = gene_id.replace(';', '').replace('"', '')
-                    trans_id = line_split[line_split.index('transcript_id') + 1]
-                    trans_id = trans_id.replace(';', '').replace('"', '')
-                    
-                    # Swap coordinates if negative strand
-                    strand = line_split[6]
-                    if strand == '+':
+                    new_trans = line_split[line_split.index('transcript_id') + 1]
+                    new_trans = new_trans.replace(';', '').replace('"', '')
+
+                    if not trans_id:
+                        trans_id = new_trans
+                        gene_id = line_split[line_split.index('gene_id') + 1]
+                        gene_id = gene_id.replace(';', '').replace('"', '')
+                        seqname_id = line_split[0]
+                        strand = line_split[6]
                         start = int(line_split[3])
                         end = int(line_split[4])
-                    else:
-                        start = int(line_split[4])
-                        end = int(line_split[3])
-
-                    # Reading first exon
-                    if not prev_trans:
-                        prev_trans = trans_id
-                        prev_gene = gene_id
-                        prev_seqname = seqname_id
-                        prev_strand = strand
-                        gene_start = start
-                        gene_end = end
-                        l_coords = [start, end]
                         g = gene(gene_id, seqname_id, strand, start, end) # TODO: start and end
                         res.append(sequence(seqname_id, start, end)) # TODO: start and end
-                        
-                    # If reading same transcript add exon start and end
-                    elif prev_trans == trans_id:
+
+                    elif new_trans == trans_id:
+                        if strand == '+':
+                            start = int(line_split[3])
+                            end = int(line_split[4])
+                        else:
+                            start = int(line_split[4])
+                            end = int(line_split[3])
                         l_coords.append(start)
                         l_coords.append(end)
-                        gene_end = end
                     
                     else:
-                        t = transcript(prev_trans, prev_gene, prev_strand, l_coords)
+                        if strand == '-':
+                            t = transcript(trans_id, gene_id, strand, l_coords[::-1])
+                        else:
+                            t = transcript(trans_id, gene_id, strand, l_coords)
                         g.transcripts.append(t)
+                        g.start = min(g.start, t.TSS)
+                        g.end = max(g.end, t.TTS)
                         
-                        if prev_gene != gene_id:
-                            g.end = gene_end
+                        new_gene = line_split[line_split.index('gene_id') + 1]
+                        new_gene = new_gene.replace(';', '').replace('"', '')
+                        trans_id = new_trans
+                        strand = line_split[6]
 
+                        if strand == '+':
+                            start = int(line_split[3])
+                            end = int(line_split[4])
+                        else:
+                            start = int(line_split[4])
+                            end = int(line_split[3])
+                        l_coords = [start, end]
+                        
+                        
+                        if gene_id != new_gene:
                             for r_index, r in enumerate(res):
-                                if r.seqname == prev_seqname:
+                                if r.seqname == seqname_id:
                                     if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
                                         res[r_index].genes.append(g)
                                         res[r_index].start = min(r.start, g.start)
-                                        res[r_index].end = min(r.end, g.end)
+                                        res[r_index].end = max(r.end, g.end)
                                         break
                             else:
-                                res.append(sequence(prev_seqname, g.start, g.end))
+                                res.append(sequence(seqname_id, g.start, g.end))
                                 res[-1].genes.append(g)
+                            
 
-                            g = gene(gene_id, seqname_id, strand, gene_start, gene_end) # TODO: start and end
-                            prev_gene = gene_id
-                            prev_strand = strand
-                            gene_start = start
 
-                            #if prev_seqname != seqname_id:
-                            #if gene_end < gene_start:
-                            #    res.append(region)
-                                #region = sequence(seqname_id, 0, 0) # TODO: start and end
-                            #    region = sequence(seqname_id, 0, 0)
-                            #    prev_seqname = seqname_id
-                        
-                        prev_trans = trans_id
-                        l_coords = [start, end]
-                        gene_end = end
+                            seqname_id = line_split[0]
+                            gene_id = new_gene
+                            g = gene(gene_id, seqname_id, strand, min(start, end), max(start, end))
+                    
     f_in.close()
-    # Save last transcript    
-    t = transcript(prev_trans, prev_gene, prev_strand, l_coords)
+
+    # Save last transcript 
+    if strand == '-':
+        t = transcript(trans_id, gene_id, strand, l_coords[::-1])
+    else:
+        t = transcript(trans_id, gene_id, strand, l_coords)
     g.transcripts.append(t)
+    g.start = min(g.start, t.TSS)
+    g.end = max(g.end, t.TTS)
+
     for r_index, r in enumerate(res):
-        if r.seqname == prev_seqname:
+        if r.seqname == seqname_id:
             if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
                 res[r_index].genes.append(g)
                 res[r_index].start = min(r.start, g.start)
-                res[r_index].end = min(r.end, g.end)
+                res[r_index].end = max(r.end, g.end)
                 break
     else:
-        res.append(sequence(prev_seqname, g.start, g.end))
+        res.append(sequence(seqname_id, g.start, g.end))
         res[-1].genes.append(g)
 
     return res
@@ -582,6 +584,12 @@ def write_output(data, out_name):
     f_out.close()
 
 
+#####################################
+#                                   #
+#               MAIN                #
+#                                   #
+#####################################
+
 def main():
     print(
         '''
@@ -596,8 +604,9 @@ def main():
     )
     os.chdir('/home/jorge/Desktop')
 
-    #f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
-    f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    #f_name = '/home/jorge/Desktop/prueba.gtf'
+    #f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
 
     # Read GTF file
