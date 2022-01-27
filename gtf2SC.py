@@ -7,7 +7,7 @@ category not taking into account himself in the reference.
 
 Author: Jorge Mestre Tomas
 Date: 19/01/2020
-Last update: 26/01/2021 by Jorge Mestre
+Last update: 27/01/2021 by Jorge Mestre
 '''
 
 __author__ = 'jormart2@alumni.uv.es'
@@ -16,6 +16,7 @@ __version__ = '0.0'
 import os
 import copy
 import argparse
+import subprocess
 from time import time
 from tqdm import tqdm
 
@@ -25,9 +26,11 @@ from tqdm import tqdm
 #          DEFINE CLASSES           #
 #                                   #
 #####################################
-
 class summary_table:
-    '''This objects aims to output a summary table of the characterization'''
+    '''
+    This objects aims to output a summary table of the characterization
+    '''
+
     counts = {
             'FSM':0,
             'ISM':0,
@@ -38,12 +41,15 @@ class summary_table:
             'Genic-genomic':0,
             'Genic-intron':0,
             'Intergenic':0,
-            'GeneOverlap':0,
             'Unclassified':0
         }
 
-    def addCounts(self, data):
-        '''Add counts of each SC to the table'''
+
+    def addCounts(self, data: list):
+        '''
+        Add counts of each SC to the table
+        '''
+
         for seq in data:
             for g in seq.genes:
                 for t in g.transcripts:
@@ -51,10 +57,7 @@ class summary_table:
                         self.counts[t.SC] += 1
                     else:
                         self.counts[t.SC] = 1
-    
-    def __repr__(self):
-        # TODO: print the object properly
-        return 'summary_table()'
+
 
     def __str__(self):
         print('\033[94m_' * 79 + '\033[0m')
@@ -102,8 +105,8 @@ class transcript:
         self.TSS = exon_coords[0]
         self.TTS = exon_coords[len(exon_coords)-1]
         self.SJ = self.getSJ(exon_coords)
-        #self.exons = self.getExon(exon_coords)
         self.SC = 'Unclassified'
+        self.subtype = ''
         self.match_type = ''
         self.ref_trans = str()
         self.ref_gene = str()
@@ -112,10 +115,18 @@ class transcript:
         self.gene_hits = set()
         self.trans_hits = []
 
-    def getSJ(self, exon_coords):
+
+    def getSJ(self, exon_coords: list)-> list:
         '''
-        Define the splice junctions
+        Define the splice junctions of the transcripts
+
+        Args:
+            exon_coords (list) A list with the TSS, the splice sites and the TTS
+        
+        Returns:
+            SJs (list) a list of tupples with the splice junctions
         '''
+
         splice_sites = exon_coords[1:len(exon_coords)-1]
         if len(splice_sites) > 0:
             SJs = []
@@ -124,15 +135,20 @@ class transcript:
             return(SJs)
         else:
             return([])
+            
 
-    def get_SC(self, ref):
+    def get_SC(self, ref: sequence):
         '''
-        Given a group of reference trasncripts (sequence class) elucidate the SC of the
-        target transcript
+        Given a group of reference trasncripts (sequence class) elucidate the SC
+        of the target transcript
+
+        Args:
+            self (transcript) the target transcript to find its SC
+            ref (sequence) a region of a sequence with all overlapping genes
+                and its transcripts
         '''
 
-        # TODO: implement for sequence and gene level (Faster but no that accuarate)
-        #if len(ref.genes) == 1 and len(ref.genes[0].transcripts) == 0:
+        # If no overlaping genes don't continue, it just can be Intergenic
         if len(ref.genes) == 0:
             self.SC = 'Intergenic'
             return
@@ -164,7 +180,7 @@ class transcript:
                             self.eval_new_SC('Antisense', hit)
 
                         elif self.TSS >= hit.TSS and self.TTS <= hit.TTS:
-                            self.SC = 'FSM'
+                            self.eval_new_SC('FSM', hit)
 
                         elif self.TTS <= hit.TSS or self.TSS >= hit.TTS:
                             self.eval_new_SC('Intergenic', hit)
@@ -176,22 +192,24 @@ class transcript:
             else:
                 for hit_index in self.trans_hits:
                     hit = ref.genes[hit_index[0]].transcripts[hit_index[1]]
-                    if self.is_within_intron(hit):
-                        self.eval_new_SC('Genic-intron', hit)
 
-                    elif self.strand != hit.strand and self.hit_exon(hit):
+                    if self.strand != hit.strand and self.hit_exon(hit):
                         self.eval_new_SC('Antisense', hit)
+                    
+                    if self.strand == hit.strand:
+                        if self.is_within_intron(hit):
+                            self.eval_new_SC('Genic-intron', hit)
 
-                    elif self.is_within_exon(hit):
-                        self.eval_new_SC('ISM', hit)
+                        elif self.is_within_exon(hit):
+                            self.eval_new_SC('ISM', hit)
 
-                    elif hit.TSS <= self.TSS < self.TTS <= hit.TTS:
-                        if hit.in_intron(self.TSS) or hit.in_intron(self.TTS):
-                            self.eval_new_SC('Genic-genomic', hit)
+                        elif hit.TSS <= self.TSS < self.TTS <= hit.TTS:
+                            if hit.in_intron(self.TSS) or hit.in_intron(self.TTS):
+                                self.eval_new_SC('Genic-genomic', hit)
+                            else:
+                                self.eval_new_SC('NIC', hit)
                         else:
-                            self.eval_new_SC('NIC', hit)
-                    else:
-                        self.eval_new_SC('Genic-genomic', hit)
+                            self.eval_new_SC('Genic-genomic', hit)
                 
                 if self.SC == 'Unclassified':
                     self.eval_new_SC('Intergenic')
@@ -254,11 +272,11 @@ class transcript:
                         for index in gene_hits:
                             if self.strand != ref.genes[index].strand:
                                 for t in ref.genes[index].transcripts:
-                                    if self.hit_exon(t):
-                                        self.eval_new_SC('Antisense', t)
-                                        break
-                                    else:
-                                        self.eval_new_SC('Genic-genomic', t) 
+                                    #if self.hit_exon(t):
+                                    self.eval_new_SC('Antisense', t)
+                                        #break
+                                    #else:
+                                    #    self.eval_new_SC('Genic-genomic', t) 
                             else:
                                 for t in ref.genes[index].transcripts:
                                     if self.is_within_intron(t) and self.SC != 'Genic-genomic':
@@ -267,6 +285,20 @@ class transcript:
                                         self.eval_new_SC('Genic-genomic', t)
                     else:
                         self.eval_new_SC('Intergenic', ref.genes[0].transcripts[0]) # TODO: ref not correct it shouldnt have       
+            
+            if self.SC == 'GeneOverlap':
+                for g_index, g in enumerate(ref.genes):
+                    for t_index, trans in enumerate(g.transcripts):
+                        if len(trans.SJ) == 0: # TODO: improve this classification
+                            if self.strand == trans.strand:
+                                if self.hit_exon(trans):
+                                    self.eval_new_SC('FSM', trans)
+                                else:
+                                    self.eval_new_SC('Intergenic', trans)
+                            elif self.strand != trans.strand:
+                                self.eval_new_SC('Antisense', trans)
+
+            
             #END
 
     def eval_new_SC(self, new_SC, ref_trans = None):
@@ -282,19 +314,20 @@ class transcript:
             if ref_trans:
                 self.ref_trans = ref_trans.id
                 self.ref_gene = ref_trans.gene_id
-            if self.SC in ['FSM', 'ISM']: # diff TSS and TTS not calculated for non-FSM/ISM
-                self.diff_TSS = self.TSS - ref_trans.TSS
-                self.diff_TTS = self.TTS -ref_trans.TTS
+                if self.SC in ['FSM', 'ISM']: # diff TSS and TTS not calculated for non-FSM/ISM
+                    # TODO: see exactly how to get diff TSS and TTS
+
+                    self.diff_TSS, self.diff_TTS = self.get_diff_TSS_TTS(ref_trans)
         
-        if SCrank[self.SC] == SCrank[new_SC]:
-            if self.SC in ['FSM', 'ISM'] and \
-               (abs(self.diff_TSS) + abs(self.diff_TTS)) > (abs(self.TSS - ref_trans.TSS) + abs(self.TTS -ref_trans.TTS)):
-                self.SC = new_SC
-                if ref_trans:
+        elif SCrank[self.SC] == SCrank[new_SC]:
+            if self.SC in ['FSM', 'ISM']:
+                diff_TSS, diff_TTS = self.get_diff_TSS_TTS(ref_trans)
+                if (self.diff_TSS + self.diff_TTS) > (diff_TSS + diff_TTS):
+                    self.SC = new_SC
                     self.ref_trans = ref_trans.id
                     self.ref_gene = ref_trans.gene_id
-                self.diff_TSS = self.TSS - ref_trans.TSS
-                self.diff_TTS = self.TTS -ref_trans.TTS
+                    self.diff_TSS = diff_TSS
+                    self.diff_TTS = diff_TTS
             else:
                 pass # TODO: the rest of SC
 
@@ -356,8 +389,9 @@ class transcript:
         # 2) TSS and TTS cannot be hitting an exon
         # 3) No exon-skipping, with the requirement 1 you acomplish this one too
 
-        elif set(self.SJ).issubset(set(trans.SJ)) and \
-           not trans.in_intron(self.TSS) and not trans.in_intron(self.TSS):
+        #elif set(self.SJ).issubset(set(trans.SJ)) and \
+        #   not trans.in_intron(self.TSS) and not trans.in_intron(self.TTS):
+        elif set(self.SJ).issubset(set(trans.SJ)):
            return 'subset'
         
         elif self.TTS <= trans.TSS or self.TSS >= trans.TTS or self.is_within_intron(trans):
@@ -434,7 +468,21 @@ class transcript:
                 if j[0] <= i[0] <= j[1] or j[0] <= i[1] <= j[1] or i[0] <= j[0] < j[1] <= i[1]:
                     return True
         return False
-        
+
+    def get_diff_TSS_TTS(self, trans):
+        diff_TSS = 999999999999
+        diff_TTS = 999999999999 
+        for i in trans.SJ:
+            donor = i[0]
+            acceptor = i[1]
+
+            diff_TSS = min(diff_TSS, abs(self.TSS - acceptor))
+            diff_TTS = min(diff_TTS, abs(self.TTS - donor))
+        diff_TSS = min(diff_TSS, abs(self.TSS - trans.TSS))
+        diff_TTS = min(diff_TTS, abs(self.TTS - trans.TTS))
+
+        return diff_TSS, diff_TTS
+
 
 
 
@@ -462,7 +510,8 @@ def readgtf(gtf: str)-> list:
     trans_id = None
 
     # Progress bar
-    num_lines = sum(1 for line in open(gtf,'r'))
+    #num_lines = sum(1 for line in open(gtf,'r'))
+    num_lines = int(subprocess.check_output('wc -l ' + gtf, shell=True).split()[0])
     # Read GTF file line by line
     with open(gtf, 'r') as f_in:
         for line in tqdm(f_in, total=num_lines):
@@ -573,13 +622,12 @@ def dont_overlap(l_genes):
 
 def write_output(data, out_name):
     f_out = open(out_name, 'w')
-    f_out.write('trans_id\tSC\tref_trans\tref_gene')
+    f_out.write('trans_id\tSC\tref_trans\tref_gene\n')
 
     for seq in data:
         for g in seq.genes:
             for t in g.transcripts:
-                f_out.write(str(t.id) + '\t' + str(t.SC) + '\t' + str(t.ref_trans) +'\t' + str(t.ref_gene))
-                f_out.write('\n')
+                f_out.write(str(t.id) + '\t' + str(t.SC) + '\t' + str(t.ref_trans) +'\t' + str(t.ref_gene) + '\n')
     
     f_out.close()
 
@@ -589,25 +637,19 @@ def write_output(data, out_name):
 #               MAIN                #
 #                                   #
 #####################################
-
 def main():
     # Welcome
     print(
-        '''
-        
-        ########################################################################
-        ##                                                                    ##
-        ##                                                                    ##
-        ##       ___   ___      _    _   _ _____ ___     ____ ___ __  __      ##
-        ##     / ___| / _ \    / \  | \ | |_   _|_ _|   / ___|_ _|  \/  |     ##
-        ##     \___ \| | | |  / _ \ |  \| | | |  | |____\___ \| || |\/| |     ##
-        ##      ___) | |_| | / ___ \| |\  | | |  | |_____|__) | || |  | |     ##
-        ##     |____/ \__\_\/_/   \_\_| \_| |_| |___|   |____/___|_|  |_|     ##
-        ##                                                                    ##
-        ##          A SIMULATOR OF CONTROLLED NOVELTY AND DEGRADATION         ##
-        ##                OF TRNASCRIPTS SEQUENCED BY LONG-READS              ##
-        ##                                                                    ##
-        ########################################################################
+        '''                                                                      
+          _____  ____            _   _ _______ _____      _____ _____ __  __  
+         / ____|/ __ \     /\   | \ | |__   __|_   _|    / ____|_   _|  \/  | 
+        | (___ | |  | |   /  \  |  \| |  | |    | |_____| (___   | | | \  / | 
+         \___ \| |  | |  / /\ \ | . ` |  | |    | |______\___ \  | | | |\/| | 
+         ____) | |__| | / ____ \| |\  |  | |   _| |_     ____) |_| |_| |  | | 
+        |_____/ \___\_\/_/    \_\_| \_|  |_|  |_____|   |_____/|_____|_|  |_| 
+                                                                              
+                  A SIMULATOR OF CONTROLLED NOVELTY AND DEGRADATION           
+                        OF TRNASCRIPTS SEQUENCED BY LONG-READS                
         '''
     )
     
@@ -616,6 +658,7 @@ def main():
     parser.add_argument('--gtf', help = '\t\tReference annotation in GTF format')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('-k', '--cores', default='1', help = '\t\tNumber of cores to run in parallel')
     parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
     
     args = parser.parse_args()
@@ -624,9 +667,9 @@ def main():
     dir = args.dir
 
     dir = '/home/jorge/Desktop'
-    #f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulacion/getSC/gencode.v38.annotation.gtf'
     #f_name = '/home/jorge/Desktop/prueba.gtf'
-    f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    #f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
 
     # Read GTF file
@@ -643,9 +686,8 @@ def main():
     print('COMPLETED\n')
 
     # Write output file
-    os.chdir(dir)
     print("\nWritting output file")
-    write_output(data, out_name)
+    write_output(data, os.path.join(dir, out_name))
     print('COMPLETED\n')
 
     # Show output
