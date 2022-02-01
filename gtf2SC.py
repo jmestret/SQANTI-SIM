@@ -7,7 +7,7 @@ category not taking into account himself in the reference.
 
 Author: Jorge Mestre Tomas
 Date: 19/01/2020
-Last update: 27/01/2021 by Jorge Mestre
+Last update: 01/02/2021 by Jorge Mestre
 '''
 
 __author__ = 'jormart2@alumni.uv.es'
@@ -183,7 +183,7 @@ class transcript:
                             self.eval_new_SC('FSM', hit)
 
                         elif self.TTS <= hit.TSS or self.TSS >= hit.TTS:
-                            self.eval_new_SC('Intergenic', hit)
+                            self.eval_new_SC('Intergenic')
                         
                         elif (self.TSS <= hit.TSS and self.TTS > hit.TSS) or \
                              (self.TSS < hit.TTS and self.TTS >= hit.TTS):
@@ -248,8 +248,12 @@ class transcript:
                     l_genes = []
                     for i in gene_hits:
                         l_genes.append(ref.genes[i])
+                    
+                    if self.id == "ENST00000317757.7":
+                        print(l_genes) # TODO: fusion and i say NIC, but its fusion
 
-                    if len(gene_hits) > 1 and dont_overlap(l_genes):
+                    #if len(gene_hits) > 1 and dont_overlap(l_genes): # TODO overlaping genes?
+                    if len(gene_hits) > 1:
                         self.eval_new_SC('Fusion', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
 
                     elif len(gene_hits) > 1:
@@ -284,7 +288,7 @@ class transcript:
                                     else:
                                         self.eval_new_SC('Genic-genomic', t)
                     else:
-                        self.eval_new_SC('Intergenic', ref.genes[0].transcripts[0]) # TODO: ref not correct it shouldnt have       
+                        self.eval_new_SC('Intergenic') # TODO: ref not correct it shouldnt have       
             
             if self.SC == 'GeneOverlap':
                 for g_index, g in enumerate(ref.genes):
@@ -294,7 +298,7 @@ class transcript:
                                 if self.hit_exon(trans):
                                     self.eval_new_SC('FSM', trans)
                                 else:
-                                    self.eval_new_SC('Intergenic', trans)
+                                    self.eval_new_SC('Intergenic')
                             elif self.strand != trans.strand:
                                 self.eval_new_SC('Antisense', trans)
 
@@ -312,12 +316,21 @@ class transcript:
         if SCrank[self.SC] > SCrank[new_SC]:
             self.SC = new_SC
             if ref_trans:
-                self.ref_trans = ref_trans.id
-                self.ref_gene = ref_trans.gene_id
                 if self.SC in ['FSM', 'ISM']: # diff TSS and TTS not calculated for non-FSM/ISM
                     # TODO: see exactly how to get diff TSS and TTS
-
+                    self.ref_trans = ref_trans.id
+                    self.ref_gene = ref_trans.gene_id
                     self.diff_TSS, self.diff_TTS = self.get_diff_TSS_TTS(ref_trans)
+                elif self.SC in ['NIC', 'NNC']:
+                    self.ref_trans = 'novel'
+                    self.ref_gene = ref_trans.gene_id
+                elif self.SC == 'Intergenic':
+                    self.ref_trans = 'NA'
+                    self.ref_gene = 'NA'
+                else:
+                    self.ref_trans = ref_trans.id
+                    self.ref_gene = ref_trans.gene_id
+                    
         
         elif SCrank[self.SC] == SCrank[new_SC]:
             if self.SC in ['FSM', 'ISM']:
@@ -365,7 +378,7 @@ class transcript:
             exons.append((coords[i], coords[i+1]))
         
         for i in exons:
-            if i[0] <= trans.TSS < trans.TTS <= i[1]:
+            if i[0] <= self.TSS < self.TTS <= i[1]:
                 return True
         return False
 
@@ -376,6 +389,10 @@ class transcript:
         return False
     
     def compare_junctions(self, trans):
+        ref_first_exon = (trans.TSS, trans.SJ[0][0])
+        ref_last_exon = (trans.SJ[-1][-1], trans.TTS)
+        self_first_exon = (self.TSS, self.SJ[0][0])
+        self_last_exon = (self.SJ[-1][-1], self.TTS)
         
         if self.strand != trans.strand:
             return 'no_match'
@@ -391,8 +408,31 @@ class transcript:
 
         #elif set(self.SJ).issubset(set(trans.SJ)) and \
         #   not trans.in_intron(self.TSS) and not trans.in_intron(self.TTS):
+        #elif set(self.SJ).issubset(set(trans.SJ)) and (overlap(self_first_exon, ref_first_exon) == False or overlap(self_last_exon, ref_last_exon) == False):
         elif set(self.SJ).issubset(set(trans.SJ)):
-           return 'subset'
+            if self.intron_retention(trans):
+                return 'partially' # TODO this is obviusly wrong
+                '''
+                donor = {trans.TTS}
+                acceptor = {trans.TTS}
+
+                for i in trans.SJ:
+                    donor.add(i[0])
+                    acceptor.add(i[1])
+                                
+                if self.TSS in acceptor and self.TTS in donor:
+                    return 'subset'
+                else:
+                     return 'partially'
+                '''
+
+            elif (overlap(self_first_exon, ref_first_exon) == False or overlap(self_last_exon, ref_last_exon) == False):
+                self.eval_new_SC('ISM', trans)
+                            
+            else:
+                return 'partially'
+
+            #return 'subset'
         
         elif self.TTS <= trans.TSS or self.TSS >= trans.TTS or self.is_within_intron(trans):
             return 'no_match'
@@ -482,6 +522,24 @@ class transcript:
         diff_TTS = min(diff_TTS, abs(self.TTS - trans.TTS))
 
         return diff_TSS, diff_TTS
+    
+    def intron_retention(self, trans):
+        coords = [st for SJ in self.SJ for st in SJ]
+        coords.insert(0, self.TSS)
+        coords.append(self.TTS)
+
+        exons=[]
+        for i in range(0, len(coords), 2):
+            exons.append((coords[i], coords[i+1]))
+        
+        for (s,e) in exons:
+            for i in trans.SJ:
+                if s <= i[0] < i[1] <= e:
+                    return True
+        
+        return False
+        
+
 
 
 
@@ -533,6 +591,7 @@ def readgtf(gtf: str)-> list:
                         strand = line_split[6]
                         start = int(line_split[3])
                         end = int(line_split[4])
+                        l_coords = [start, end]
                         g = gene(gene_id, seqname_id, strand, start, end) # TODO: start and end
                         res.append(sequence(seqname_id, start, end)) # TODO: start and end
 
@@ -620,14 +679,21 @@ def dont_overlap(l_genes):
                     return True
     return False
 
+
+def overlap(A, B):
+    if A[1] >= B[0] and B[1] >= A[0]:
+        return True
+    return False
+    
+
 def write_output(data, out_name):
     f_out = open(out_name, 'w')
-    f_out.write('trans_id\tSC\tref_trans\tref_gene\n')
+    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\n')
 
     for seq in data:
         for g in seq.genes:
             for t in g.transcripts:
-                f_out.write(str(t.id) + '\t' + str(t.SC) + '\t' + str(t.ref_trans) +'\t' + str(t.ref_gene) + '\n')
+                f_out.write(str(t.id) + '\t' + str(t.gene_id) + '\t' + str(t.SC) + '\t' + str(t.ref_gene) +'\t' + str(t.ref_trans) + '\n')
     
     f_out.close()
 
@@ -667,7 +733,7 @@ def main():
     dir = args.dir
 
     dir = '/home/jorge/Desktop'
-    f_name = '/home/jorge/Desktop/simulacion/getSC/gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
     #f_name = '/home/jorge/Desktop/prueba.gtf'
     #f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
