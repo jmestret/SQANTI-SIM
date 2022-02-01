@@ -224,6 +224,7 @@ class transcript:
                 for t_index, trans in enumerate(g.transcripts):
                     if len(trans.SJ) == 0:
                         self.eval_new_SC('GeneOverlap', trans)
+                        self.gene_hits.add(g_index) # TODO: this generates a lot of fusion genes
 
                     else:
                         match_type = self.compare_junctions(trans)
@@ -248,23 +249,22 @@ class transcript:
                     l_genes = []
                     for i in gene_hits:
                         l_genes.append(ref.genes[i])
-                    
-                    if self.id == "ENST00000317757.7":
-                        print(l_genes) # TODO: fusion and i say NIC, but its fusion
 
                     #if len(gene_hits) > 1 and dont_overlap(l_genes): # TODO overlaping genes?
                     if len(gene_hits) > 1:
                         self.eval_new_SC('Fusion', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
-
-                    elif len(gene_hits) > 1:
-                        for hit_index in self.gene_hits:
-                            if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
-                                self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
-                            else:
-                                self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                    
+                    #elif len(gene_hits) > 1:
+                    #    for hit_index in self.gene_hits:
+                    #        if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
+                    #            self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                    #        else:
+                    #            self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
                     elif len(gene_hits) == 1:
                         if self.acceptor_subset(ref.genes[gene_hits[0]]) and self.donor_subset(ref.genes[gene_hits[0]]):
                             self.eval_new_SC('NIC', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
+                        elif not self.hit_exon(trans):
+                            self.eval_new_SC('Intergenic')
                         else:
                             self.eval_new_SC('NNC', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
                     else:
@@ -733,9 +733,9 @@ def main():
     dir = args.dir
 
     dir = '/home/jorge/Desktop'
-    f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
+    #f_name = '/home/jorge/Desktop/simulacion/getSC/chr3.gencode.v38.annotation.gtf'
     #f_name = '/home/jorge/Desktop/prueba.gtf'
-    #f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    f_name = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba_gtf2SC.txt'
 
     # Read GTF file
