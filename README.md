@@ -52,6 +52,10 @@ optional arguments:
   -v, --version         Display program version number
 ```
 
+## Classification criteria
+
+![cat_workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/gtf2scworkflow.png)
+
 ## Example run
 
 Example data can be found in `data/example_data.tar.gz`. Unpack it using `tar -xzf example_data.tar.gz` in `data` folder.
