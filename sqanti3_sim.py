@@ -93,6 +93,15 @@ class sequence:
                 del ref.genes[g_index].transcripts[t_index]
                 if len(ref.genes[g_index].transcripts) == 0:
                     del ref.genes[g_index]
+                else:
+                    if ref.genes[g_index].start == self.genes[g_index].transcripts[t_index].TSS or ref.genes[g_index].end == self.genes[g_index].transcripts[t_index].TTS:
+                        starts = []
+                        ends = []
+                        for t in ref.genes[g_index].transcripts:
+                            starts.append(t.TSS)
+                            ends.append(t.TTS)
+                        ref.genes[g_index].start = min(starts)
+                        ref.genes[g_index].end = max(ends)
                 self.genes[g_index].transcripts[t_index].get_SC(ref)
 
 
@@ -243,6 +252,8 @@ class transcript:
 
                     else:
                         match_type = self.compare_junctions(trans)
+                        if self.id == 'ENST00000651726.1':
+                            print(trans.id, trans.gene_id, match_type)
 
                         if match_type == 'exact':
                             self.eval_new_SC('FSM', trans)
@@ -265,19 +276,21 @@ class transcript:
                     for i in gene_hits:
                         l_genes.append(ref.genes[i])
 
-                    #if len(gene_hits) > 1 and dont_overlap(l_genes): # TODO overlaping genes?
-                    if len(gene_hits) > 1:
+                    if len(gene_hits) > 1 and dont_overlap_genes(l_genes): # TODO overlaping genes?
+                        if self.id == 'ENST00000651726.1':
+                            print(gene_hits)
+                    #if len(gene_hits) > 1:
                         gene_names = []
                         for i in gene_hits:
                             gene_names.append(ref.genes[i].id)
                         self.eval_new_SC('Fusion', gene_names) # TODO: which reference I include?
                     
-                    #elif len(gene_hits) > 1:
-                    #    for hit_index in self.gene_hits:
-                    #        if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
-                    #            self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
-                    #        else:
-                    #            self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                    elif len(gene_hits) > 1:
+                        for hit_index in self.gene_hits:
+                            if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
+                                self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                            else:
+                                self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
                     elif len(gene_hits) == 1:
                         if self.acceptor_subset(ref.genes[gene_hits[0]]) and self.donor_subset(ref.genes[gene_hits[0]]):
                             self.eval_new_SC('NIC', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
@@ -294,17 +307,19 @@ class transcript:
                         for index in gene_hits:
                             if self.strand != ref.genes[index].strand:
                                 for t in ref.genes[index].transcripts:
-                                    #if self.hit_exon(t):
-                                    self.eval_new_SC('Antisense', t)
-                                        #break
-                                    #else:
-                                    #    self.eval_new_SC('Genic-genomic', t) 
+                                    if not self.is_within_intron(t):
+                                        self.eval_new_SC('Antisense', t)
+                                        break
+                                else:
+                                    self.eval_new_SC('Intergenic') 
                             else:
                                 for t in ref.genes[index].transcripts:
                                     if self.is_within_intron(t) and self.SC != 'Genic-genomic':
                                         self.eval_new_SC('Genic-intron', t)
-                                    else:
+                                    elif self.hit_exon(t):
                                         self.eval_new_SC('Genic-genomic', t)
+                                    else: 
+                                        self.eval_new_SC('Intergenic')
                     else:
                         self.eval_new_SC('Intergenic') # TODO: ref not correct it shouldnt have       
             
@@ -522,7 +537,7 @@ class transcript:
                 '''
 
             elif (overlap(self_first_exon, ref_first_exon) == False or overlap(self_last_exon, ref_last_exon) == False):
-                self.eval_new_SC('ISM', trans)
+                self.eval_new_SC('ISM', trans) # TODO: this should be here, eval is out of this function
                             
             else:
                 return 'partially'
@@ -532,8 +547,11 @@ class transcript:
         elif self.TTS <= trans.TSS or self.TSS >= trans.TTS or self.is_within_intron(trans):
             return 'no_match'
         
-        else:
+        elif self.hit_exon(trans):
             return 'partially'
+        
+        else:
+            return 'no_match'
 
     
     def genes_overlap(self, ref: sequence)-> bool:
@@ -852,7 +870,7 @@ def readgtf(gtf: str)-> list:
     return res
 
 
-def dont_overlap(l_genes: list)-> bool:
+def dont_overlap_genes(l_genes: list)-> bool:
     '''
     Check if at least one gene of a list of genes overlap comparing start and end
 
@@ -1079,12 +1097,14 @@ def modifyGTF(f_name_in: str, f_name_out: str, target_trans: list, ref_genes: li
                 
                 if gene_id == prev_gene:
                     gene_info.append(line)
-
-                elif prev_gene in ref_genes:
-                    for i in gene_info:
-                        f_out.write(i)
-                    prev_gene = gene_id
-                    gene_info =  [line]
+                
+                    '''
+                    elif prev_gene in ref_genes:
+                        for i in gene_info:
+                            f_out.write(i)
+                        prev_gene = gene_id
+                        gene_info =  [line]
+                    '''
 
                 else:
                     tmp = []
@@ -1152,10 +1172,11 @@ def main():
     group.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
-    parser.add_argument('--ISM', default='0', help = '\t\tNumber of incomplete-splice-matches to delete')
-    parser.add_argument('--NIC', default='0', help = '\t\tNumber of novel-in-catalog to delete')
-    parser.add_argument('--NNC', default='0', help = '\t\tNumber of novel-not-in-catalog to delete')
-    parser.add_argument('-k', '--cores', default='1', help = '\t\tNumber of cores to run in parallel')
+    parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
+    parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
+    parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
+    parser.add_argument('--Fusion', default='0', type=int, help = '\t\tNumber of Fusion to delete')
+    parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
     parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
     
     args = parser.parse_args()
@@ -1168,6 +1189,10 @@ def main():
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
 
+    counts = {
+        'FSM' : 0, 'ISM' : args.ISM, 'NIC' : args.NIC, 'NNC' : args.NNC, 'Fusion' : args.Fusion
+    }
+
     dir = '/home/jorge/Desktop/TFM'
     ref_gtf = '/home/jorge/Desktop/TFM/getSC/chr3.gencode.v38.annotation.gtf'
     #ref_gtf = '/home/jorge/Desktop/prueba.gtf'
@@ -1177,8 +1202,9 @@ def main():
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
 
     counts = {
-        'FSM' : 0, 'ISM' : 100, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 0
+        'FSM' : 0, 'ISM' : 0, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 100
     }
+    
 
     if ref_gtf:
         # Read GTF file
