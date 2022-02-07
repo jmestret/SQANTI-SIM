@@ -14,11 +14,14 @@ Last update: 02/02/2021 by Jorge Mestre
 __author__ = 'jormart2@alumni.uv.es'
 __version__ = '0.0'
 
+from ast import Return
 import os
 import copy
 import argparse
 import random
+import re
 import subprocess
+import itertools
 from time import time
 from tqdm import tqdm
 
@@ -252,6 +255,8 @@ class transcript:
 
                     else:
                         match_type = self.compare_junctions(trans)
+                        #if self.id == 'ENST00000467157.1':
+                        #    print(match_type)
 
                         if match_type == 'exact':
                             self.eval_new_SC('FSM', trans)
@@ -274,33 +279,62 @@ class transcript:
                     for i in gene_hits:
                         l_genes.append(ref.genes[i])
 
-                    if len(gene_hits) > 1 and dont_overlap_genes(l_genes): # TODO overlaping genes?
-                    #if len(gene_hits) > 1:
-                        gene_names = []
-                        for i in gene_hits:
-                            for t in ref.genes[i].transcripts:
-                                if self.hit_exon(t):
-                                    gene_names.append(ref.genes[i].id)
-                                    break
-                        if len(gene_names) >= 2:
-                            self.eval_new_SC('Fusion', gene_names) # TODO: which reference I include?
-
-                    if len(gene_hits) > 1:
-                        for hit_index in self.gene_hits:
-                            if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
-                                self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
-                            else:
-                                self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
-                    elif len(gene_hits) == 1:
+                    if len(gene_hits) == 1:
                         if self.acceptor_subset(ref.genes[gene_hits[0]]) and self.donor_subset(ref.genes[gene_hits[0]]):
                             self.eval_new_SC('NIC', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
-                        elif not self.hit_exon(trans):
+                        elif not self.hit_exon(trans): # TODO: is this rigth?
                             self.eval_new_SC('Intergenic')
                         else:
                             self.eval_new_SC('NNC', ref.genes[gene_hits[0]].transcripts[0]) # TODO: which reference I include?
+                    
                     else:
-                        print('Algo raro pasa aqui -.-')
+                        #TODO:
+                        # 1) tomar los genes de los cuales al menos un exon overlap con el inicio y final de query transcript
+                        overlap_genes = set()
+                        for g in ref.genes:
+                            if self.hit_gene_fusion(g):
+                                overlap_genes.add(g)
+                        
+                        # 2) coger la mejor isoforma por gen, la que mejor matchee
 
+
+
+                        # 3) ordenar la lista de las mejores isoformas por gen
+                        # 3.1) se ordena en función de: (score en el ranking de SC) y luego por (numero_splice_sites_matcheando + numero_bases_que_overlap) / (suma de diferencia entre inicio y final de los exones de la query transcript) + (overlap entre las dos isoformas)/(diferencia entre inicio y final de best isoform) - abs(numero_exones_queryisoform - exones best isoform)
+                        # best_by_gene.sort(key=lambda x: (x.score,x.iso_hit.q_splicesite_hit+(x.iso_hit.q_exon_overlap)*1./sum(e.end-e.start for e in trec.exons)+calc_overlap(x.rStart,x.rEnd,trec.txStart,trec.txEnd)*1./(x.rEnd-x.rStart)-abs(trec.exonCount-x.iso_hit.refExons)), reverse=True)  # sort by (ranking score, overlap)
+                        # 4) se itera la lista en funcion del orden de mejor a peor isoporgen
+                        # 5) si nos se solapan la isoformas pues se cuenta como multigen y hit_gene. Actualizando el start y final de su actual referencia sea uno o mas genes
+                        '''
+                        # Count all genes that hit exon # TODO: is this right?
+                        gene_names = set()
+                        # Count ref junctions that hit query junction # TODO: exact match or just overlap?
+                        junctions_per_gene = set()
+                        exons_per_gene = set()
+                        all_ref_junctions = []
+                        for i in gene_hits:
+                            if self.hit_gene_fusion(ref.genes[i]):
+                                gene_names.add(ref.genes[i].id)
+                                for t in ref.genes[i].transcripts:
+                                #if self.hit_exon(t):
+                                    #gene_names.add(ref.genes[i].id)
+                                    junctions_per_gene.update(t.SJ)
+                            junctions_per_gene = list(junctions_per_gene)
+                            all_ref_junctions.extend(junctions_per_gene)
+                            junctions_per_gene = set()
+                        # Number of refs that have the query junction
+                        junction_ref_hit = dict((i, all_ref_junctions.count(SJ)) for i, SJ in enumerate(self.SJ))
+
+                        # if the same query junction appears in more than one of the hit references, it is not a fusion
+                        if len(gene_names) >= 2 and max(junction_ref_hit.values()) <= 1:
+                            self.eval_new_SC('Fusion', gene_names) # TODO: which reference I include?
+                        
+                        else:
+                            for hit_index in self.gene_hits:
+                                if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
+                                    self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                                else:
+                                    self.eval_new_SC('NNC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
+                        '''
                 elif self.match_type == 'no_match':
                     gene_hits = self.hits_a_gene(ref) # Overlaps a gene
                     if gene_hits:
@@ -382,6 +416,17 @@ class transcript:
                     self.ref_gene = ref_trans.gene_id
                     self.diff_TSS = diff_TSS
                     self.diff_TTS = diff_TTS
+            elif self.SC == 'NIC':
+                # TODO: calculate this
+                # 1) more splice site hits
+                # 2) sample splice site hits but more ex_overlap or less differente in the absolute number of exons
+                pass
+            elif self.SC == 'NNC':
+                # 1) more splice sites hit
+                pass
+            elif self.SC != 'Intergenic':
+                # 1) more exon overlap
+                pass
             else:
                 pass # TODO: the rest of SC
 
@@ -535,7 +580,8 @@ class transcript:
                 '''
 
             elif (overlap(self_first_exon, ref_first_exon) == False or overlap(self_last_exon, ref_last_exon) == False):
-                self.eval_new_SC('ISM', trans) # TODO: this should be here, eval is out of this function
+                #self.eval_new_SC('ISM', trans) # TODO: this should be here, eval is out of this function
+                return 'subset'
                             
             else:
                 return 'partially'
@@ -679,6 +725,28 @@ class transcript:
             for j in exons_self:
                 if j[0] <= i[0] <= j[1] or j[0] <= i[1] <= j[1] or i[0] <= j[0] < j[1] <= i[1]:
                     return True
+        return False
+    
+    def hit_SJ(self, trans):
+        for junc in self.SJ:
+            if junc in trans.SJ:
+                return True
+        return False
+    
+    def hit_gene_fusion(self, g):
+        exons_per_gene= set()
+        for trans in g.transcripts:
+            coords = [st for SJ in trans.SJ for st in SJ]
+            coords.insert(0, trans.TSS)
+            coords.append(trans.TTS)
+
+            for i in range(0, len(coords), 2):
+                exons_per_gene.add((coords[i], coords[i+1]))
+        
+        for exon in exons_per_gene:
+            if self.TSS <= exon[0] < exon[1] <= self.TTS:
+                return True
+        
         return False
 
 
@@ -1201,20 +1269,18 @@ def main():
     }
     
     '''
-    #dir = '/home/jorge/Desktop/TFM'
-    dir = '/home/jorge/Desktop/ConesaLab/SQANTI-SIM'
-    #ref_gtf = '/home/jorge/Desktop/TFM/getSC/chr3.gencode.v38.annotation.gtf'
+    dir = '/home/jorge/Desktop/TFM'
+    #dir = '/home/jorge/Desktop/ConesaLab/SQANTI-SIM'
+    ref_gtf = '/home/jorge/Desktop/TFM/getSC/chr3.gencode.v38.annotation.gtf'
     #ref_gtf = '/home/jorge/Desktop/prueba.gtf'
-    ref_gtf = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    #ref_gtf = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba'
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
-
     counts = {
         'FSM' : 0, 'ISM' : 0, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 100
     }
     '''
-    
     
 
     if ref_gtf:
