@@ -252,8 +252,6 @@ class transcript:
 
                     else:
                         match_type = self.compare_junctions(trans)
-                        if self.id == 'ENST00000651726.1':
-                            print(trans.id, trans.gene_id, match_type)
 
                         if match_type == 'exact':
                             self.eval_new_SC('FSM', trans)
@@ -277,15 +275,17 @@ class transcript:
                         l_genes.append(ref.genes[i])
 
                     if len(gene_hits) > 1 and dont_overlap_genes(l_genes): # TODO overlaping genes?
-                        if self.id == 'ENST00000651726.1':
-                            print(gene_hits)
                     #if len(gene_hits) > 1:
                         gene_names = []
                         for i in gene_hits:
-                            gene_names.append(ref.genes[i].id)
-                        self.eval_new_SC('Fusion', gene_names) # TODO: which reference I include?
-                    
-                    elif len(gene_hits) > 1:
+                            for t in ref.genes[i].transcripts:
+                                if self.hit_exon(t):
+                                    gene_names.append(ref.genes[i].id)
+                                    break
+                        if len(gene_names) >= 2:
+                            self.eval_new_SC('Fusion', gene_names) # TODO: which reference I include?
+
+                    if len(gene_hits) > 1:
                         for hit_index in self.gene_hits:
                             if self.acceptor_subset(ref.genes[hit_index]) and self.donor_subset(ref.genes[hit_index]):
                                 self.eval_new_SC('NIC', ref.genes[hit_index].transcripts[0]) # TODO: which reference I include?
@@ -302,18 +302,16 @@ class transcript:
                         print('Algo raro pasa aqui -.-')
 
                 elif self.match_type == 'no_match':
-                    gene_hits = self.hits_a_gene(ref)
+                    gene_hits = self.hits_a_gene(ref) # Overlaps a gene
                     if gene_hits:
                         for index in gene_hits:
-                            if self.strand != ref.genes[index].strand:
-                                for t in ref.genes[index].transcripts:
-                                    if not self.is_within_intron(t):
+                            for t in ref.genes[index].transcripts:
+                                if self.strand != t.strand:
+                                    if self.hit_exon(t) or t.is_within_intron(self):
                                         self.eval_new_SC('Antisense', t)
-                                        break
+                                    else:
+                                        self.eval_new_SC('Intergenic')
                                 else:
-                                    self.eval_new_SC('Intergenic') 
-                            else:
-                                for t in ref.genes[index].transcripts:
                                     if self.is_within_intron(t) and self.SC != 'Genic-genomic':
                                         self.eval_new_SC('Genic-intron', t)
                                     elif self.hit_exon(t):
@@ -347,8 +345,8 @@ class transcript:
         '''
 
         SCrank ={
-            'FSM':1, 'ISM':2, 'Fusion':3,
-            'NIC': 4, 'NNC':5, 'Antisense': 6,
+            'FSM':1, 'ISM':2, 'Fusion':4,
+            'NIC': 3, 'NNC':5, 'Antisense': 6,
             'Genic-genomic':7, 'Genic-intron':8, 'Intergenic':9,
             'GeneOverlap':10, 'Unclassified':11
         }
@@ -976,7 +974,7 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                 gene_id = trans[1]
                 SC = trans[2]
 
-                if SC in ['FSM', 'ISM'] and counts[SC] > 0 and trans_id not in ref_trans and gene_id not in ref_genes:
+                if SC in ['FSM', 'ISM', 'Antisense', 'Genic-genomic', 'Genic-intron'] and counts[SC] > 0 and trans_id not in ref_trans and gene_id not in ref_genes:
                     ref_t = trans[4]
                     if ref_t not in target_trans:
                         target_trans.append(trans_id)
@@ -1002,6 +1000,10 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                         target_genes.append(gene_id)
                         ref_genes.extend(ref_g)
                         counts[SC] -= 1
+                
+                elif SC == 'Intergenic' and counts[SC] > 0 and gene_id not in ref_genes:
+                    target_trans.append(trans_id)
+                    target_genes.append(gene_id)
                 
                 if counts[SC] <= 0:
                     break
@@ -1176,6 +1178,10 @@ def main():
     parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
     parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
     parser.add_argument('--Fusion', default='0', type=int, help = '\t\tNumber of Fusion to delete')
+    parser.add_argument('--Antisense', default='0', type=int, help = '\t\tNumber of Antisense to delete')
+    parser.add_argument('--GG', default='0', type=int, help = '\t\tNumber of Genic-genomic to delete')
+    parser.add_argument('--GI', default='0', type=int, help = '\t\tNumber of Genic-intron to delete')
+    parser.add_argument('--Intergenic', default='0', type=int, help = '\t\tNumber of Intergenic to delete')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
     parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
     
@@ -1190,13 +1196,16 @@ def main():
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
 
     counts = {
-        'FSM' : 0, 'ISM' : args.ISM, 'NIC' : args.NIC, 'NNC' : args.NNC, 'Fusion' : args.Fusion
+        'FSM' : 0, 'ISM' : args.ISM, 'NIC' : args.NIC, 'NNC' : args.NNC, 'Fusion' : args.Fusion,
+        'Antisense' : args.Antisense, 'Genic-genomic' : args.GG, 'Genic-intron' : args.GI, 'Intergenic' : args.Intergenic
     }
-
-    dir = '/home/jorge/Desktop/TFM'
-    ref_gtf = '/home/jorge/Desktop/TFM/getSC/chr3.gencode.v38.annotation.gtf'
+    
+    '''
+    #dir = '/home/jorge/Desktop/TFM'
+    dir = '/home/jorge/Desktop/ConesaLab/SQANTI-SIM'
+    #ref_gtf = '/home/jorge/Desktop/TFM/getSC/chr3.gencode.v38.annotation.gtf'
     #ref_gtf = '/home/jorge/Desktop/prueba.gtf'
-    #ref_gtf = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
+    ref_gtf = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
     out_name = 'prueba'
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
@@ -1204,6 +1213,8 @@ def main():
     counts = {
         'FSM' : 0, 'ISM' : 0, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 100
     }
+    '''
+    
     
 
     if ref_gtf:
