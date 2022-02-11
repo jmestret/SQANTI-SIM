@@ -29,7 +29,7 @@ SQANTI-SIM can be used in two different ways: (i) to classify all transcripts fr
 - **-o** is the prefix for the output files (default = sqanti_sim)
 - **-d** is the path to the directory to save the output files (default = .)
 - You can choose how many transcripts from each structural category you want to delete from the reference using **--ISM**, **--NIC** and **--NNC** (default = 0).
-- TODO: **-k** to choose the number of cores to run simultaneusly in the structural categorization
+- **-k** to choose the number of cores to run simultaneusly in the structural categorization
 - **-v** to show up the version of the tool 
 
 ```
