@@ -36,12 +36,13 @@ except ImportError:
 
 try:
     from cupcake.tofu.compare_junctions import compare_junctions
-    from cupcake.tofu.filter_away_subset import read_count_file
-    from cupcake.io.BioReaders import GMAPSAMReader
-    from cupcake.io.GFF import collapseGFFReader, write_collapseGFF_format
+    #from cupcake.tofu.filter_away_subset import read_count_file
+    #from cupcake.io.BioReaders import GMAPSAMReader
+    #from cupcake.io.GFF import collapseGFFReader, write_collapseGFF_format
 except ImportError:
     print("Unable to import cupcake.tofu! Please make sure you install cupcake.", file=sys.stderr)
     sys.exit(-1)
+
 
 utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "utilities")
 #GTF2GENEPRED_PROG = os.path.join(utilitiesPath,"gtfToGenePred")
@@ -50,6 +51,13 @@ GTF2GENEPRED_PROG = '/home/jorge/Desktop/SQANTI3/utilities/gtfToGenePred'
 if distutils.spawn.find_executable(GTF2GENEPRED_PROG) is None:
     print("Cannot find executable {0}. Abort!".format(GTF2GENEPRED_PROG), file=sys.stderr)
     sys.exit(-1)
+
+
+#####################################
+#                                   #
+#          DEFINE CLASSES           #
+#                                   #
+#####################################
 
 class genePredReader(object):
     def __init__(self, filename):
@@ -63,6 +71,7 @@ class genePredReader(object):
         if len(line) == 0:
             raise StopIteration
         return genePredRecord.from_line(line)
+
 
 class genePredRecord(object):
     def __init__(self, id, chrom, strand, txStart, txEnd, cdsStart, cdsEnd, exonCount, exonStarts, exonEnds, gene=None):
@@ -92,7 +101,6 @@ class genePredRecord(object):
     def segments(self):
         return self.exons
 
-
     @classmethod
     def from_line(cls, line):
         raw = line.strip().split('\t')
@@ -109,45 +117,14 @@ class genePredRecord(object):
                   gene=raw[11] if len(raw)>=12 else None,
                   )
 
-    def get_splice_site(self, genome_dict, i):
-        """
-        Return the donor-acceptor site (ex: GTAG) for the i-th junction
-        :param i: 0-based junction index
-        :param genome_dict: dict of chrom --> SeqRecord
-        :return: splice site pattern, ex: "GTAG", "GCAG" etc
-        """
-        assert 0 <= i < self.exonCount-1
-
-        d = self.exonEnds[i]
-        a = self.exonStarts[i+1]
-
-        seq_d = genome_dict[self.chrom].seq[d:d+2]
-        seq_a = genome_dict[self.chrom].seq[a-2:a]
-
-        if self.strand == '+':
-            return (str(seq_d)+str(seq_a)).upper()
-        else:
-            return (str(seq_a.reverse_complement())+str(seq_d.reverse_complement())).upper()
 
 class myQueryTranscripts:
     def __init__(self, id, gene_id, tss_diff, tts_diff, num_exons, length, str_class, subtype=None,
-                 genes=None, transcripts=None, chrom=None, strand=None, bite ="NA",
-                 RT_switching ="????", canonical="NA", min_cov ="NA",
-                 min_cov_pos ="NA", min_samp_cov="NA", sd ="NA", FL ="NA", FL_dict={},
-                 nIndels ="NA", nIndelsJunc ="NA", proteinID=None,
-                 ORFlen="NA", CDS_start="NA", CDS_end="NA",
-                 CDS_genomic_start="NA", CDS_genomic_end="NA", 
-                 ORFseq="NA",
-                 is_NMD="NA",
-                 isoExp ="NA", geneExp ="NA", coding ="non_coding",
+                 genes=None, transcripts=None, chrom=None, strand=None,
                  refLen ="NA", refExons ="NA",
                  refStart = "NA", refEnd = "NA",
                  q_splicesite_hit = 0,
-                 q_exon_overlap = 0,
-                 FSM_class = None, percAdownTTS = None, seqAdownTTS=None,
-                 dist_cage='NA', within_cage='NA',
-                 dist_polya_site='NA', within_polya_site='NA',
-                 polyA_motif='NA', polyA_dist='NA', ratio_TSS='NA'):
+                 q_exon_overlap = 0):
 
         self.id  = id
         self.gene_id = gene_id # By Jorge
@@ -164,44 +141,12 @@ class myQueryTranscripts:
         self.chrom       = chrom
         self.strand 	 = strand
         self.subtype 	 = subtype
-        self.RT_switching= RT_switching
-        self.canonical   = canonical
-        self.min_samp_cov = min_samp_cov
-        self.min_cov     = min_cov
-        self.min_cov_pos = min_cov_pos
-        self.sd 	     = sd
-        self.proteinID   = proteinID
-        self.ORFlen      = ORFlen
-        self.ORFseq      = ORFseq
-        self.CDS_start   = CDS_start
-        self.CDS_end     = CDS_end
-        self.coding      = coding
-        self.CDS_genomic_start = CDS_genomic_start  # 1-based genomic coordinate of CDS start - strand aware
-        self.CDS_genomic_end = CDS_genomic_end      # 1-based genomic coordinate of CDS end - strand aware
-        self.is_NMD      = is_NMD                   # (TRUE,FALSE) for NMD if is coding, otherwise "NA"
-        self.FL          = FL                       # count for a single sample
-        self.FL_dict     = FL_dict                  # dict of sample -> FL count
-        self.nIndels     = nIndels
-        self.nIndelsJunc = nIndelsJunc
-        self.isoExp      = isoExp
-        self.geneExp     = geneExp
         self.refLen      = refLen
         self.refExons    = refExons
         self.refStart    = refStart
         self.refEnd      = refEnd
         self.q_splicesite_hit = q_splicesite_hit
         self.q_exon_overlap = q_exon_overlap
-        self.FSM_class   = FSM_class
-        self.bite        = bite
-        self.percAdownTTS = percAdownTTS
-        self.seqAdownTTS  = seqAdownTTS
-        self.dist_cage   = dist_cage
-        self.within_cage = within_cage
-        self.within_polya_site = within_polya_site
-        self.dist_polya_site   = dist_polya_site    # distance to the closest polyA site (--polyA_peak, BEF file)
-        self.polyA_motif = polyA_motif
-        self.polyA_dist  = polyA_dist               # distance to the closest polyA motif (--polyA_motif_list, 6mer motif list)
-        self.ratio_TSS = ratio_TSS
 
     def get_total_diff(self):
         return abs(self.tss_diff)+abs(self.tts_diff)
@@ -213,101 +158,6 @@ class myQueryTranscripts:
         self.tts_diff = tts_diff
         self.refLen = refLen
         self.refExons = refExons
-
-    def geneName(self):
-        geneName = "_".join(set(self.genes))
-        return geneName
-
-    def ratioExp(self):
-        if self.geneExp == 0 or self.geneExp == "NA":
-            return "NA"
-        else:
-            ratio = float(self.isoExp)/float(self.geneExp)
-        return(ratio)
-
-    def CDSlen(self):
-        if self.coding == "coding":
-            return(str(int(self.CDS_end) - int(self.CDS_start) + 1))
-        else:
-            return("NA")
-
-    def __str__(self):
-        return "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" % (self.chrom, self.strand,
-                                                                                                                                                           str(self.length), str(self.num_exons),
-                                                                                                                                                           str(self.str_class), "_".join(set(self.genes)),
-                                                                                                                                                           self.id, str(self.refLen), str(self.refExons),
-                                                                                                                                                           str(self.tss_diff), str(self.tts_diff),
-                                                                                                                                                           self.subtype, self.RT_switching,
-                                                                                                                                                           self.canonical, str(self.min_samp_cov),
-                                                                                                                                                           str(self.min_cov), str(self.min_cov_pos),
-                                                                                                                                                           str(self.sd), str(self.FL), str(self.nIndels),
-                                                                                                                                                           str(self.nIndelsJunc), self.bite, str(self.isoExp),
-                                                                                                                                                           str(self.geneExp), str(self.ratioExp()),
-                                                                                                                                                           self.FSM_class, self.coding, str(self.ORFlen),
-                                                                                                                                                           str(self.CDSlen()), str(self.CDS_start), str(self.CDS_end),
-                                                                                                                                                           str(self.CDS_genomic_start), str(self.CDS_genomic_end), str(self.is_NMD),
-                                                                                                                                                           str(self.percAdownTTS),
-                                                                                                                                                           str(self.seqAdownTTS),
-                                                                                                                                                           str(self.dist_cage),
-                                                                                                                                                           str(self.within_cage),
-                                                                                                                                                           str(self.dist_polya_site),
-                                                                                                                                                           str(self.within_polya_site),
-                                                                                                                                                           str(self.polyA_motif),
-                                                                                                                                                           str(self.polyA_dist), str(self.ratio_TSS))
-
-
-    def as_dict(self):
-        d = {'isoform': self.id,
-         'chrom': self.chrom,
-         'strand': self.strand,
-         'length': self.length,
-         'exons': self.num_exons,
-         'structural_category': self.str_class,
-         'associated_gene': "_".join(set(self.genes)),
-         'associated_transcript': "_".join(set(self.transcripts)),
-         'ref_length': self.refLen,
-         'ref_exons': self.refExons,
-         'diff_to_TSS': self.tss_diff,
-         'diff_to_TTS': self.tts_diff,
-         'diff_to_gene_TSS': self.tss_gene_diff,
-         'diff_to_gene_TTS': self.tts_gene_diff,
-         'subcategory': self.subtype,
-         'RTS_stage': self.RT_switching,
-         'all_canonical': self.canonical,
-         'min_sample_cov': self.min_samp_cov,
-         'min_cov': self.min_cov,
-         'min_cov_pos': self.min_cov_pos,
-         'sd_cov': self.sd,
-         'FL': self.FL,
-         'n_indels': self.nIndels,
-         'n_indels_junc': self.nIndelsJunc,
-         'bite': self.bite,
-         'iso_exp': self.isoExp,
-         'gene_exp': self.geneExp,
-         'ratio_exp': self.ratioExp(),
-         'FSM_class': self.FSM_class,
-         'coding': self.coding,
-         'ORF_length': self.ORFlen,
-         'ORF_seq': self.ORFseq,
-         'CDS_length': self.CDSlen(),
-         'CDS_start': self.CDS_start,
-         'CDS_end': self.CDS_end,
-         'CDS_genomic_start': self.CDS_genomic_start,
-         'CDS_genomic_end': self.CDS_genomic_end,
-         'predicted_NMD': self.is_NMD,
-         'perc_A_downstream_TTS': self.percAdownTTS,
-         'seq_A_downstream_TTS': self.seqAdownTTS,
-         'dist_to_cage_peak': self.dist_cage,
-         'within_cage_peak': self.within_cage,
-         'dist_to_polya_site': self.dist_polya_site,
-         'within_polya_site': self.within_polya_site,
-         'polyA_motif': self.polyA_motif,
-         'polyA_dist': self.polyA_dist,
-         'ratio_TSS' : self.ratio_TSS
-         }
-        for sample,count in self.FL_dict.items():
-            d["FL."+sample] = count
-        return d
 
 
 #####################################
@@ -437,6 +287,7 @@ def transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene,
                 res[isoform_hit.chrom].append(isoform_hit)
     
     return res
+    
 
 def transcriptsKnownSpliceSites(trec, ref_chr, start_ends_by_gene):
     def calc_overlap(s1, e1, s2, e2):
@@ -444,16 +295,6 @@ def transcriptsKnownSpliceSites(trec, ref_chr, start_ends_by_gene):
         if s1 > s2:
             s1, e1, s2, e2 = s2, e2, s1, e1
         return max(0, min(e1,e2)-max(s1,s2))
-
-    def gene_overlap(ref1, ref2):
-        if ref1==ref2: return True  # same gene, diff isoforms
-        # return True if the two reference genes overlap
-        s1, e1 = min(start_ends_by_gene[ref1]['begin']), max(start_ends_by_gene[ref1]['end'])
-        s2, e2 = min(start_ends_by_gene[ref2]['begin']), max(start_ends_by_gene[ref2]['end'])
-        if s1 <= s2:
-            return e1 <= s2
-        else:
-            return e2 <= s1
 
     def calc_splicesite_agreement(query_exons, ref_exons):
         q_sites = {}
