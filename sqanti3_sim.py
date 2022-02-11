@@ -340,6 +340,7 @@ def gtf_parser(gtf_name):
     # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
     known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
 
+
     for r in genePredReader(queryFile):
         isoforms_list[r.chrom].append(r)
         known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
@@ -363,54 +364,75 @@ def gtf_parser(gtf_name):
     for k in isoforms_list:
         isoforms_list[k].sort(key=lambda r: r.txStart)
 
+    isoform_list_by_reg = defaultdict(lambda: {})
+    for chrom in isoforms_list:
+        c = 0
+        for t in isoforms_list[chrom]:
+            for k, r in isoform_list_by_reg[chrom].items():
+                if t.txStart <= r[1] and r[0] <= t.txEnd:
+                    isoform_list_by_reg[chrom][k][0] = min(r[0], t.txStart)
+                    isoform_list_by_reg[chrom][k][1] = max(r[1], t.txEnd)
+                    isoform_list_by_reg[chrom][k][2].append(t)
+                    break
+            else:
+                isoform_list_by_reg[chrom][chrom+str(c)] = [t.txStart, t.txEnd, [t]]
+                c +=1
+    
+    isoforms_list = defaultdict(lambda: [])
+    for chrom in isoform_list_by_reg:
+        for k, reg in isoform_list_by_reg[chrom].items():
+            isoforms_list[chrom].append(reg[2])
+
     return isoforms_list, dict(junctions_by_chr), dict(junctions_by_gene), dict(known_5_3_by_gene)
 
 
 def transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene):
     res = defaultdict(lambda: [])
-    for chrom, records in trans_by_chr.items(): #TODO Do by region instead of chromosome to make easier searchs
-        for trans in tqdm(range(len(records))):
-            trans = records[trans]
+    for chrom, rec in trans_by_chr.items(): #TODO Do by region instead of chromosome to make easier searchs
+        for records in tqdm(range(len(rec))):
+            records = rec[records]
+            for trans in records:
+                #trans = records[trans]
 
-            # Esto es extremadamente lento!
-            # will convert the sets to sorted list later
-            junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
-            # dict of gene name --> set of junctions (don't need to record chromosome)
-            junctions_by_gene = defaultdict(lambda: set())
-            # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
-            known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
+                # Esto es extremadamente lento!
+                # will convert the sets to sorted list later
+                junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
+                # dict of gene name --> set of junctions (don't need to record chromosome)
+                junctions_by_gene = defaultdict(lambda: set())
+                # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
+                known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
 
-            for r in records:
-                if trans.id == r.id:
-                    continue
-                known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
-                known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
-                if r.exonCount >= 2:
-                    for d, a in r.junctions:
-                        junctions_by_chr[r.chrom]['donors'].add(d)
-                        junctions_by_chr[r.chrom]['acceptors'].add(a)
-                        junctions_by_chr[r.chrom]['da_pairs'].add((d,a))
-                        junctions_by_gene[r.gene].add((d,a))
-            
-            for k in junctions_by_chr:
-                junctions_by_chr[k]['donors'] = list(junctions_by_chr[k]['donors'])
-                junctions_by_chr[k]['donors'].sort()
-                junctions_by_chr[k]['acceptors'] = list(junctions_by_chr[k]['acceptors'])
-                junctions_by_chr[k]['acceptors'].sort()
-                junctions_by_chr[k]['da_pairs'] = list(junctions_by_chr[k]['da_pairs'])
-                junctions_by_chr[k]['da_pairs'].sort()
+                for r in records:
+                    if trans.id == r.id:
+                        continue
+                    known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
+                    known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
+                    if r.exonCount >= 2:
+                        for d, a in r.junctions:
+                            junctions_by_chr[r.chrom]['donors'].add(d)
+                            junctions_by_chr[r.chrom]['acceptors'].add(a)
+                            junctions_by_chr[r.chrom]['da_pairs'].add((d,a))
+                            junctions_by_gene[r.gene].add((d,a))
+                
+                for k in junctions_by_chr:
+                    junctions_by_chr[k]['donors'] = list(junctions_by_chr[k]['donors'])
+                    junctions_by_chr[k]['donors'].sort()
+                    junctions_by_chr[k]['acceptors'] = list(junctions_by_chr[k]['acceptors'])
+                    junctions_by_chr[k]['acceptors'].sort()
+                    junctions_by_chr[k]['da_pairs'] = list(junctions_by_chr[k]['da_pairs'])
+                    junctions_by_chr[k]['da_pairs'].sort()
 
-            isoform_hit = transcriptsKnownSpliceSites(trans, records, start_ends_by_gene)
+                isoform_hit = transcriptsKnownSpliceSites(trans, records, start_ends_by_gene)
 
-            if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
-                # not FSM or ISM --> see if it is NIC, NNC, or fusion
-                isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
-            elif isoform_hit.str_class in ("", "geneOverlap"):
-                # possibly NNC, genic, genic intron, anti-sense, or intergenic
-                isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr)
+                if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
+                    # not FSM or ISM --> see if it is NIC, NNC, or fusion
+                    isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
+                elif isoform_hit.str_class in ("", "geneOverlap"):
+                    # possibly NNC, genic, genic intron, anti-sense, or intergenic
+                    isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr)
 
-            # Save trans classification
-            res[isoform_hit.chrom].append(isoform_hit)
+                # Save trans classification
+                res[isoform_hit.chrom].append(isoform_hit)
     
     return res
 
@@ -899,6 +921,12 @@ def associationOverlapping(isoforms_hit, trec, junctions_by_chr):
         #    isoforms_hit.str_class = "genic"
 
     return isoforms_hit
+
+def trans_overlap(r1, r2):
+    if r1.txStart <= r2.txEnd and r2.txStart <= r1.txEnd:
+        return True
+    else:
+        return False
 
 def hits_exon(r1, r2):
     '''
