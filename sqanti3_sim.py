@@ -725,7 +725,8 @@ def associationOverlapping(isoforms_hit, trec, junctions_by_chr):
         else:
             # hits one or more genes on the opposite strand
             isoforms_hit.str_class = "antisense"
-            isoforms_hit.genes = ["novelGene_{g}_AS".format(g=g) for g in isoforms_hit.AS_genes]
+            #isoforms_hit.genes = ["novelGene_{g}_AS".format(g=g) for g in isoforms_hit.AS_genes]
+            isoforms_hit.genes = isoforms_hit.AS_genes
     else:
         # (Liz) used to put NNC here - now just genic
         isoforms_hit.str_class = "genic"
@@ -850,7 +851,7 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                 gene_id = trans[1]
                 SC = trans[2]
 
-                if SC in ['full-splice_match', 'incomplete-splice_match', 'antisense', 'genic', 'genic_intron'] and counts[SC] > 0 and trans_id not in ref_trans and gene_id not in ref_genes:
+                if SC in ['full-splice_match', 'incomplete-splice_match', 'genic', 'genic_intron'] and counts[SC] > 0 and trans_id not in ref_trans and gene_id not in ref_genes:
                     ref_t = trans[4]
                     if ref_t not in target_trans:
                         target_trans.append(trans_id)
@@ -866,7 +867,7 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                         ref_genes.append(ref_g)
                         counts[SC] -= 1
                 
-                elif SC == 'fusion' and counts[SC] > 0 and gene_id not in ref_genes:
+                elif SC in ['fusion', 'antisense'] and counts[SC] > 0 and gene_id not in ref_genes:
                     ref_g = trans[3].split('_')
                     for i in ref_g:
                         if i in target_genes:
