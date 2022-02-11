@@ -96,7 +96,7 @@ def readgtf(gtf: str)-> list:
                             t = transcript(trans_id, gene_id, strand, l_coords[::-1])
                         else:
                             t = transcript(trans_id, gene_id, strand, l_coords)
-                        g.transcripts.append(t)
+                        g.transcripts[t.id] = t
                         g.start = min(g.start, t.TSS)
                         g.end = max(g.end, t.TTS)
                         
@@ -118,13 +118,13 @@ def readgtf(gtf: str)-> list:
                             for r_index, r in enumerate(res):
                                 if r.seqname == seqname_id:
                                     if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
-                                        res[r_index].genes.append(g)
+                                        res[r_index].genes[g.id] = g
                                         res[r_index].start = min(r.start, g.start)
                                         res[r_index].end = max(r.end, g.end)
                                         break
                             else:
                                 res.append(sequence(seqname_id, g.start, g.end))
-                                res[-1].genes.append(g)
+                                res[-1].genes[g.id] = g
                             
 
 
@@ -139,20 +139,20 @@ def readgtf(gtf: str)-> list:
         t = transcript(trans_id, gene_id, strand, l_coords[::-1])
     else:
         t = transcript(trans_id, gene_id, strand, l_coords)
-    g.transcripts.append(t)
+    g.transcripts[t.id] = t
     g.start = min(g.start, t.TSS)
     g.end = max(g.end, t.TTS)
 
     for r_index, r in enumerate(res):
         if r.seqname == seqname_id:
             if r.start <= g.start <= r.end or r.start <= g.end <= r.end:
-                res[r_index].genes.append(g)
+                res[r_index].genes[g.id] = g
                 res[r_index].start = min(r.start, g.start)
                 res[r_index].end = max(r.end, g.end)
                 break
     else:
         res.append(sequence(seqname_id, g.start, g.end))
-        res[-1].genes.append(g)
+        res[-1].genes[g.id] = g
 
     return res
 
@@ -233,9 +233,9 @@ def write_SC_file(data: list, out_name: str):
     f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\n')
 
     for seq in data:
-        for g in seq.genes:
-            for t in g.transcripts:
-                f_out.write(str(t.id) + '\t' + str(t.gene_id) + '\t' + str(t.SC) + '\t' + str(t.ref_gene) +'\t' + str(t.ref_trans) + '\n')
+        for g in seq.genes.values():
+            for t in g.transcripts.values():
+                f_out.write(str(t.id) + '\t' + str(t.gene_id) + '\t' + str(t.SC) + '\t' + str(t.ref_gene[0]) +'\t' + str(t.ref_trans[0]) + '\n')
     
     f_out.close()
 
@@ -489,8 +489,8 @@ class summary_table:
         '''
 
         for seq in data:
-            for g in seq.genes:
-                for t in g.transcripts:
+            for g in seq.genes.values():
+                for t in g.transcripts.values():
                     if t.SC in list(self.counts.keys()):
                         self.counts[t.SC] += 1
                     else:
@@ -516,28 +516,30 @@ class sequence:
         self.seqname = id
         self.start = start
         self.end = end
-        self.genes = list() 
+        self.genes = dict() 
 
     def classify_trans(self):
         '''
         Categorize all transcripts from the genes in this sequence according
         to its SQANTI3 structural category
         '''
-        for g_index in range(len(self.genes)):
-            for t_index in range(len(self.genes[g_index].transcripts)):
+        for g_index in self.genes:
+            for t_index in self.genes[g_index].transcripts:
                 ref = copy.deepcopy(self)
                 del ref.genes[g_index].transcripts[t_index]
                 if len(ref.genes[g_index].transcripts) == 0:
                     del ref.genes[g_index]
+                '''
                 else:
                     if ref.genes[g_index].start == self.genes[g_index].transcripts[t_index].TSS or ref.genes[g_index].end == self.genes[g_index].transcripts[t_index].TTS:
                         starts = []
                         ends = []
-                        for t in ref.genes[g_index].transcripts:
+                        for t in ref.genes[g_index].transcripts.values():
                             starts.append(t.TSS)
                             ends.append(t.TTS)
                         ref.genes[g_index].start = min(starts)
                         ref.genes[g_index].end = max(ends)
+                '''
                 self.genes[g_index].transcripts[t_index].get_SC(ref)
 
 class gene:
@@ -550,7 +552,7 @@ class gene:
         self.strand = strand
         self.start = start
         self.end = end
-        self.transcripts = list()
+        self.transcripts = dict()
 
 
 class transcript:
@@ -636,13 +638,13 @@ class transcript:
             hit_genes = set()
 
             for ref_gene in ref.genes:
-                if self.hit_by_gene(ref_gene):
+                if self.hit_by_gene(ref.genes[ref_gene]):
                     hit_genes.add(ref_gene)
 
             # hits any monoexon?
             hits_monoexon = False
             for ref_gene in hit_genes:
-                for ref_trans in ref_gene.transcripts:
+                for ref_trans in ref.genes[ref_gene].transcripts.values():
                     if len(ref_trans.exons) == 1:
                         hits_monoexon = True
                         #break
@@ -651,44 +653,44 @@ class transcript:
                 # 1) If completly within the ref TSS and TTS: FSM
                 # 2) If partially hitting: Genic-genomic # WARNING: This is not in SQANTI-3
                 for ref_gene in hit_genes:
-                    for ref_trans in ref_gene.transcripts:
+                    for ref_t_id, ref_trans in ref.genes[ref_gene].transcripts.items():
                         if len(ref_trans.exons) == 1:
                             if self.strand != ref_trans.strand and (calc_exon_overlap(self.exons, ref_trans.exons) > 0 or ref_trans.is_within_intron(self)):
-                                self.eval_new_SC('Antisense', ref_gene, ref_trans)
+                                self.eval_new_SC('Antisense', ref_gene, ref_t_id, ref=ref)
 
                             elif ref_trans.TSS <= self.TSS < self.TTS <= ref_trans.TTS:
-                                self.eval_new_SC('FSM', ref_gene, ref_trans)
+                                self.eval_new_SC('FSM', ref_gene, ref_t_id, ref=ref)
                             
                             elif self.TSS <= ref_trans.TTS and ref_trans.TSS <= self.TTS:
-                                self.eval_new_SC('Genic-genomic', ref_gene, ref_trans)
+                                self.eval_new_SC('Genic-genomic', ref_gene, ref_t_id, ref=ref)
 
             if self.SC == 'Unclassified':
                 for ref_gene in hit_genes:
-                    for ref_trans in ref_gene.transcripts:
+                    for ref_t_id, ref_trans in ref.genes[ref_gene].transcripts.items():
                         if len(ref_trans.exons) > 1: # TODO: add subtypes
                             if calc_exon_overlap(self.exons, ref_trans.exons) == 0:
                                 continue # No exonic overlap, skip!
 
                             if self.strand != ref_trans.strand:
-                                self.eval_new_SC('Antisense', ref_gene, ref_trans)
+                                self.eval_new_SC('Antisense', ref_gene, ref_t_id, ref=ref)
                             
                             elif self.strand == ref_trans.strand:
                                 if self.is_within_exon(ref_trans):
-                                    self.eval_new_SC('ISM', ref_gene, ref_trans)
+                                    self.eval_new_SC('ISM', ref_gene, ref_t_id, ref=ref)
 
                                 elif self.is_within_intron(ref_trans):
-                                    self.eval_new_SC('Genic-intron', ref_gene, ref_trans)
+                                    self.eval_new_SC('Genic-intron', ref_gene, ref_t_id, ref=ref)
 
                                 elif ref_trans.TSS <= self.TSS < self.TTS <= ref_trans.TTS:
                                     if ref_trans.in_intron(self.TSS) or ref_trans.in_intron(self.TTS):
-                                        self.eval_new_SC('Genic-genomic', ref_gene, ref_trans) # WARNING: this is not in SQANTI3
+                                        self.eval_new_SC('Genic-genomic', ref_gene, ref_t_id, ref=ref) # WARNING: this is not in SQANTI3
                                     else:
-                                        self.eval_new_SC('NIC', ref_gene, ref_trans)
+                                        self.eval_new_SC('NIC', ref_gene, ref_t_id, ref=ref)
                                 else:
-                                    self.eval_new_SC('Genic-genomic', ref_gene, ref_trans)
+                                    self.eval_new_SC('Genic-genomic', ref_gene, ref_t_id, ref=ref)
                 
             if self.SC == 'Unclassified':
-                print('Esto es de verdad intergenic?', self.id) # TODO: revisar
+                #print('Esto es de verdad intergenic?', self.id) # TODO: revisar
                 self.eval_new_SC('Intergenic')
         
         #----------------------------------#
@@ -701,43 +703,43 @@ class transcript:
             hit_genes = set()
             best_by_gene = []
 
-            for gene_index, ref_gene in enumerate(ref.genes):
-                if self.hit_by_gene(ref_gene):
-                    hit_genes.add(gene_index)
+            for ref_gene in ref.genes:
+                if self.hit_by_gene(ref.genes[ref_gene]):
+                    hit_genes.add(ref_gene)
             
             if len(hit_genes) == 0: pass # TODO: intergenic, within intron Antisense...
             
-            for gene_index in hit_genes:
+            for ref_gene in hit_genes:
                 isoform_hit = transcript(
                     id = self.id,
                     gene_id = self.gene_id,
                     strand = self.strand,
                     exon_coords = [st for e in self.exons for st in e]
                     )
-                ref_gene = ref.genes[gene_index]
-                for ref_trans in ref_gene.transcripts:
+
+                for ref_t_id, ref_trans in ref.genes[ref_gene].transcripts.items():
                     if len(ref_trans.SJ) == 0:
                     # if len(ref_trans.exons) == 1: # -> mono-exonic reference
-                        isoform_hit.eval_new_SC('GeneOverlap', ref_gene, ref_trans)
+                        isoform_hit.eval_new_SC('GeneOverlap', ref_gene, ref_t_id, ref=ref)
 
                     else: # multi-exonic reference
                         match_type = isoform_hit.compare_junctions(ref_trans)
 
                         if match_type == 'exact':
-                            isoform_hit.eval_new_SC('FSM', ref_gene, ref_trans)
+                            isoform_hit.eval_new_SC('FSM', ref_gene, ref_t_id, ref=ref)
 
                         elif match_type == 'subset':
-                            isoform_hit.eval_new_SC('ISM', ref_gene, ref_trans)
+                            isoform_hit.eval_new_SC('ISM', ref_gene, ref_t_id, ref=ref)
 
                         elif match_type == 'partially':
-                            isoform_hit.eval_new_SC('anyKnownJunction', ref_gene, ref_trans)
+                            isoform_hit.eval_new_SC('anyKnownJunction', ref_gene, ref_t_id, ref=ref)
                         
                         else:
                             if calc_splicesite_agreement(isoform_hit.exons, ref_trans.exons) > 0:
-                                isoform_hit.eval_new_SC('anyKnownSpliceSite', ref_gene, ref_trans)
+                                isoform_hit.eval_new_SC('anyKnownSpliceSite', ref_gene, ref_t_id, ref=ref)
                             
                             elif calc_exon_overlap(isoform_hit.exons, ref_trans.exons) > 0:
-                                isoform_hit.eval_new_SC('GeneOverlap', ref_gene, ref_trans)
+                                isoform_hit.eval_new_SC('GeneOverlap', ref_gene, ref_t_id, ref=ref)
                 
                 if isoform_hit.SC != 'Unclassified':
                     best_by_gene.append(isoform_hit)
@@ -745,33 +747,58 @@ class transcript:
             
             cat_ranking = {'FSM': 5, 'ISM': 4, 'anyKnownJunction': 3, 'anyKnownSpliceSite': 2,
                            'GeneOverlap': 1, 'Unclassified': 0}
-
-            # indesxlegend: 0: score, 1: rStart, 2: rEnd, 3: rGene, 4: isoform_hit
-            best_by_gene = [(cat_ranking[iso.SC], iso.ref_gene[0].start, iso.ref_gene[0].end, iso.ref_gene, iso) for iso in best_by_gene]
-            best_by_gene = list(filter(lambda x: x[0] > 0, best_by_gene))
-
-            if len(best_by_gene) == 0: # TODO
-                print('Que pacha aquiiiiiiii, este pipa es nasti de plasti')
-                return
             
-            best_by_gene.sort(key=lambda x: (x[0],x[4].splicesite_hit+(x[4].exon_overlap)*1./sum(e[1]-e[0] for e in self.exons)+calc_overlap(x[1],x[2],self.TSS,self.TTS)*1./(x[2]-x[1])-abs(len(self.exons)-len(x[4].ref_trans[0].exons))), reverse=True)
-            isoform_hit = best_by_gene[0][4]
-            isoform_hit.ref_gene = [best_by_gene[0][3]]
-            cur_start, cur_end = best_by_gene[0][1], best_by_gene[0][2]
-            for t in best_by_gene[1:]:
-                if t[0]==0: break
-                if calc_overlap(cur_start, cur_end, t[1], t[2]) <= 0:
-                    isoform_hit.ref_gene.append(t[3])
-                    cur_start, cur_end = min(cur_start, t[1]), max(cur_end, t[2])
+            # indesxlegend: 0: score, 1: rStart, 2: rEnd, 3: rGene, 4: isoform_hit
+            best_by_gene = [(cat_ranking[iso.SC], ref.genes[iso.ref_gene[0]].start, ref.genes[iso.ref_gene[0]].end, iso.ref_gene, iso) for iso in best_by_gene]
+            #best_by_gene = list(filter(lambda x: x[0] > 0, best_by_gene))
+
+            # WARNING: SQANTI3 uses 0-bases for exon start and 1-based for exon end (meaning i should sum 1 to exon start, JORGE check if this is right please)
+            # WARNING: SQANTI3 HAS DIFFERENT rStart and rEnd, still don't know why because those values are not found in the GTF given, thats why calc_overlap(x[1],x[2],x[4].TSS,x[4].TTS)*1./(x[2]-x[1]) may give sligthly different results
+
+
+
+            if self.id == 'ENST00000637222.1':
+                for x in best_by_gene:
+                    print('-'*79)
+                    print('ID', self.id)
+                    print('Ref gene', x[4].ref_gene)
+                    print('Ref trans', x[4].ref_trans)
+                    print('Score', x[0])
+                    print('Second metric', x[4].splicesite_hit+(x[4].exon_overlap)*1./sum(e[1]-e[0] for e in x[4].exons)+calc_overlap(x[1],x[2],x[4].TSS,x[4].TTS)*1./(x[2]-x[1])-abs(len(self.exons)-len(ref.genes[x[4].ref_gene[0]].transcripts[x[4].ref_trans[0]].exons)))
+                    print('A:', x[4].splicesite_hit)
+                    print('B:', (x[4].exon_overlap)*1./sum(e[1]-e[0] for e in x[4].exons))
+                    print('C:', calc_overlap(x[1],x[2],x[4].TSS,x[4].TTS)*1./(x[2]-x[1]))
+                    print('D:', -abs(len(self.exons)-len(ref.genes[x[4].ref_gene[0]].transcripts[x[4].ref_trans[0]].exons)))
+                    print('C desglosada:', x[1],x[2],x[4].TSS,x[4].TTS)
+
+            if len(best_by_gene) == 0:# TODO
+                isoform_hit = transcript(
+                    id = self.id,
+                    gene_id = self.gene_id,
+                    strand = self.strand,
+                    exon_coords = [st for e in self.exons for st in e]
+                    )
+            
+            else:
+                best_by_gene.sort(key=lambda x: (x[0],x[4].splicesite_hit+(x[4].exon_overlap)*1./sum(e[1]-e[0] for e in x[4].exons)+calc_overlap(x[1],x[2],x[4].TSS,x[4].TTS)*1./(x[2]-x[1])-abs(len(self.exons)-len(ref.genes[x[4].ref_gene[0]].transcripts[x[4].ref_trans[0]].exons))), reverse=True)
+
+                isoform_hit = best_by_gene[0][4]
+                isoform_hit.ref_gene = best_by_gene[0][3]
+                cur_start, cur_end = best_by_gene[0][1], best_by_gene[0][2]
+                for t in best_by_gene[1:]:
+                    if t[0]==0: break
+                    if calc_overlap(cur_start, cur_end, t[1], t[2]) <= 0:
+                        isoform_hit.ref_gene.extend(t[3])
+                        cur_start, cur_end = min(cur_start, t[1]), max(cur_end, t[2])
 
             if isoform_hit.SC in ("anyKnownJunction", "anyKnownSpliceSite"):
-                ref_genes = list(set(*isoform_hit.ref_gene))
+                ref_genes = list(set(isoform_hit.ref_gene))
 
                 if len(ref_genes) == 1:
-                    if self.acceptor_subset(ref_genes[0]) and self.donor_subset(ref_genes[0]):
-                        isoform_hit.eval_new_SC('NIC', ref_genes[0])
+                    if self.acceptor_subset(ref.genes[ref_genes[0]]) and self.donor_subset(ref.genes[ref_genes[0]]):
+                        isoform_hit.eval_new_SC('NIC', ref_genes[0], ref=ref)
                     else:
-                        isoform_hit.eval_new_SC('NNC', ref_genes[0])
+                        isoform_hit.eval_new_SC('NNC', ref_genes[0], ref=ref)
                         
 
                 else:
@@ -779,7 +806,7 @@ class transcript:
                     junctions_per_gene = set()
                     all_ref_junctions = []
                     for g in ref_genes:
-                        for t in g.transcripts:
+                        for t in ref.genes[g].transcripts.values():
                                 junctions_per_gene.update(t.SJ)
                         junctions_per_gene = list(junctions_per_gene)
                         all_ref_junctions.extend(junctions_per_gene)
@@ -791,25 +818,25 @@ class transcript:
                     # if the same query junction appears in more than one of the hit references, it is not a fusion
                     if max(junction_ref_hit.values()) > 1:
                         if self.acceptor_subset(ref_genes[0]) and self.donor_subset(ref_genes[0]):
-                            isoform_hit.eval_new_SC('NIC', ref_genes[0])
+                            isoform_hit.eval_new_SC('NIC', ref_genes[0], ref=ref)
                         else:
-                            isoform_hit.eval_new_SC('NNC', ref_genes[0])
+                            isoform_hit.eval_new_SC('NNC', ref_genes[0], ref=ref)
                     else:
-                        isoform_hit.eval_new_SC('Fusion', ref_genes)
+                        isoform_hit.eval_new_SC('Fusion', ref_genes, ref=ref)
                         
-            elif isoform_hit.SC in ['GeneOverlap', 'Unclassified']:
+            elif isoform_hit.SC in ('GeneOverlap', 'Unclassified'):
                 if len(isoform_hit.ref_gene) == 0:
-                    for g in isoform_hit.ref_gene:
-                        if isoform_hit.strand == g.strand:
-                            for t in g.transcripts:
-                                if isoform_hit.is_within_intron(t):
-                                    isoform_hit.eval_new_SC('Genic-intron', t)
+                    for g in ref.genes:
+                        if isoform_hit.strand == ref.genes[g].strand:
+                            for t in ref.genes[g].transcripts:
+                                if isoform_hit.is_within_intron(ref.genes[g].transcripts[t]):
+                                    isoform_hit.eval_new_SC('Genic-intron', g, t, ref=ref)
                                 else:
                                     isoform_hit.eval_new_SC('Intergenic')
                         else:
-                            isoform_hit.eval_new_SC('Antisense', t)
+                            isoform_hit.eval_new_SC('Antisense', g, ref=ref)
                 else:
-                    isoform_hit.eval_new_SC('Genic-genomic', isoform_hit.ref_gene[0]) # TODO: improve this classification
+                    isoform_hit.eval_new_SC('Genic-genomic', isoform_hit.ref_gene[0], ref=ref) # TODO: improve this classification
 
             # Save results
             self.SC = isoform_hit.SC
@@ -817,7 +844,7 @@ class transcript:
             self.ref_gene = isoform_hit.ref_gene    
 
 
-    def eval_new_SC(self, new_SC: str, ref_gene = None, ref_trans = None):
+    def eval_new_SC(self, new_SC: str, ref_gene = None, ref_trans = None, ref = None):
         '''
         Following the SQANTi3 structural category ranking/hierarchy, evaluates
         if the SC has to be changed for a higher one in the ranking
@@ -842,7 +869,7 @@ class transcript:
             # assing new hit if
             # 1) if prev hit was worse than FSM in the ranking or
             # 2) prev hit FSM but worse (more diff in TSS and TTS)
-            diff_TSS, diff_TTS = self.get_diff_TSS_TTS(ref_trans)
+            diff_TSS, diff_TTS = self.get_diff_TSS_TTS(ref.genes[ref_gene].transcripts[ref_trans])
 
             if SCrank[self.SC] > SCrank[new_SC] or \
                (self.SC == new_SC and (self.diff_TSS + self.diff_TTS) > (diff_TSS + diff_TTS)):
@@ -851,8 +878,8 @@ class transcript:
                 self.ref_gene = [ref_gene]
                 self.diff_TSS = diff_TSS
                 self.diff_TTS = diff_TTS
-                self.splicesite_hit = calc_splicesite_agreement(self.exons, ref_trans.exons)
-                self.exon_overlap = calc_exon_overlap(self.exons, ref_trans.exons)
+                self.splicesite_hit = calc_splicesite_agreement(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
+                self.exon_overlap = calc_exon_overlap(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
 
                 if self.SC == 'FSM':
                     # Subcategory -> copy paste from SQANTI3
@@ -870,45 +897,78 @@ class transcript:
                         self.subtype = 'alternative_3end5end'
                 
                 elif self.SC == 'ISM':
+                    pass
                     """
                     intron_retention --- at least one trec exon covers at least two adjacent ref exons
                     complete --- all junctions agree and is not IR
                     5prime_fragment --- all junctions agree but trec has less 5' exons. The isoform is a 5' fragment of the reference transcript
                     3prime_fragment --- all junctions agree but trec has less 3' exons. The isoform is a 3' fragment of the reference transcript
                     internal_fragment --- all junctions agree but trec has less 5' and 3' exons
-                    """
-                    if self.intron_retention(ref_trans):
+                    
+                    if self.intron_retention(ref.genes[ref_gene].transcripts[ref_trans]):
                         self.subtype = 'intron_retention'
                     
-                    if self.SJ[0] == ref_trans.SJ[0]:
-                        if self.SJ[-1] == ref_trans.SJ[-1]:
+                    if self.SJ[0] == ref.genes[ref_gene].transcripts[ref_trans].SJ[0]:
+                        if self.SJ[-1] == ref.genes[ref_gene].transcripts[ref_trans].SJ[-1]:
                             self.subtype = 'complete'
                         else:
                             self.subtype = '5prime_fragment'
-                    elif self.SJ[-1] == ref_trans.SJ[-1]:
+                    elif self.SJ[-1] == ref.genes[ref_gene].transcripts[ref_trans].SJ[-1]:
                         self.subtype = '3prime_fragment'
                     else:
                         self.subtype = 'internal_fragment'
+                    """
+
+        elif new_SC == 'Fusion':
+            if SCrank[self.SC] > SCrank[new_SC]:
+                self.SC = new_SC
+                self.ref_trans = 'NA'
+                self.ref_gene = '_'.join(ref_gene)
+        
+        elif new_SC in ['NIC', 'NNC']:
+            if SCrank[self.SC] > SCrank[new_SC]:
+                self.SC = new_SC
+                self.ref_trans = ['novel']
+                self.ref_gene = [ref_gene]
+
+        elif new_SC == 'Antisense':
+            if SCrank[self.SC] > SCrank[new_SC]:
+                self.SC = new_SC
+                self.ref_trans = ['novel']
+                self.ref_gene = [ref_gene]
+
+        elif new_SC in ['Genic-genomic', 'Genic-intron']:
+            if SCrank[self.SC] > SCrank[new_SC]:
+                self.SC = new_SC
+                self.ref_trans = ['novel']
+                self.ref_gene = [ref_gene]
+        
+        elif new_SC == 'Intergenic':
+            if SCrank[self.SC] > SCrank[new_SC]:
+                self.SC = new_SC
+                self.ref_trans = ['NA']
+                self.ref_gene = ['NA']
 
         elif new_SC == 'GeneOverlap':
             # assing new hit if
             # 1) it has any exon overlap and previous SC is lower in the ranking
-            if cat_ranking[self.SC] < cat_ranking[new_SC] and calc_exon_overlap(self.exons, ref_trans.exons) > 0:
+            if cat_ranking[self.SC] < cat_ranking[new_SC] and calc_exon_overlap(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons) > 0:
                 self.SC = new_SC
                 self.ref_trans = [ref_trans]
                 self.ref_gene = [ref_gene]
                 self.subtype = 'mono-exon'
                 self.splicesite_hit = 0
-                self.exon_overlap = calc_exon_overlap(self.exons, ref_trans.exons)
+                self.exon_overlap = calc_exon_overlap(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
 
         elif new_SC == 'anyKnownJunction':
-            new_ss_hit = calc_splicesite_agreement(self.exons, ref_trans.exons)
-            new_ex_overlap = calc_exon_overlap(self.exons, ref_trans.exons)
-            new_exon_diff = abs(len(self.exons) - len(ref_trans.exons))
-            if cat_ranking[self.SC] < cat_ranking[new_SC] or \
-               (self.SC == new_SC and new_ss_hit > self.splicesite_hit) or \
-               (self.SC == new_SC and new_ss_hit == self.splicesite_hit and new_ex_overlap > self.exon_overlap) or \
-               (self.SC == new_SC and new_ss_hit == self.splicesite_hit and new_exon_diff < self.n_exon_diff):
+            new_ss_hit = calc_splicesite_agreement(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
+            new_ex_overlap = calc_exon_overlap(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
+            new_exon_diff = abs(len(self.exons) - len(ref.genes[ref_gene].transcripts[ref_trans].exons))
+            
+            if cat_ranking[self.SC] < cat_ranking['anyKnownJunction'] or \
+               (self.SC == 'anyKnownJunction' and new_ss_hit > self.splicesite_hit) or \
+               (self.SC == 'anyKnownJunction' and new_ss_hit == self.splicesite_hit and new_ex_overlap > self.exon_overlap) or \
+               (self.SC == 'anyKnownJunction' and new_ss_hit == self.splicesite_hit and new_exon_diff < self.n_exon_diff):
 
                 self.SC = new_SC
                 self.ref_trans = [ref_trans]
@@ -919,30 +979,15 @@ class transcript:
                 self.n_exon_diff = new_exon_diff
         
         elif new_SC == 'anyKnownSpliceSite':
-            if cat_ranking[self.SC] < cat_ranking[new_SC] and calc_splicesite_agreement(self.exons, ref_trans.exons) > 0:
+            if cat_ranking[self.SC] < cat_ranking[new_SC] and calc_splicesite_agreement(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons) > 0:
                 self.SC = new_SC
                 self.ref_trans = [ref_trans]
                 self.ref_gene = [ref_gene]
                 self.subtype = 'no_subcategory'
-                self.splicesite_hit = calc_splicesite_agreement(self.exons, ref_trans.exons)
-                self.exon_overlap = calc_exon_overlap(self.exons, ref_trans.exons)
-                self.n_exon_diff = abs(len(self.exons) - len(ref_trans.exons))
+                self.splicesite_hit = calc_splicesite_agreement(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
+                self.exon_overlap = calc_exon_overlap(self.exons, ref.genes[ref_gene].transcripts[ref_trans].exons)
+                self.n_exon_diff = abs(len(self.exons) - len(ref.genes[ref_gene].transcripts[ref_trans].exons))
         
-        elif new_SC == 'Fusion':
-            if SCrank[self.SC] > SCrank[new_SC]:
-                names = []
-                for g in ref_gene:
-                    names.append(g.id)
-
-                self.SC = new_SC
-                self.ref_trans = 'NA'
-                self.ref_gene = '_'.join(names)
-        
-        elif new_SC in ['NIC', 'NNC']:
-            if SCrank[self.SC] > SCrank[new_SC]:
-                self.SC = new_SC
-                self.ref_trans = ['novel']
-                self.ref_gene = [ref_gene]
 
 
     def is_monoexon(self)-> bool:
@@ -1054,7 +1099,7 @@ class transcript:
 
         Returns:
             (str) the match type
-        '''
+        
 
         ref_first_exon = (trans.TSS, trans.SJ[0][0])
         ref_last_exon = (trans.SJ[-1][-1], trans.TTS)
@@ -1079,19 +1124,6 @@ class transcript:
         elif set(self.SJ).issubset(set(trans.SJ)):
             if self.intron_retention(trans):
                 return 'partially' # TODO this is obviusly wrong
-                '''
-                donor = {trans.TTS}
-                acceptor = {trans.TTS}
-
-                for i in trans.SJ:
-                    donor.add(i[0])
-                    acceptor.add(i[1])
-                                
-                if self.TSS in acceptor and self.TTS in donor:
-                    return 'subset'
-                else:
-                     return 'partially'
-                '''
 
             elif (overlap(self_first_exon, ref_first_exon) == False or overlap(self_last_exon, ref_last_exon) == False):
                 #self.eval_new_SC('ISM', trans) # TODO: this should be here, eval is out of this function
@@ -1110,6 +1142,10 @@ class transcript:
         
         else:
             return 'no_match'
+        '''
+
+
+        
 
     
     def genes_overlap(self, ref: sequence)-> bool:
@@ -1165,7 +1201,7 @@ class transcript:
         '''
 
         acceptor_ref = set()
-        for trans in gene.transcripts:
+        for trans in gene.transcripts.values():
             for i in trans.SJ:
                 acceptor_ref.add(i[1])
         
@@ -1193,7 +1229,7 @@ class transcript:
         '''
 
         donor_ref = set()
-        for trans in gene.transcripts:
+        for trans in gene.transcripts.values():
             for i in trans.SJ:
                 donor_ref.add(i[0])
         
@@ -1253,7 +1289,7 @@ class transcript:
         Overlap, not within that's the point
         '''
         exons_per_gene= set()
-        for trans in g.transcripts:
+        for trans in g.transcripts.values():
             #exons_per_gene.update(trans.exons)
 
             for e in trans.exons:
@@ -1279,7 +1315,7 @@ class transcript:
         Returns:
             (tuple) two integers with the absolute distance to the TSS and TTS
         '''
-
+        '''
         diff_TSS = 999999999999
         diff_TTS = 999999999999 
         for i in trans.SJ:
@@ -1290,6 +1326,9 @@ class transcript:
             diff_TTS = min(diff_TTS, abs(self.TTS - donor))
         diff_TSS = min(diff_TSS, abs(self.TSS - trans.TSS))
         diff_TTS = min(diff_TTS, abs(self.TTS - trans.TTS))
+        '''
+        diff_TSS = abs(self.TSS - trans.TSS)
+        diff_TTS = abs(self.TTS - trans.TTS)
 
         return diff_TSS, diff_TTS
 
@@ -1307,7 +1346,7 @@ class transcript:
                    False if not
         '''
         
-        for (s,e) in trans.exons:
+        for (s,e) in self.exons:
             for i in trans.SJ:
                 if s <= i[0] < i[1] <= e:
                     return True
@@ -1369,7 +1408,7 @@ def main():
         'FSM' : 0, 'ISM' : args.ISM, 'NIC' : args.NIC, 'NNC' : args.NNC, 'Fusion' : args.Fusion,
         'Antisense' : args.Antisense, 'Genic-genomic' : args.GG, 'Genic-intron' : args.GI, 'Intergenic' : args.Intergenic
     }
-    
+
     
     #dir = '/home/jorge/Desktop/TFM'
     dir = '/home/jorge/Desktop/ConesaLab/SQANTI-SIM'
@@ -1380,8 +1419,12 @@ def main():
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
     counts = {
-        'FSM' : 0, 'ISM' : 0, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 100
+        'FSM' : 0, 'ISM' : 0, 'NIC' : 0, 'NNC' : 0, 'Fusion' : 0
     }
+    
+    
+    
+    
     
     
 
