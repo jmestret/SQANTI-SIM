@@ -1043,10 +1043,8 @@ def main():
 
     # Argument parser
     parser = argparse.ArgumentParser(prog='sqanti3_sim.py', description="SQANTI-SIM: a simulator of controlled novelty and degradation of transcripts sequence by long-reads")
-    group = parser.add_mutually_exclusive_group(required=True)
-    #group = parser.add_mutually_exclusive_group()
-    group.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format')
-    group.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
+    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
+    parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
     parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
@@ -1084,7 +1082,7 @@ def main():
         'intergenic':args.Intergenic
     })
 
-    if ref_gtf:
+    if not args.cat:
         # Parsing transcripts from GTF
         print('***Parsing transcripts from GTF reference annotation file\n')
         trans_by_chr = gtf_parser(ref_gtf)
@@ -1125,7 +1123,7 @@ def main():
         target, ref_genes, ref_trans = target_trans(cat_in, counts)
         modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
     
-    if trans_info:
+    if not args.cat:
         # Print summary table
         summary_table(trans_info)
 
