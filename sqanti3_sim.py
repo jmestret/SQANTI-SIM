@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
 '''
-sqanti3_sim_sqantibased.py
+sqanti3_sim.py
 Classify transcripts in SQANTI3 SC if potentially deleted from GTF.
 Given a GTF file as input, determine its potential SQANTI3 structural
 category not taking into account himself in the reference.
 Modify original GTF deleting transcripts to simulate reads.
 
 Author: Jorge Mestre Tomas
-Modified from original SQANTI3 Quality Control Script
-(https://github.com/ConesaLab/SQANTI3/blob/master/sqanti3_qc.py)
-Date: 10/02/2022
+Modified from original SQANTI3
+(sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
+Date: 19/01/2021
+Last update: 11/02/2022
 '''
+
+__author__ = 'jormart2@alumni.uv.es'
+__version__ = '0.1'
 
 import os
 import sys
 import distutils.spawn
-from collections import defaultdict, Counter, namedtuple
+from collections import defaultdict, namedtuple
 import bisect
-import copy
 import argparse
 import random
-import re
 import subprocess
 import itertools
 from time import time
@@ -1223,56 +1225,74 @@ def main():
         '''
     )
 
+    # Argument parser
+    parser = argparse.ArgumentParser(prog='sqanti3_sim.py', description="SQANTI-SIM: a simulator of controlled novelty and degradation of transcripts sequence by long-reads")
+    group = parser.add_mutually_exclusive_group(required=True)
+    #group = parser.add_mutually_exclusive_group()
+    group.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format')
+    group.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
+    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
+    parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
+    parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
+    parser.add_argument('--Fusion', default='0', type=int, help = '\t\tNumber of Fusion to delete')
+    parser.add_argument('--Antisense', default='0', type=int, help = '\t\tNumber of Antisense to delete')
+    parser.add_argument('--GG', default='0', type=int, help = '\t\tNumber of Genic-genomic to delete')
+    parser.add_argument('--GI', default='0', type=int, help = '\t\tNumber of Genic-intron to delete')
+    parser.add_argument('--Intergenic', default='0', type=int, help = '\t\tNumber of Intergenic to delete')
+    parser.add_argument('--read_only', action='store_true', help = '\t\tIf used the program will only categorize the GTF file but skipping writing a new modified GTF')
+    parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
+    parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
+
     # Input data
-    dir = '/home/jorge/Desktop/ConesaLab/SQANTI-SIM'
-    ref_gtf = '/home/jorge/Desktop/simulation/ref/chr3.gencode.v38.annotation.gtf'
-    out_name = 'prueba'
+    args = parser.parse_args()
+
+    ref_gtf = args.gtf
+    cat_in = args.cat
+    out_name = args.output
+    dir = args.dir
+
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
 
-
-    # Parsing transcripts from GTF
-    trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene = gtf_parser(ref_gtf)
-
-    
-
-    # Classify transcripts
-    trans_info = transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
-
-    # Print summary table
-    summary_table(trans_info)
-
-    # Write category file
-    write_category_file(trans_info, cat_out)
-
-    # Write modified GTF
-    cat_in = cat_out
     counts = defaultdict(lambda: 0, {
         'full-splice_match': 0,
-        'incomplete-splice_match':0,
-        'novel_in_catalog':0,
-        'novel_not_in_catalog':0,
-        'fusion' : 100,
-        'antisense': 0,
-        'genic_intron': 0,
-        'genic' :0,
-        'intergenic':0
+        'incomplete-splice_match': args.ISM,
+        'novel_in_catalog': args.NIC,
+        'novel_not_in_catalog':args.NNC,
+        'fusion' : args.Fusion,
+        'antisense': args.Antisense,
+        'genic_intron': args.GI,
+        'genic' :args.GG,
+        'intergenic':args.Intergenic
     })
-    print('Writting modified GTF')
-    target, ref_genes, ref_trans = target_trans(cat_in, counts)
-    modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
-    print('COMPLETED\n')
 
+    if ref_gtf:
+        # Parsing transcripts from GTF
+        trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene = gtf_parser(ref_gtf)
 
+        # Classify transcripts
+        trans_info = transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
+
+        # Print summary table
+        summary_table(trans_info)
+
+        # Write category file
+        write_category_file(trans_info, cat_out)
+
+        # Write modified GTF
+        cat_in = cat_out
+    
+    if not args.read_only:
+        
+        print('Writting modified GTF')
+        target, ref_genes, ref_trans = target_trans(cat_in, counts)
+        modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
+        print('COMPLETED\n')
 
 if __name__ == '__main__':
     t_ini = time()
     main()
     t_fin = time()
     print('[Execution time %s seconds]' %(t_fin-t_ini))
-
-
-
-
-
-
