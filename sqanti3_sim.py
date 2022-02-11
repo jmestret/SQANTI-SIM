@@ -7,7 +7,7 @@ category not taking into account himself in the reference.
 Modify original GTF deleting transcripts to simulate reads.
 
 Author: Jorge Mestre Tomas
-Modified from original SQANTI3
+Modified from original SQANTI3 v4.2.
 (sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 Date: 19/01/2021
 Last update: 11/02/2022
@@ -25,6 +25,7 @@ import argparse
 import random
 import subprocess
 import itertools
+import multiprocessing as mp
 from time import time
 from tqdm import tqdm
 
@@ -174,8 +175,6 @@ def gtf_parser(gtf_name):
     global queryFile
     queryFile = os.path.splitext(gtf_name)[0] +".genePred"
 
-    print("**** Parsing Isoforms....", file=sys.stderr)
-
     # gtf to genePred
     cmd = GTF2GENEPRED_PROG + " {0} {1} -genePredExt -allErrors -ignoreGroupsWithoutExons".format(\
         gtf_name, queryFile)
@@ -183,35 +182,10 @@ def gtf_parser(gtf_name):
         print("ERROR running cmd: {0}".format(cmd), file=sys.stderr)
         sys.exit(-1)
 
-
     isoforms_list = defaultdict(lambda: []) # chr --> list to be sorted later
-    # will convert the sets to sorted list later
-    junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
-    # dict of gene name --> set of junctions (don't need to record chromosome)
-    junctions_by_gene = defaultdict(lambda: set())
-    # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
-    known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
-
 
     for r in genePredReader(queryFile):
         isoforms_list[r.chrom].append(r)
-        known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
-        known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
-
-        if r.exonCount >= 2:
-            for d, a in r.junctions:
-                junctions_by_chr[r.chrom]['donors'].add(d)
-                junctions_by_chr[r.chrom]['acceptors'].add(a)
-                junctions_by_chr[r.chrom]['da_pairs'].add((d,a))
-                junctions_by_gene[r.gene].add((d,a))
-
-    for k in junctions_by_chr:
-        junctions_by_chr[k]['donors'] = list(junctions_by_chr[k]['donors'])
-        junctions_by_chr[k]['donors'].sort()
-        junctions_by_chr[k]['acceptors'] = list(junctions_by_chr[k]['acceptors'])
-        junctions_by_chr[k]['acceptors'].sort()
-        junctions_by_chr[k]['da_pairs'] = list(junctions_by_chr[k]['da_pairs'])
-        junctions_by_chr[k]['da_pairs'].sort()
 
     for k in isoforms_list:
         isoforms_list[k].sort(key=lambda r: r.txStart)
@@ -235,58 +209,59 @@ def gtf_parser(gtf_name):
         for k, reg in isoform_list_by_reg[chrom].items():
             isoforms_list[chrom].append(reg[2])
 
-    return isoforms_list, dict(junctions_by_chr), dict(junctions_by_gene), dict(known_5_3_by_gene)
+    return isoforms_list
 
 
-def transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene):
+def transcript_classification(trans_by_region):
     res = defaultdict(lambda: [])
-    for chrom, rec in trans_by_chr.items(): #TODO Do by region instead of chromosome to make easier searchs
-        for records in tqdm(range(len(rec))):
-            records = rec[records]
-            for trans in records:
-                #trans = records[trans]
+    for trans in trans_by_region:
+        #trans = records[trans]
 
-                # Esto es extremadamente lento!
-                # will convert the sets to sorted list later
-                junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
-                # dict of gene name --> set of junctions (don't need to record chromosome)
-                junctions_by_gene = defaultdict(lambda: set())
-                # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
-                known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
+        # Esto es extremadamente lento!
+        # will convert the sets to sorted list later
+        junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
+        # dict of gene name --> set of junctions (don't need to record chromosome)
+        junctions_by_gene = defaultdict(lambda: set())
+        # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
+        known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
 
-                for r in records:
-                    if trans.id == r.id:
-                        continue
-                    known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
-                    known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
-                    if r.exonCount >= 2:
-                        for d, a in r.junctions:
-                            junctions_by_chr[r.chrom]['donors'].add(d)
-                            junctions_by_chr[r.chrom]['acceptors'].add(a)
-                            junctions_by_chr[r.chrom]['da_pairs'].add((d,a))
-                            junctions_by_gene[r.gene].add((d,a))
-                
-                for k in junctions_by_chr:
-                    junctions_by_chr[k]['donors'] = list(junctions_by_chr[k]['donors'])
-                    junctions_by_chr[k]['donors'].sort()
-                    junctions_by_chr[k]['acceptors'] = list(junctions_by_chr[k]['acceptors'])
-                    junctions_by_chr[k]['acceptors'].sort()
-                    junctions_by_chr[k]['da_pairs'] = list(junctions_by_chr[k]['da_pairs'])
-                    junctions_by_chr[k]['da_pairs'].sort()
+        for r in trans_by_region:
+            if trans.id == r.id:
+                continue
+            known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
+            known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
+            if r.exonCount >= 2:
+                for d, a in r.junctions:
+                    junctions_by_chr[r.chrom]['donors'].add(d)
+                    junctions_by_chr[r.chrom]['acceptors'].add(a)
+                    junctions_by_chr[r.chrom]['da_pairs'].add((d,a))
+                    junctions_by_gene[r.gene].add((d,a))
+        
+        for k in junctions_by_chr:
+            junctions_by_chr[k]['donors'] = list(junctions_by_chr[k]['donors'])
+            junctions_by_chr[k]['donors'].sort()
+            junctions_by_chr[k]['acceptors'] = list(junctions_by_chr[k]['acceptors'])
+            junctions_by_chr[k]['acceptors'].sort()
+            junctions_by_chr[k]['da_pairs'] = list(junctions_by_chr[k]['da_pairs'])
+            junctions_by_chr[k]['da_pairs'].sort()
 
-                isoform_hit = transcriptsKnownSpliceSites(trans, records, start_ends_by_gene)
+        start_ends_by_gene = dict(known_5_3_by_gene)
+        junctions_by_chr = dict(junctions_by_chr)
+        junctions_by_gene = dict(junctions_by_gene)
 
-                if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
-                    # not FSM or ISM --> see if it is NIC, NNC, or fusion
-                    isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
-                elif isoform_hit.str_class in ("", "geneOverlap"):
-                    # possibly NNC, genic, genic intron, anti-sense, or intergenic
-                    isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr)
+        isoform_hit = transcriptsKnownSpliceSites(trans, trans_by_region, start_ends_by_gene)
 
-                # Save trans classification
-                res[isoform_hit.chrom].append(isoform_hit)
+        if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
+            # not FSM or ISM --> see if it is NIC, NNC, or fusion
+            isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
+        elif isoform_hit.str_class in ("", "geneOverlap"):
+            # possibly NNC, genic, genic intron, anti-sense, or intergenic
+            isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr)
+
+        # Save trans classification
+        res[isoform_hit.chrom].append(isoform_hit)
     
-    return res
+    return dict(res)
     
 
 def transcriptsKnownSpliceSites(trec, ref_chr, start_ends_by_gene):
@@ -1111,26 +1086,47 @@ def main():
 
     if ref_gtf:
         # Parsing transcripts from GTF
-        trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene = gtf_parser(ref_gtf)
+        print('***Parsing transcripts from GTF reference annotation file\n')
+        trans_by_chr = gtf_parser(ref_gtf)
 
         # Classify transcripts
-        trans_info = transcript_classification(trans_by_chr, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
+        print('***Classifying transcripts according to its SQANTI3 structural category\n')
+        trans_info = defaultdict(lambda: [])
 
-        # Print summary table
-        summary_table(trans_info)
+        if args.cores <= 1:
+            for chrom in trans_by_chr:
+                for record in tqdm(range(len(trans_by_chr[chrom]))):
+                    trans_by_region = trans_by_chr[chrom][record]
+                    tmp = transcript_classification(trans_by_region)
+                    for k in tmp:
+                        trans_info[k].extend(tmp[k])
+
+        else: # Paralellization
+            all_regions = []
+            for chrom in trans_by_chr:
+                all_regions.extend(trans_by_chr[chrom])
+            
+            pool = mp.Pool(processes=args.cores)
+            tmp = pool.map(transcript_classification, all_regions)
+            for x in tmp:
+                for k, v in x.items():
+                    trans_info[k].extend(v)
 
         # Write category file
+        print("\n***Writting structural category file\n")
         write_category_file(trans_info, cat_out)
 
         # Write modified GTF
         cat_in = cat_out
     
     if not args.read_only:
-        
-        print('Writting modified GTF')
+        print('***Writting modified GTF\n')
         target, ref_genes, ref_trans = target_trans(cat_in, counts)
         modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
-        print('COMPLETED\n')
+    
+    if trans_info:
+        # Print summary table
+        summary_table(trans_info)
 
 if __name__ == '__main__':
     t_ini = time()
