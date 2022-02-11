@@ -1095,6 +1095,7 @@ def main():
 
         if args.cores <= 1:
             for chrom in trans_by_chr:
+                print(chrom)
                 for record in tqdm(range(len(trans_by_chr[chrom]))):
                     trans_by_region = trans_by_chr[chrom][record]
                     tmp = transcript_classification(trans_by_region)
@@ -1113,7 +1114,7 @@ def main():
                     trans_info[k].extend(v)
 
         # Write category file
-        print("\n***Writting structural category file\n")
+        print("***Writting structural category file\n")
         write_category_file(trans_info, cat_out)
 
         # Write modified GTF
@@ -1132,4 +1133,4 @@ if __name__ == '__main__':
     t_ini = time()
     main()
     t_fin = time()
-    print('[Execution time %s seconds]' %(t_fin-t_ini))
+    print('\n[Execution time %s seconds]' %(t_fin-t_ini))
