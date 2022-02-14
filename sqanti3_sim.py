@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 '''
 sqanti3_sim.py
-Classify transcripts in SQANTI3 SC if potentially deleted from GTF.
 Given a GTF file as input, determine its potential SQANTI3 structural
 category not taking into account himself in the reference.
 Modify original GTF deleting transcripts to simulate reads.
+Code modified from original SQANTI3 v4.2.
+(sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 
 Author: Jorge Mestre Tomas
-Modified from original SQANTI3 v4.2.
-(sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 Date: 19/01/2021
 Last update: 11/02/2022
 '''
@@ -19,13 +18,13 @@ __version__ = '0.1'
 import os
 import sys
 import distutils.spawn
-from collections import defaultdict, namedtuple
 import bisect
 import argparse
 import random
 import subprocess
 import itertools
 import multiprocessing as mp
+from collections import defaultdict, namedtuple
 from time import time
 from tqdm import tqdm
 
@@ -46,8 +45,8 @@ except ImportError:
 
 
 utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "utilities")
-#GTF2GENEPRED_PROG = os.path.join(utilitiesPath,"gtfToGenePred")
-GTF2GENEPRED_PROG = '/home/jorge/Desktop/SQANTI3/utilities/gtfToGenePred'
+GTF2GENEPRED_PROG = os.path.join(utilitiesPath,"gtfToGenePred")
+#GTF2GENEPRED_PROG = '/home/jorge/Desktop/SQANTI3/utilities/gtfToGenePred'
 
 if distutils.spawn.find_executable(GTF2GENEPRED_PROG) is None:
     print("Cannot find executable {0}. Abort!".format(GTF2GENEPRED_PROG), file=sys.stderr)
@@ -61,6 +60,8 @@ if distutils.spawn.find_executable(GTF2GENEPRED_PROG) is None:
 #####################################
 
 class genePredReader(object):
+    '''Gets gtfToGenePred output and builds genePredRecord objects'''
+
     def __init__(self, filename):
         self.f = open(filename)
 
@@ -75,6 +76,8 @@ class genePredReader(object):
 
 
 class genePredRecord(object):
+    '''Saves the features of each transcript read by gtfTogenePred'''
+
     def __init__(self, id, chrom, strand, txStart, txEnd, cdsStart, cdsEnd, exonCount, exonStarts, exonEnds, gene=None):
         self.id = id
         self.chrom = chrom
@@ -120,6 +123,8 @@ class genePredRecord(object):
 
 
 class myQueryTranscripts:
+    '''Features of the query transcript and its associated reference'''
+    
     def __init__(self, id, gene_id, tss_diff, tts_diff, num_exons, length, str_class, subtype=None,
                  genes=None, transcripts=None, chrom=None, strand=None,
                  refLen ="NA", refExons ="NA",
@@ -128,17 +133,17 @@ class myQueryTranscripts:
                  q_exon_overlap = 0):
 
         self.id  = id
-        self.gene_id = gene_id # By Jorge
+        self.gene_id = gene_id        # gene where this transcript originally cames from
         self.tss_diff    = tss_diff   # distance to TSS of best matching ref
         self.tts_diff    = tts_diff   # distance to TTS of best matching ref
         self.tss_gene_diff = 'NA'     # min distance to TSS of all genes matching the ref
         self.tts_gene_diff = 'NA'     # min distance to TTS of all genes matching the ref
         self.genes 		 = genes if genes is not None else []
-        self.AS_genes    = set()   # ref genes that are hit on the opposite strand
+        self.AS_genes    = set()      # ref genes that are hit on the opposite strand
         self.transcripts = transcripts if transcripts is not None else []
         self.num_exons = num_exons
         self.length      = length
-        self.str_class   = str_class  	# structural classification of the isoform
+        self.str_class   = str_class  # structural classification of the isoform
         self.chrom       = chrom
         self.strand 	 = strand
         self.subtype 	 = subtype
@@ -167,11 +172,15 @@ class myQueryTranscripts:
 #                                   #
 #####################################
 
-def gtf_parser(gtf_name):
-    """
-    'isoform_parser()' from SQANTI3
-    Parse input isoforms (GTF) to dict (chr --> sorted list)
-    """
+def gtf_parser(gtf_name: str)-> defaultdict:
+    '''Parse input isoforms from GTF to dict grouped by chromosome regions
+
+    :param gtf_name: the GTF file location to be parsed
+    :type gtf_name: str
+    :returns: a dict of genePredRecord sorted by chr regions
+    :rtype: defaultdict
+    '''
+
     global queryFile
     queryFile = os.path.splitext(gtf_name)[0] +".genePred"
 
@@ -182,11 +191,12 @@ def gtf_parser(gtf_name):
         print("ERROR running cmd: {0}".format(cmd), file=sys.stderr)
         sys.exit(-1)
 
-    isoforms_list = defaultdict(lambda: []) # chr --> list to be sorted later
+    isoforms_list = defaultdict(lambda: [])
 
     for r in genePredReader(queryFile):
         isoforms_list[r.chrom].append(r)
 
+    # TODO: is sorting necessary?
     for k in isoforms_list:
         isoforms_list[k].sort(key=lambda r: r.txStart)
 
@@ -212,15 +222,26 @@ def gtf_parser(gtf_name):
     return isoforms_list
 
 
-def transcript_classification(trans_by_region):
+def transcript_classification(trans_by_region: list)-> dict:
+    '''Classify transcripts in SQANTI3 structural categories
+    
+    Given a list of transcripts from the same chromosomic region classify each
+    transcript into the most suitable SQANTI3 structural category comparing it
+    with the rest transcripts of the region
+
+    :param trans_by_region: transcripts from the same region of the chr
+    :type trans_by_region: list
+    :returns: transcripts classified with its associated reference
+    :rtype: defaultdict
+    '''
+
     res = defaultdict(lambda: [])
     for trans in trans_by_region:
-        #trans = records[trans]
+        # TODO: we could improve this step and make it faster
 
-        # Esto es extremadamente lento!
-        # will convert the sets to sorted list later
+        # dict of junctions by region in the chr
         junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
-        # dict of gene name --> set of junctions (don't need to record chromosome)
+        # dict of junctions by gene
         junctions_by_gene = defaultdict(lambda: set())
         # dict of gene name --> list of known begins and ends (begin always < end, regardless of strand)
         known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
@@ -249,6 +270,7 @@ def transcript_classification(trans_by_region):
         junctions_by_chr = dict(junctions_by_chr)
         junctions_by_gene = dict(junctions_by_gene)
 
+        # Find best reference hit
         isoform_hit = transcriptsKnownSpliceSites(trans, trans_by_region, start_ends_by_gene)
 
         if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
@@ -264,7 +286,22 @@ def transcript_classification(trans_by_region):
     return dict(res)
     
 
-def transcriptsKnownSpliceSites(trec, ref_chr, start_ends_by_gene):
+def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_by_gene: dict)-> myQueryTranscripts:
+    '''Find best reference hit for the query transcript
+
+    Checks for full-splice-match, incomplete-splice-match, anyKnownJunction,
+    anyKnownSpliceSite or geneOverlap.
+
+    :param trec: query transcript to be classified
+    :type trec: genePredRecord
+    :param ref_chr: list of reference transcript from the same region
+    :type ref_chr: list
+    :param start_ends_by_gene: begins and ends from genes
+    :type start_ends_by_gene: dict
+    :returns: best reference hit(s) for the query transcript
+    :rtype: myQueryTranscripts
+    '''
+
     def calc_overlap(s1, e1, s2, e2):
         if s1=='NA' or s2=='NA': return 0
         if s1 > s2:
@@ -713,6 +750,7 @@ def associationOverlapping(isoforms_hit, trec, junctions_by_chr):
             if trec.chrom in junctions_by_chr:
                 # no hit even on opp strand
                 # see if it is completely contained within a junction
+                # TODO: VERY IMPORTART see which is the reference for that junction to add as reference gene to not delete it in the moodify GTF step
                 da_pairs = junctions_by_chr[trec.chrom]['da_pairs']
                 i = bisect.bisect_left(da_pairs, (trec.txStart, trec.txEnd))
                 while i < len(da_pairs) and da_pairs[i][0] <= trec.txStart:
@@ -799,7 +837,10 @@ def write_category_file(data: dict, out_name: str):
 
     for chrom in data.values():
         for trans in chrom:
-            f_out.write('%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts)))
+            if trans.str_class == 'intergenic':
+                f_out.write('%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts)))
+            else:
+                f_out.write('%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts)))
 
     f_out.close()
 
@@ -817,75 +858,87 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                       deleted
     '''
 
-    # TODO: use sets intead of lists and add the rest of SC
-    trans4SC = {
-    }
+    trans_by_SC = defaultdict(lambda: [])
+    trans_by_gene = defaultdict(lambda: [])
 
-    target_trans = []
-    target_genes = []
-    ref_trans = []
-    ref_genes = []
+    target_trans = set()
+    target_genes = set()
+    ref_trans = set()
+    ref_genes = set()
 
     # Build a list for each SC with all transcripts that were classified there
     with open(f_name, 'r') as gtf:
         header = gtf.readline()
         for line in gtf:
             line_split = line.split()
+            gene = line_split[1]
             SC = line_split[2]
 
-            if SC in list(trans4SC.keys()):
-                trans4SC[SC].append(tuple(line_split))
-            else:
-                trans4SC[SC] = [tuple(line_split)]
+            trans_by_SC[SC].append(tuple(line_split))
+            trans_by_gene[gene].append(tuple(line_split))
     
     gtf.close()
 
     # Select randomly the transcripts of each SC that are going to be deleted
     # It's important to make sure you don't delete its reference trans or gene
-    for SC in list(counts.keys()):
+    for SC in counts:
         if counts[SC] > 0:
-            SCtrans = trans4SC[SC]
+            SCtrans = trans_by_SC[SC]
             random.Random(1234).shuffle(SCtrans)
             for trans in SCtrans:
                 trans_id = trans[0]
                 gene_id = trans[1]
                 SC = trans[2]
+                ref_g = trans[3]
+                ref_t = trans[4]
 
-                if SC in ['full-splice_match', 'incomplete-splice_match', 'genic', 'genic_intron'] and counts[SC] > 0 and trans_id not in ref_trans and gene_id not in ref_genes:
-                    ref_t = trans[4]
-                    if ref_t not in target_trans:
-                        target_trans.append(trans_id)
-                        target_genes.append(gene_id)
-                        ref_trans.append(ref_t)
+                if SC in ['full-splice_match', 'incomplete-splice_match', 'genic_intron'] and counts[SC] > 0:
+                    if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes and ref_t not in target_trans:
+                        target_trans.add(trans_id)
+                        target_genes.add(gene_id)
+                        ref_trans.add(ref_t)
                         counts[SC] -= 1
 
-                elif SC in ['novel_in_catalog', 'novel_not_in_catalog'] and counts[SC] > 0 and gene_id not in ref_genes:
-                    ref_g = trans[3]
-                    if ref_g not in target_genes:
-                        target_trans.append(trans_id)
-                        target_genes.append(gene_id)
-                        ref_genes.append(ref_g)
+                elif SC in ['novel_in_catalog', 'novel_not_in_catalog'] and counts[SC] > 0:
+                    if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes and ref_g not in target_genes:
+                        target_trans.add(trans_id)
+                        target_genes.add(gene_id)
+                        ref_genes.add(ref_g)
                         counts[SC] -= 1
                 
-                elif SC in ['fusion', 'antisense'] and counts[SC] > 0 and gene_id not in ref_genes:
-                    ref_g = trans[3].split('_')
-                    for i in ref_g:
-                        if i in target_genes:
-                            break
-                    else:
-                        target_trans.append(trans_id)
-                        target_genes.append(gene_id)
-                        ref_genes.extend(ref_g)
-                        counts[SC] -= 1
+                elif SC in ['fusion', 'antisense', 'genic'] and counts[SC] > 0:
+                    if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes:
+                        ref_g = trans[3].split('_')
+                        for i in ref_g:
+                            if i in target_genes:
+                                break
+                        else:
+                            target_trans.add(trans_id)
+                            target_genes.add(gene_id)
+                            for i in ref_g:
+                                ref_genes.add(i)
+                            counts[SC] -= 1
                 
-                elif SC == 'intergenic' and counts[SC] > 0 and gene_id not in ref_genes:
-                    target_trans.append(trans_id)
-                    target_genes.append(gene_id)
+                elif SC == 'intergenic' and counts[SC] > 0:
+                    if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes:
+                        target_trans.add(trans_id)
+                        target_genes.add(gene_id)
+                        counts[SC] -= 1
                 
                 if counts[SC] <= 0:
                     break
 
-    return target_trans, ref_genes, ref_trans
+    final_target = target_trans
+    for gene in trans_by_gene:
+        for trans in trans_by_gene[gene]:
+            if trans in target_trans:
+                trans_by_gene[gene].remove(trans)
+                if len(trans_by_gene[gene]) == 0:
+                    final_target.add(gene)
+
+
+    return final_target
+    #return target_trans, ref_genes, ref_trans
 
 
 def getGeneID(line: str)-> str:
@@ -948,7 +1001,8 @@ def at_least_one_trans(gene_info: list)-> bool:
     return False
 
 
-def modifyGTF(f_name_in: str, f_name_out: str, target_trans: list, ref_genes: list):
+#def modifyGTF(f_name_in: str, f_name_out: str, target_trans: list, ref_genes: list):
+def modifyGTF(f_name_in: str, f_name_out: str, target: list):
     '''
     Modify the original GTF deleting target transcripts to simulate specific
     SQANTI3 structural categorires
@@ -971,19 +1025,22 @@ def modifyGTF(f_name_in: str, f_name_out: str, target_trans: list, ref_genes: li
                 f_out.write(line)
             else:
                 gene_id = getGeneID(line)
+                trans_id = getTransID(line)
+                if gene_id in target or trans_id in target:
+                    pass
+                else:
+                    f_out.write(line)
+        '''
+        for line in gtf_in:
+            if line.startswith('#'):
+                f_out.write(line)
+            else:
+                gene_id = getGeneID(line)
                 if not prev_gene:
                     prev_gene = gene_id
                 
                 if gene_id == prev_gene:
                     gene_info.append(line)
-                
-                    '''
-                    elif prev_gene in ref_genes:
-                        for i in gene_info:
-                            f_out.write(i)
-                        prev_gene = gene_id
-                        gene_info =  [line]
-                    '''
 
                 else:
                     tmp = []
@@ -1016,7 +1073,8 @@ def modifyGTF(f_name_in: str, f_name_out: str, target_trans: list, ref_genes: li
         if at_least_one_trans(tmp):
             for i in tmp:
                 f_out.write(i)
-    
+    '''
+    gtf_in.close()
     f_out.close()
 
     return
@@ -1121,12 +1179,33 @@ def main():
     
     if not args.read_only:
         print('***Writting modified GTF\n')
-        target, ref_genes, ref_trans = target_trans(cat_in, counts)
-        modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
+        #target, ref_genes, ref_trans = target_trans(cat_in, counts)
+        target = target_trans(cat_in, counts)
+        #modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
+        modifyGTF(ref_gtf, gtf_modif, target)
     
     if not args.cat:
         # Print summary table
+        print('Summary table from categorization\n')
         summary_table(trans_info)
+
+    if not args.read_only:
+        counts_2 = defaultdict(lambda: 0, {
+            'full-splice_match': 0,
+            'incomplete-splice_match': args.ISM,
+            'novel_in_catalog': args.NIC,
+            'novel_not_in_catalog':args.NNC,
+            'fusion' : args.Fusion,
+            'antisense': args.Antisense,
+            'genic_intron': args.GI,
+            'genic' :args.GG,
+            'intergenic':args.Intergenic
+        }) 
+
+        print('Deleted from reference GTF\n')
+        for k in counts:
+            print(k, counts_2[k]-counts[k])
+
 
 if __name__ == '__main__':
     t_ini = time()
