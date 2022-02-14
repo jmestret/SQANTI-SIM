@@ -931,7 +931,7 @@ def target_trans(f_name: str, counts: dict)-> tuple:
     final_target = target_trans
     for gene in trans_by_gene:
         for trans in trans_by_gene[gene]:
-            if trans in target_trans:
+            if trans[0] in target_trans:
                 trans_by_gene[gene].remove(trans)
                 if len(trans_by_gene[gene]) == 0:
                     final_target.add(gene)
