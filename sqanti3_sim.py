@@ -604,68 +604,70 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
     #----------------------------------#
     else:
         for ref in ref_chr:
-            if trec.id != ref.id: # to not match with itself
-                if hits_exon(trec, ref) and ref.exonCount == 1:
+            if trec.id == ref.id or ref.length < min_ref_len:
+                continue # to not match with itself
+            if hits_exon(trec, ref) and ref.exonCount == 1:
+                if ref.strand != trec.strand:
+                    # opposite strand, just record it in AS_genes
+                    isoform_hit.AS_genes.add(ref.gene)
+                    continue
+            
+                diff_tss, diff_tts = get_diff_tss_tts(trec, ref)
+
+                if isoform_hit.str_class == "": # no match so far
+                    isoform_hit = myQueryTranscripts(trec.id, trec.gene, diff_tss, diff_tts, trec.exonCount, trec.length, "full-splice_match",
+                                                            subtype="mono-exon",
+                                                            chrom=trec.chrom,
+                                                            strand=trec.strand,
+                                                            genes=[ref.gene],
+                                                            transcripts=[ref.id],
+                                                            refLen=ref.length,
+                                                            refExons = ref.exonCount)
+                elif abs(diff_tss)+abs(diff_tts) < isoform_hit.get_total_diff():
+                    isoform_hit.modify(ref.id, ref.gene, diff_tss, diff_tts, ref.length, ref.exonCount)
+        
+        if isoform_hit.str_class == "":
+            for ref in ref_chr:
+                if trec.id == ref.id or ref.length < min_ref_len:
+                    continue # to not match with itself
+                if hits_exon(trec, ref) and ref.exonCount >= 2:
+                    if calc_exon_overlap(trec.exons, ref.exons) == 0:   # no exonic overlap, skip!
+                        continue
+
                     if ref.strand != trec.strand:
                         # opposite strand, just record it in AS_genes
                         isoform_hit.AS_genes.add(ref.gene)
                         continue
-                
+
                     diff_tss, diff_tts = get_diff_tss_tts(trec, ref)
 
-                    if isoform_hit.str_class == "": # no match so far
-                        isoform_hit = myQueryTranscripts(trec.id, trec.gene, diff_tss, diff_tts, trec.exonCount, trec.length, "full-splice_match",
-                                                                subtype="mono-exon",
-                                                                chrom=trec.chrom,
-                                                                strand=trec.strand,
-                                                                genes=[ref.gene],
-                                                                transcripts=[ref.id],
-                                                                refLen=ref.length,
-                                                                refExons = ref.exonCount)
-                    elif abs(diff_tss)+abs(diff_tts) < isoform_hit.get_total_diff():
-                        isoform_hit.modify(ref.id, ref.gene, diff_tss, diff_tts, ref.length, ref.exonCount)
-        
-        if isoform_hit.str_class == "":
-            for ref in ref_chr:
-                if trec.id != ref.id: # to not match with itself
-                    if hits_exon(trec, ref) and ref.exonCount >= 2:
-                        if calc_exon_overlap(trec.exons, ref.exons) == 0:   # no exonic overlap, skip!
-                            continue
-
-                        if ref.strand != trec.strand:
-                            # opposite strand, just record it in AS_genes
-                            isoform_hit.AS_genes.add(ref.gene)
-                            continue
-
-                        diff_tss, diff_tts = get_diff_tss_tts(trec, ref)
-
-                        for e in ref.exons:
-                            if e.start <= trec.txStart < trec.txEnd <= e.end:
-                                isoform_hit.str_class = "incomplete-splice_match"
-                                isoform_hit.subtype = "mono-exon"
-                                isoform_hit.modify(ref.id, ref.gene, diff_tss, diff_tts, ref.length, ref.exonCount)
-                                # this is as good a match as it gets, we can stop the search here
-                                get_gene_diff_tss_tts(isoform_hit)
-                                return isoform_hit
-
-                        # if we haven't exited here, then ISM hit is not found yet
-                        # instead check if it's NIC by intron retention
-                        # but we don't exit here since the next gene could be a ISM hit
-                        if ref.txStart <= trec.txStart < trec.txEnd <= ref.txEnd:
-                            isoform_hit.str_class = "novel_in_catalog"
+                    for e in ref.exons:
+                        if e.start <= trec.txStart < trec.txEnd <= e.end:
+                            isoform_hit.str_class = "incomplete-splice_match"
                             isoform_hit.subtype = "mono-exon"
-                            # check for intron retention
-                            if len(ref.junctions) > 0:
-                                for (d,a) in ref.junctions:
-                                    if trec.txStart < d < a < trec.txEnd:
-                                        isoform_hit.subtype = "mono-exon_by_intron_retention"
-                                        break
-                            isoform_hit.modify("novel", ref.gene, 'NA', 'NA', ref.length, ref.exonCount)
+                            isoform_hit.modify(ref.id, ref.gene, diff_tss, diff_tts, ref.length, ref.exonCount)
+                            # this is as good a match as it gets, we can stop the search here
                             get_gene_diff_tss_tts(isoform_hit)
                             return isoform_hit
 
-                        # if we get to here, means neither ISM nor NIC, so just add a ref gene and categorize further later
-                        isoform_hit.genes.append(ref.gene)
+                    # if we haven't exited here, then ISM hit is not found yet
+                    # instead check if it's NIC by intron retention
+                    # but we don't exit here since the next gene could be a ISM hit
+                    if ref.txStart <= trec.txStart < trec.txEnd <= ref.txEnd:
+                        isoform_hit.str_class = "novel_in_catalog"
+                        isoform_hit.subtype = "mono-exon"
+                        # check for intron retention
+                        if len(ref.junctions) > 0:
+                            for (d,a) in ref.junctions:
+                                if trec.txStart < d < a < trec.txEnd:
+                                    isoform_hit.subtype = "mono-exon_by_intron_retention"
+                                    break
+                        isoform_hit.modify("novel", ref.gene, 'NA', 'NA', ref.length, ref.exonCount)
+                        get_gene_diff_tss_tts(isoform_hit)
+                        return isoform_hit
+
+                    # if we get to here, means neither ISM nor NIC, so just add a ref gene and categorize further later
+                    isoform_hit.genes.append(ref.gene)
 
     get_gene_diff_tss_tts(isoform_hit)
     isoform_hit.genes.sort(key=lambda x: start_ends_by_gene[x]['begin'])
