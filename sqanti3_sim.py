@@ -847,7 +847,7 @@ def write_category_file(data: dict, out_name: str):
 #------------------------------------
 # MODIFY GTF FUNCTIONS
 
-def target_trans(f_name: str, counts: dict)-> tuple:
+def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
     '''
     Choose those transcripts that will be deleted from the original GTF
     to generate the modified file to use as the reference annotation
@@ -879,6 +879,9 @@ def target_trans(f_name: str, counts: dict)-> tuple:
     
     gtf.close()
 
+    f_out = open(f_name_out, 'w')
+    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\n')
+
     # Select randomly the transcripts of each SC that are going to be deleted
     # It's important to make sure you don't delete its reference trans or gene
     for SC in counts:
@@ -898,6 +901,8 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                         target_genes.add(gene_id)
                         ref_trans.add(ref_t)
                         counts[SC] -= 1
+                        f_out.write('\t'.join(trans))
+                        f_out.write('\n')
 
                 elif SC in ['novel_in_catalog', 'novel_not_in_catalog'] and counts[SC] > 0:
                     if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes and ref_g not in target_genes:
@@ -905,7 +910,9 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                         target_genes.add(gene_id)
                         ref_genes.add(ref_g)
                         counts[SC] -= 1
-                
+                        f_out.write('\t'.join(trans))
+                        f_out.write('\n')
+
                 elif SC in ['fusion', 'antisense', 'genic'] and counts[SC] > 0:
                     if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes:
                         ref_g = trans[3].split('_')
@@ -918,12 +925,16 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                             for i in ref_g:
                                 ref_genes.add(i)
                             counts[SC] -= 1
+                            f_out.write('\t'.join(trans))
+                            f_out.write('\n')
                 
                 elif SC == 'intergenic' and counts[SC] > 0:
                     if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes:
                         target_trans.add(trans_id)
                         target_genes.add(gene_id)
                         counts[SC] -= 1
+                        f_out.write('\t'.join(trans))
+                        f_out.write('\n')
                 
                 if counts[SC] <= 0:
                     break
@@ -936,7 +947,7 @@ def target_trans(f_name: str, counts: dict)-> tuple:
                 if len(trans_by_gene[gene]) == 0:
                     final_target.add(gene)
 
-
+    f_out.close()
     return final_target
     #return target_trans, ref_genes, ref_trans
 
@@ -1128,6 +1139,7 @@ def main():
 
     cat_out = os.path.join(dir, (out_name + '_categories.txt'))
     gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
+    del_trans = os.path.join(dir, (out_name + '_deleted.txt'))
 
     counts = defaultdict(lambda: 0, {
         'full-splice_match': 0,
@@ -1180,7 +1192,7 @@ def main():
     if not args.read_only:
         print('***Writting modified GTF\n')
         #target, ref_genes, ref_trans = target_trans(cat_in, counts)
-        target = target_trans(cat_in, counts)
+        target = target_trans(cat_in, del_trans, counts)
         #modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
         modifyGTF(ref_gtf, gtf_modif, target)
     
