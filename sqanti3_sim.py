@@ -222,7 +222,7 @@ def gtf_parser(gtf_name: str)-> defaultdict:
     return isoforms_list
 
 
-def transcript_classification(trans_by_region: list)-> dict:
+def transcript_classification(trans_by_region: list, min_ref_len: int)-> dict:
     '''Classify transcripts in SQANTI3 structural categories
     
     Given a list of transcripts from the same chromosomic region classify each
@@ -247,7 +247,7 @@ def transcript_classification(trans_by_region: list)-> dict:
         known_5_3_by_gene = defaultdict(lambda: {'begin':set(), 'end': set()})
 
         for r in trans_by_region:
-            if trans.id == r.id:
+            if trans.id == r.id or r.length < min_ref_len:
                 continue
             known_5_3_by_gene[r.gene]['begin'].add(r.txStart)
             known_5_3_by_gene[r.gene]['end'].add(r.txEnd)
@@ -271,7 +271,7 @@ def transcript_classification(trans_by_region: list)-> dict:
         junctions_by_gene = dict(junctions_by_gene)
 
         # Find best reference hit
-        isoform_hit = transcriptsKnownSpliceSites(trans, trans_by_region, start_ends_by_gene)
+        isoform_hit = transcriptsKnownSpliceSites(trans, trans_by_region, start_ends_by_gene, min_ref_len)
 
         if isoform_hit.str_class in ("anyKnownJunction", "anyKnownSpliceSite"):
             # not FSM or ISM --> see if it is NIC, NNC, or fusion
@@ -286,7 +286,7 @@ def transcript_classification(trans_by_region: list)-> dict:
     return dict(res)
     
 
-def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_by_gene: dict)-> myQueryTranscripts:
+def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_by_gene: dict, min_ref_len: int)-> myQueryTranscripts:
     '''Find best reference hit for the query transcript
 
     Checks for full-splice-match, incomplete-splice-match, anyKnownJunction,
@@ -406,9 +406,10 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
         best_by_gene = {}  # gene --> best isoform_hit
 
         for ref in ref_chr:
-            if trec.id != ref.id: # to not match with itself
-                if hits_exon(trec, ref):
-                    hits_by_gene[ref.gene].append(ref)
+            if trec.id == ref.id or ref.length < min_ref_len:
+                continue # to not match with itself
+            if hits_exon(trec, ref):
+                hits_by_gene[ref.gene].append(ref)
         
         if len(hits_by_gene) == 0: return isoform_hit
 
@@ -1117,6 +1118,7 @@ def main():
     parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument("--min_ref_len", type=int, default=200, help="\t\tMinimum reference transcript length (default: 200 bp)")
     parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
     parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
     parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
@@ -1167,7 +1169,7 @@ def main():
                 print(chrom)
                 for record in tqdm(range(len(trans_by_chr[chrom]))):
                     trans_by_region = trans_by_chr[chrom][record]
-                    tmp = transcript_classification(trans_by_region)
+                    tmp = transcript_classification(trans_by_region, args.min_ref_len)
                     for k in tmp:
                         trans_info[k].extend(tmp[k])
 
@@ -1177,7 +1179,7 @@ def main():
                 all_regions.extend(trans_by_chr[chrom])
             
             pool = mp.Pool(processes=args.cores)
-            tmp = pool.map(transcript_classification, all_regions)
+            tmp = pool.map(transcript_classification, all_regions) # TODO: use apply and add min_ref_len
             for x in tmp:
                 for k, v in x.items():
                     trans_info[k].extend(v)
