@@ -41,19 +41,21 @@ def main():
     # Get junctions from deleted reads
     #ref_by_chr = defaultdict(lambda: myQueryIsoforms())
     ref = []
+    ref_by_SC = defaultdict(lambda: [])
     
     with open(args.deleted, 'r') as f_del:
         skip = f_del.readline()
         for line in f_del:
             juncs = []
             line = line.split()
+            SC = line[2]
             donors = line[5].split(',')
             acceptors = line[6].split(',')
             for d, a in zip(donors, acceptors):
                 juncs.append(d)
                 juncs.append(a)
             
-            ref.append(myQueryIsoforms(id=line[0], gene_id=line[1],
+            ref[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
                                        str_class=line[2],
                                        genes=line[3].split('_'),
                                        transcripts=line[4].split('_'),
@@ -89,23 +91,37 @@ def main():
                             ref[i].counts += 1
         f_sim.close()  
 
+    # Delete those simulated with low coverage (smaller than the threshhold used in the pipeline)
+    threshold = 3
+    for SC in ref:
+        print(SC, len(ref[SC]))
+        for rec in ref[SC]:
+            if rec.counts < threshold:
+                ref[SC].remove(rec)
+        print(SC, len(ref[SC]))
+
+
     # READ read to isoform id by the pipeline file!
     # for talon is read_annot.tsv       
 
     # Get SC and ref from query isoforms
-    qclass_by_iso = defaultdict(lambda: [None, None, None])
+    isos = defaultdict(lambda: [])
     with open(args.classi, 'r') as f_class:
         skip = f_class.readline()
         for line in f_class:
             line = line.split()
             iso = line[0]
-            ref_g = line[6]
-            ref_t = line[7]
+            SC = line[5]
+            ref_g = line[6].split('_')
+            ref_t = line[7].split('_')
+            isos[iso].append(myQueryIsoforms(id=iso, gene_id=None,
+                                                 str_class=SC,
+                                                 genes=ref_g,
+                                                 transcripts=ref_t))
 
     f_class.close()
     
     # Get junctions from query isoforms
-    qjuncs_by_iso = defaultdict(lambda: [])
     with open(args.junc, 'r') as f_junc:
         skip = f_junc.readline()
         for line in f_junc:
@@ -113,11 +129,33 @@ def main():
             iso = line[0]
             d = line[4]
             a = line[5]
-            qjuncs_by_iso[iso].append(d)
-            qjuncs_by_iso[iso].append(a)
+            isos[iso].junctions.append(d)
+            isos[iso].junctions.append(a)
     f_junc.close()
 
+    iso_by_SC = defaultdict(lambda: [])
+    for iso in isos.values():
+        iso_by_SC[iso.str_class].append(iso)
 
+    # Get Stats
+    for SC in ref_by_SC:
+        print('SC stats')
+        TP = 0
+        FP = 0
+        for iso in iso_by_SC[SC]:
+            for rec in ref_by_SC[SC]:
+                if rec.junctions == iso.junctions:
+                    TP += 1
+                    break
+            else:
+                FP += 1
+        FN = len(ref_by_SC[SC]) - TP
+        print('TP', TP)
+        print('FP', FP)
+        print('FN', FN)
+        print('Precision', TP/(TP+FP))
+        print('FDR', FP/(TP+FP))
+        print('Sensitivity', TP/(TP+FN))
 
 
 

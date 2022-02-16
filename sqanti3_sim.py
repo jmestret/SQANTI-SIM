@@ -855,6 +855,8 @@ def write_category_file(data: dict, out_name: str):
             for d, a in trans.junctions:
                 donors.append(d)
                 acceptors.append(a)
+            donors = [str(d) for d in donors]
+            acceptors = [str(a) for a in acceptors]
             if trans.str_class == 'intergenic':
                 f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts), ','.join(donors), ','.join(acceptors)))
             else:
@@ -898,7 +900,7 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
     gtf.close()
 
     f_out = open(f_name_out, 'w')
-    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\n')
+    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tDonors\tAcceptors\n')
 
     # Select randomly the transcripts of each SC that are going to be deleted
     # It's important to make sure you don't delete its reference trans or gene
