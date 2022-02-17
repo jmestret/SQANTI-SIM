@@ -10,17 +10,21 @@ Last update: 15/02/2022
 import argparse
 from collections import defaultdict
 from operator import ge
+from termios import TCSETS
+from tracemalloc import start
 
 
 class myQueryIsoforms:
     '''Features of the query isoform and its associated reference'''
-    def __init__(self, id=None, gene_id=None, str_class=None, genes=None, transcripts=None, junctions=[], names=[], counts=0):
+    def __init__(self, id=None, gene_id=None, str_class=None, genes=None, transcripts=None, junctions=[], start = None, end = None, names=[], counts=0):
         self.id = id
         self.gene_id = gene_id
         self.str_class = str_class
         self.genes = genes
         self.transcripts = transcripts
         self.junctions = junctions
+        self.start = start
+        self.end = end
         self.names = names
         self.counts = counts
         
@@ -40,7 +44,7 @@ def main():
 
     # Get junctions from deleted reads
     #ref_by_chr = defaultdict(lambda: myQueryIsoforms())
-    ref = []
+    #ref = []
     ref_by_SC = defaultdict(lambda: [])
     
     with open(args.deleted, 'r') as f_del:
@@ -49,17 +53,24 @@ def main():
             juncs = []
             line = line.split()
             SC = line[2]
-            donors = line[5].split(',')
-            acceptors = line[6].split(',')
-            for d, a in zip(donors, acceptors):
-                juncs.append(d)
-                juncs.append(a)
+            TSS = line[5]
+            TTS = line[6]
+
+            donors = line[7].split(',')
+            acceptors = line[8].split(',')
+            if donors[0] == 'NA':
+                juncs = []
+            else:
+                for d, a in zip(donors, acceptors):
+                    juncs.append(d)
+                    juncs.append(a)
             
-            ref[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
+            ref_by_SC[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
                                        str_class=line[2],
                                        genes=line[3].split('_'),
                                        transcripts=line[4].split('_'),
-                                       junctions=juncs))
+                                       junctions=juncs,
+                                       start=TSS, end=TTS))
     f_del.close()
 
     # Count ocurrencies
@@ -70,10 +81,11 @@ def main():
                     line = line.lstrip('@')
                     id = line.split('_')
 
-                    for i in range(len(ref)):
-                        if id == ref[i].id.split('.')[0]:
-                            ref[i].names.append(line)
-                            ref[i].counts += 1
+                    for SC in ref_by_SC:
+                        for i in range(len(ref_by_SC[SC])):
+                            if id == ref_by_SC[SC][i].id.split('.')[0]:
+                                ref_by_SC[SC][i].names.append(line)
+                                ref_by_SC[SC][i].counts += 1
         f_sim.close()
 
 
@@ -85,20 +97,21 @@ def main():
                     simid = line[0]
                     refid = line[1]
 
-                    for i in range(len(ref)):
-                        if refid == ref.id:
-                            ref[i].names.append(simid)
-                            ref[i].counts += 1
+                    for SC in ref_by_SC:
+                        for i in range(len(ref_by_SC[SC])):
+                            if refid == ref_by_SC[SC][i].id:
+                                ref_by_SC[SC][i].names.append(simid)
+                                ref_by_SC[SC][i].counts += 1
         f_sim.close()  
 
     # Delete those simulated with low coverage (smaller than the threshhold used in the pipeline)
     threshold = 3
-    for SC in ref:
-        print(SC, len(ref[SC]))
-        for rec in ref[SC]:
+    for SC in ref_by_SC:
+        print(SC, len(ref_by_SC[SC]))
+        for rec in ref_by_SC[SC]:
             if rec.counts < threshold:
-                ref[SC].remove(rec)
-        print(SC, len(ref[SC]))
+                ref_by_SC[SC].remove(rec)
+        print(SC, len(ref_by_SC[SC]))
 
 
     # READ read to isoform id by the pipeline file!
@@ -114,10 +127,13 @@ def main():
             SC = line[5]
             ref_g = line[6].split('_')
             ref_t = line[7].split('_')
+            TSS = line[47]
+            TTS = line[48]
             isos[iso].append(myQueryIsoforms(id=iso, gene_id=None,
                                                  str_class=SC,
                                                  genes=ref_g,
-                                                 transcripts=ref_t))
+                                                 transcripts=ref_t,
+                                                 start=TSS, end=TTS))
 
     f_class.close()
     
@@ -143,12 +159,20 @@ def main():
         TP = 0
         FP = 0
         for iso in iso_by_SC[SC]:
-            for rec in ref_by_SC[SC]:
-                if rec.junctions == iso.junctions:
-                    TP += 1
-                    break
+            if len(iso.junctions) == 0:
+                for rec in ref_by_SC[SC]:
+                    if rec.junctions == iso.junctions and rec.start <= iso.end and iso.start <= rec.end:
+                        TP += 1
+                        break
+                else:
+                    FP += 1
             else:
-                FP += 1
+                for rec in ref_by_SC[SC]:
+                    if rec.junctions == iso.junctions:
+                        TP += 1
+                        break
+                else:
+                    FP += 1
         FN = len(ref_by_SC[SC]) - TP
         print('TP', TP)
         print('FP', FP)

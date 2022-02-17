@@ -131,7 +131,7 @@ class myQueryTranscripts:
                  refLen ="NA", refExons ="NA",
                  refStart = "NA", refEnd = "NA",
                  q_splicesite_hit = 0,
-                 q_exon_overlap = 0, junctions = None):
+                 q_exon_overlap = 0, junctions = None, tss = None, tts = None):
 
         self.id  = id
         self.gene_id = gene_id        # gene where this transcript originally cames from
@@ -154,7 +154,9 @@ class myQueryTranscripts:
         self.refEnd      = refEnd
         self.q_splicesite_hit = q_splicesite_hit
         self.q_exon_overlap = q_exon_overlap
-        self.junctions = junctions
+        self.junctions = junctions if len(junctions) > 0 else ['NA', 'NA']
+        self.tss = tss
+        self.tts = tts
 
     def get_total_diff(self):
         return abs(self.tss_diff)+abs(self.tts_diff)
@@ -224,7 +226,7 @@ def gtf_parser(gtf_name: str)-> defaultdict:
     return isoforms_list
 
 
-def transcript_classification(trans_by_region: list, min_ref_len: int)-> dict:
+def transcript_classification(trans_by_region: list)-> dict:
     '''Classify transcripts in SQANTI3 structural categories
     
     Given a list of transcripts from the same chromosomic region classify each
@@ -396,7 +398,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                     chrom=trec.chrom,
                                     strand=trec.strand,
                                     subtype="no_subcategory",
-                                    junctions=trec.junctions)
+                                    junctions=trec.junctions,
+                                    tss=trec.txStart, tts=trec.txEnd)
     
     cat_ranking = {'full-splice_match': 5, 'incomplete-splice_match': 4, 'anyKnownJunction': 3, 'anyKnownSpliceSite': 2,
                    'geneOverlap': 1, '': 0}
@@ -424,7 +427,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                             chrom=trec.chrom,
                                             strand=trec.strand,
                                             subtype="no_subcategory",
-                                            junctions=trec.junctions)
+                                            junctions=trec.junctions,
+                                            tss=trec.txStart, tts=trec.txEnd)
 
             for ref in hits_by_gene[ref_gene]:
                 if trec.strand != ref.strand:
@@ -449,7 +453,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                                 refEnd=ref.txEnd,
                                                                 q_splicesite_hit=0,
                                                                 q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                                junctions=trec.junctions)
+                                                                junctions=trec.junctions,
+                                                                tss=trec.txStart, tts=trec.txEnd)
                 #--MULTI-EXONIC REFERENCE--#
                 else:
                     match_type = compare_junctions(trec, ref, internal_fuzzy_max_dist=0, max_5_diff=999999, max_3_diff=999999)
@@ -495,7 +500,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                               refEnd=ref.txEnd,
                                                               q_splicesite_hit=calc_splicesite_agreement(trec.exons, ref.exons),
                                                               q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                              junctions=trec.junctions)
+                                                              junctions=trec.junctions,
+                                                              tss=trec.txStart, tts=trec.txEnd)
                     
                     # #######################################################
                     # SQANTI's incomplete-splice_match
@@ -521,7 +527,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                              refEnd=ref.txEnd,
                                                              q_splicesite_hit=calc_splicesite_agreement(trec.exons, ref.exons),
                                                              q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                             junctions=trec.junctions)
+                                                             junctions=trec.junctions,
+                                                             tss=trec.txStart, tts=trec.txEnd)
 
                     
                     # #######################################################
@@ -548,7 +555,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                              refEnd=ref.txEnd,
                                                              q_splicesite_hit=calc_splicesite_agreement(trec.exons, ref.exons),
                                                              q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                             junctions=trec.junctions)
+                                                             junctions=trec.junctions,
+                                                             tss=trec.txStart, tts=trec.txEnd)
                     
                     else: # must be nomatch
                         assert match_type == 'nomatch'
@@ -568,7 +576,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                              refEnd=ref.txEnd,
                                                              q_splicesite_hit=calc_splicesite_agreement(trec.exons, ref.exons),
                                                              q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                             junctions=trec.junctions)
+                                                             junctions=trec.junctions,
+                                                             tss=trec.txStart, tts=trec.txEnd)
 
                         if isoform_hit.str_class=="": # still not hit yet, check exonic overlap
                             if cat_ranking[isoform_hit.str_class] < cat_ranking["geneOverlap"] and calc_exon_overlap(trec.exons, ref.exons) > 0:
@@ -585,7 +594,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                                  refEnd=ref.txEnd,
                                                                  q_splicesite_hit=calc_splicesite_agreement(trec.exons, ref.exons),
                                                                  q_exon_overlap=calc_exon_overlap(trec.exons, ref.exons),
-                                                                 junctions=trec.junctions)
+                                                                 junctions=trec.junctions,
+                                                                 tss=trec.txStart, tts=trec.txEnd)
             best_by_gene[ref_gene] = isoform_hit
 
         # now we have best_by_gene:
@@ -632,7 +642,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                                                             transcripts=[ref.id],
                                                             refLen=ref.length,
                                                             refExons = ref.exonCount,
-                                                            junctions=trec.junctions)
+                                                            junctions=trec.junctions,
+                                                            tss=trec.txStart, tts=trec.txEnd)
                 elif abs(diff_tss)+abs(diff_tts) < isoform_hit.get_total_diff():
                     isoform_hit.modify(ref.id, ref.gene, diff_tss, diff_tts, ref.length, ref.exonCount)
         
@@ -846,7 +857,7 @@ def write_category_file(data: dict, out_name: str):
     '''
 
     f_out = open(out_name, 'w')
-    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tDonors\tAcceptors\n')
+    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tTSS\tTTS\tDonors\tAcceptors\n')
 
     for chrom in data.values():
         for trans in chrom:
@@ -858,9 +869,9 @@ def write_category_file(data: dict, out_name: str):
             donors = [str(d) for d in donors]
             acceptors = [str(a) for a in acceptors]
             if trans.str_class == 'intergenic':
-                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts), ','.join(donors), ','.join(acceptors)))
+                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts), trans.tss, trans.tts, ','.join(donors), ','.join(acceptors)))
             else:
-                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts), ','.join(donors), ','.join(acceptors)))
+                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts), trans.tss, trans.tts, ','.join(donors), ','.join(acceptors)))
 
     f_out.close()
 
@@ -900,7 +911,7 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
     gtf.close()
 
     f_out = open(f_name_out, 'w')
-    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tDonors\tAcceptors\n')
+    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tTSS\tTTS\tDonors\tAcceptors\n')
 
     # Select randomly the transcripts of each SC that are going to be deleted
     # It's important to make sure you don't delete its reference trans or gene
@@ -1116,6 +1127,10 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
 #                                   #
 #####################################
 def main():
+    def initializer():
+            global min_ref_len
+            min_ref_len = args.min_ref_len
+
     # Welcome
     print(
         '''                                                                      
@@ -1137,7 +1152,7 @@ def main():
     parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
-    parser.add_argument("--min_ref_len", type=int, default=200, help="\t\tMinimum reference transcript length (default: 200 bp)")
+    parser.add_argument("--min_ref_len", type=int, default=0, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
     parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
     parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
     parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
@@ -1184,11 +1199,12 @@ def main():
         trans_info = defaultdict(lambda: [])
 
         if args.cores <= 1:
+            initializer()
             for chrom in trans_by_chr:
                 print(chrom)
                 for record in tqdm(range(len(trans_by_chr[chrom]))):
                     trans_by_region = trans_by_chr[chrom][record]
-                    tmp = transcript_classification(trans_by_region, args.min_ref_len)
+                    tmp = transcript_classification(trans_by_region)
                     for k in tmp:
                         trans_info[k].extend(tmp[k])
 
@@ -1197,7 +1213,7 @@ def main():
             for chrom in trans_by_chr:
                 all_regions.extend(trans_by_chr[chrom])
             
-            pool = mp.Pool(processes=args.cores)
+            pool = mp.Pool(args.cores, initializer, ())
             tmp = pool.map(transcript_classification, all_regions) # TODO: use apply and add min_ref_len
             for x in tmp:
                 for k, v in x.items():
