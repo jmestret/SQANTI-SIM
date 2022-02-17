@@ -869,8 +869,8 @@ def write_category_file(data: dict, out_name: str):
             if isinstance(donors[0], str):
                 pass
             else:
-                donors = [str(d+1) for d in donors] # Change to 1-based exon start
-                acceptors = [str(a) for a in acceptors]
+                donors = [str(d) for d in donors] 
+                acceptors = [str(a+1) for a in acceptors] # Change to 1-based exon start
             trans.tss += 1 # Change to 1-based exon start
             if trans.str_class == 'intergenic':
                 f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts), trans.tss, trans.tts, ','.join(donors), ','.join(acceptors)))
