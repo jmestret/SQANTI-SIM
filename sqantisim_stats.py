@@ -16,7 +16,7 @@ from tracemalloc import start
 
 class myQueryIsoforms:
     '''Features of the query isoform and its associated reference'''
-    def __init__(self, id=None, gene_id=None, str_class=None, genes=None, transcripts=None, junctions=[], start = None, end = None, names=[], counts=0):
+    def __init__(self, id=None, gene_id=None, str_class=None, genes=None, transcripts=None, junctions=set(), start = None, end = None, names=[], counts=0):
         self.id = id
         self.gene_id = gene_id
         self.str_class = str_class
@@ -50,7 +50,7 @@ def main():
     with open(args.deleted, 'r') as f_del:
         skip = f_del.readline()
         for line in f_del:
-            juncs = []
+            juncs = set()
             line = line.split()
             SC = line[2]
             TSS = line[5]
@@ -59,11 +59,11 @@ def main():
             donors = line[7].split(',')
             acceptors = line[8].split(',')
             if donors[0] == 'NA':
-                juncs = []
+                juncs = set()
             else:
                 for d, a in zip(donors, acceptors):
-                    juncs.append(d)
-                    juncs.append(a)
+                    juncs.add(d)
+                    juncs.add(a)
             
             ref_by_SC[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
                                        str_class=line[2],
@@ -118,7 +118,7 @@ def main():
     # for talon is read_annot.tsv       
 
     # Get SC and ref from query isoforms
-    isos = defaultdict(lambda: [])
+    isos = defaultdict(lambda: myQueryIsoforms())
     with open(args.classi, 'r') as f_class:
         skip = f_class.readline()
         for line in f_class:
@@ -129,15 +129,16 @@ def main():
             ref_t = line[7].split('_')
             TSS = line[47]
             TTS = line[48]
-            isos[iso].append(myQueryIsoforms(id=iso, gene_id=None,
+            isos[iso] = myQueryIsoforms(id=iso, gene_id=None,
                                                  str_class=SC,
                                                  genes=ref_g,
                                                  transcripts=ref_t,
-                                                 start=TSS, end=TTS))
+                                                 start=TSS, end=TTS)
 
     f_class.close()
     
     # Get junctions from query isoforms
+    juncs = defaultdict(lambda: set())
     with open(args.junc, 'r') as f_junc:
         skip = f_junc.readline()
         for line in f_junc:
@@ -145,20 +146,21 @@ def main():
             iso = line[0]
             d = line[4]
             a = line[5]
-            isos[iso].junctions.append(d)
-            isos[iso].junctions.append(a)
+            juncs[iso].add(d)
+            juncs[iso].add(a)
     f_junc.close()
 
     iso_by_SC = defaultdict(lambda: [])
-    for iso in isos.values():
+    for id, iso in isos.items():
+        iso.junctions = juncs[id]
         iso_by_SC[iso.str_class].append(iso)
 
     # Get Stats
     for SC in ref_by_SC:
-        print('SC stats')
+        print(SC, 'stats')
         TP = 0
         FP = 0
-        for iso in iso_by_SC[SC]:
+        for iso in iso_by_SC[SC]:            
             if len(iso.junctions) == 0:
                 for rec in ref_by_SC[SC]:
                     if rec.junctions == iso.junctions and rec.start <= iso.end and iso.start <= rec.end:
