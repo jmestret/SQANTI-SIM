@@ -58,12 +58,14 @@ def main():
 
             donors = line[7].split(',')
             acceptors = line[8].split(',')
-            if donors[0] == 'NA':
+            if isinstance(donors[0], str):
                 juncs = set()
             else:
                 for d, a in zip(donors, acceptors):
-                    juncs.add(d)
-                    juncs.add(a)
+                    d = int(d) + 1
+                    a = int(a) -1
+                    juncs.add(str(d))
+                    juncs.add(str(a))
             
             ref_by_SC[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
                                        str_class=line[2],
