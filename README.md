@@ -1,3 +1,5 @@
+![SQANTI-SIM logo](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_logo.png)
+
 # SQANTI-SIM
 
 **SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a plugin for the SQANTI3 tool ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
@@ -18,6 +20,8 @@ conda install -c conda-forge tqdm
 ## Running SQANTI-SIM
 
 SQANTI-SIM can be used in two different ways: (i) to classify all transcripts from a GTF file and then modifiy the original annotation GTF file or (ii) give as input the intermediary file with the structural categories and just modify the original GTF for different porpuses.
+
+![SQANTI-SIM workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_workflow.png)
 
 ### Required input
 
@@ -72,7 +76,7 @@ optional arguments:
 
 ## Classification criteria
 
-![cat_workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/gtf2scworkflow.png)
+![classification workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_class_decision_tree.png)
 
 ## Example run
 
