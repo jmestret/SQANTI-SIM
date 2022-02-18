@@ -1,7 +1,6 @@
 <p align="center">
   <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_logo.png">
 </p>
-![SQANTI-SIM logo](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_logo.png)
 
 # SQANTI-SIM
 
