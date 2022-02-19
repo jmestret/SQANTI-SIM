@@ -822,7 +822,7 @@ def hits_exon(r1, r2):
     return False
 
 
-def summary_table(data: dict):
+def summary_table_cat(data: dict):
     counts = defaultdict(lambda: 0, {
         'full-splice_match': 0,
         'incomplete-splice_match':0,
@@ -841,9 +841,21 @@ def summary_table(data: dict):
     print('\033[94m_' * 79 + '\033[0m')
     print('\033[92mS Q A N T I - S I M\033[0m \U0001F4CA')
     print()
-    print('Summary Table \U0001F50E')
+    print('Classification summary Table \U0001F50E')
     print('\033[94m_' * 79 + '\033[0m')
     for k, v in counts.items():
+        print('\033[92m|\033[0m ' + k + ': ' + str(v))
+
+def summary_table_del(counts_ini: dict, counts_end: dict):
+    for sc in counts_end:
+        counts_ini[sc] = counts_ini[sc] - counts_end[sc]
+    
+    print('\033[94m_' * 79 + '\033[0m')
+    print('\033[92mS Q A N T I - S I M\033[0m \U0001F4CA')
+    print()
+    print('GTF modification summary Table \U0001F50E')
+    print('\033[94m_' * 79 + '\033[0m')
+    for k, v in counts_end.items():
         print('\033[92m|\033[0m ' + k + ': ' + str(v))
 
 
@@ -1076,192 +1088,7 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
                     pass
                 else:
                     f_out.write(line)
-        '''
-        for line in gtf_in:
-            if line.startswith('#'):
-                f_out.write(line)
-            else:
-                gene_id = getGeneID(line)
-                if not prev_gene:
-                    prev_gene = gene_id
-                
-                if gene_id == prev_gene:
-                    gene_info.append(line)
-
-                else:
-                    tmp = []
-                    for i in gene_info:
-                        trans_id = getTransID(i)
-                        if trans_id not in target_trans:
-                            tmp.append(i)
-                    
-                    if at_least_one_trans(tmp):
-                        for i in tmp:
-                            f_out.write(i)
-                            
-                    prev_gene = gene_id
-                    gene_info =  [line]
-    gtf_in.close()
-
-    if prev_gene in ref_genes:
-        for i in gene_info:
-            f_out.write(i)
-            prev_gene = gene_id
-            gene_info =  [line]
-
-    else:
-        tmp = []
-        for i in gene_info:
-            trans_id = getTransID(i)
-            if trans_id not in target_trans:
-                tmp.append(i)
-                    
-        if at_least_one_trans(tmp):
-            for i in tmp:
-                f_out.write(i)
-    '''
     gtf_in.close()
     f_out.close()
 
     return
-
-#####################################
-#                                   #
-#               MAIN                #
-#                                   #
-#####################################
-def main():
-    def initializer():
-            global min_ref_len
-            min_ref_len = args.min_ref_len
-
-    # Welcome
-    print(
-        '''                                                                      
-          _____  ____            _   _ _______ _____      _____ _____ __  __  
-         / ____|/ __ \     /\   | \ | |__   __|_   _|    / ____|_   _|  \/  | 
-        | (___ | |  | |   /  \  |  \| |  | |    | |_____| (___   | | | \  / | 
-         \___ \| |  | |  / /\ \ | . ` |  | |    | |______\___ \  | | | |\/| | 
-         ____) | |__| | / ____ \| |\  |  | |   _| |_     ____) |_| |_| |  | | 
-        |_____/ \___\_\/_/    \_\_| \_|  |_|  |_____|   |_____/|_____|_|  |_| 
-                                                                              
-                  A SIMULATOR OF CONTROLLED NOVELTY AND DEGRADATION           
-                        OF TRANSCRIPTS SEQUENCED BY LONG-READS                
-        '''
-    )
-
-    # Argument parser
-    parser = argparse.ArgumentParser(prog='sqanti3_sim.py', description="SQANTI-SIM: a simulator of controlled novelty and degradation of transcripts sequence by long-reads")
-    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
-    parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
-    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
-    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
-    parser.add_argument("--min_ref_len", type=int, default=0, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
-    parser.add_argument('--ISM', default='0', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
-    parser.add_argument('--NIC', default='0', type=int, help = '\t\tNumber of novel-in-catalog to delete')
-    parser.add_argument('--NNC', default='0', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
-    parser.add_argument('--Fusion', default='0', type=int, help = '\t\tNumber of Fusion to delete')
-    parser.add_argument('--Antisense', default='0', type=int, help = '\t\tNumber of Antisense to delete')
-    parser.add_argument('--GG', default='0', type=int, help = '\t\tNumber of Genic-genomic to delete')
-    parser.add_argument('--GI', default='0', type=int, help = '\t\tNumber of Genic-intron to delete')
-    parser.add_argument('--Intergenic', default='0', type=int, help = '\t\tNumber of Intergenic to delete')
-    parser.add_argument('--read_only', action='store_true', help = '\t\tIf used the program will only categorize the GTF file but skipping writing a new modified GTF')
-    parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
-    parser.add_argument('-v', '--version', help='Display program version number.', action='version', version='SQANTI-SIM '+str(__version__))
-
-    # Input data
-    args = parser.parse_args()
-
-    ref_gtf = args.gtf
-    cat_in = args.cat
-    out_name = args.output
-    dir = args.dir
-
-    cat_out = os.path.join(dir, (out_name + '_categories.txt'))
-    gtf_modif = os.path.join(dir, (out_name + '_modified.gtf'))
-    del_trans = os.path.join(dir, (out_name + '_deleted.txt'))
-
-    counts = defaultdict(lambda: 0, {
-        'full-splice_match': 0,
-        'incomplete-splice_match': args.ISM,
-        'novel_in_catalog': args.NIC,
-        'novel_not_in_catalog':args.NNC,
-        'fusion' : args.Fusion,
-        'antisense': args.Antisense,
-        'genic_intron': args.GI,
-        'genic' :args.GG,
-        'intergenic':args.Intergenic
-    })
-
-    if not args.cat:
-        # Parsing transcripts from GTF
-        print('***Parsing transcripts from GTF reference annotation file\n')
-        trans_by_chr = gtf_parser(ref_gtf)
-
-        # Classify transcripts
-        print('***Classifying transcripts according to its SQANTI3 structural category\n')
-        trans_info = defaultdict(lambda: [])
-
-        if args.cores <= 1:
-            initializer()
-            for chrom in trans_by_chr:
-                print(chrom)
-                for record in tqdm(range(len(trans_by_chr[chrom]))):
-                    trans_by_region = trans_by_chr[chrom][record]
-                    tmp = transcript_classification(trans_by_region)
-                    for k in tmp:
-                        trans_info[k].extend(tmp[k])
-
-        else: # Paralellization
-            all_regions = []
-            for chrom in trans_by_chr:
-                all_regions.extend(trans_by_chr[chrom])
-            
-            pool = mp.Pool(args.cores, initializer, ())
-            tmp = pool.map(transcript_classification, all_regions) # TODO: use apply and add min_ref_len
-            for x in tmp:
-                for k, v in x.items():
-                    trans_info[k].extend(v)
-
-        # Write category file
-        print("***Writting structural category file\n")
-        write_category_file(trans_info, cat_out)
-
-        # Write modified GTF
-        cat_in = cat_out
-    
-    if not args.read_only:
-        print('***Writting modified GTF\n')
-        #target, ref_genes, ref_trans = target_trans(cat_in, counts)
-        target = target_trans(cat_in, del_trans, counts)
-        #modifyGTF(ref_gtf, gtf_modif, target, ref_genes)
-        modifyGTF(ref_gtf, gtf_modif, target)
-    
-    if not args.cat:
-        # Print summary table
-        print('Summary table from categorization\n')
-        summary_table(trans_info)
-
-    if not args.read_only:
-        counts_2 = defaultdict(lambda: 0, {
-            'full-splice_match': 0,
-            'incomplete-splice_match': args.ISM,
-            'novel_in_catalog': args.NIC,
-            'novel_not_in_catalog':args.NNC,
-            'fusion' : args.Fusion,
-            'antisense': args.Antisense,
-            'genic_intron': args.GI,
-            'genic' :args.GG,
-            'intergenic':args.Intergenic
-        }) 
-
-        print('Deleted from reference GTF\n')
-        for k in counts:
-            print(k, counts_2[k]-counts[k])
-
-
-if __name__ == '__main__':
-    t_ini = time()
-    main()
-    t_fin = time()
-    print('\n[Execution time %s seconds]' %(t_fin-t_ini))
