@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_logo.png">
+  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png">
 </p>
 
 # SQANTI-SIM
@@ -23,7 +23,7 @@ conda install -c conda-forge tqdm
 
 SQANTI-SIM can be used in two different ways: (i) to classify all transcripts from a GTF file and then modifiy the original annotation GTF file or (ii) give as input the intermediary file with the structural categories and just modify the original GTF for different porpuses.
 
-![SQANTI-SIM workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_workflow.png)
+![SQANTI-SIM workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_workflow.png)
 
 ### Required input
 
@@ -78,7 +78,7 @@ optional arguments:
 
 ## Classification criteria
 
-![classification workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/sqantisim_class_decision_tree.png)
+![classification workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_class_decision_tree.png)
 
 ## Example run
 
