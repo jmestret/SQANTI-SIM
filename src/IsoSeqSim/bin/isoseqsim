@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+# NOTE: this file was modified to fit the SQANTI-SIM pipeline
+# Contributor: Jorge Mestre
+
 import argparse, sys, os, time
 from subprocess import call
 
@@ -18,10 +22,16 @@ def main():
 		sys.stdout.flush()
 		cmd2 = udir + "/py_isoseqsim_gpd2fa_normal.py -a " + args.genome + " -g " + tempdir + "/normal_annotation.gpd" + " -o " + tempdir + "/normal_transcriptome.fa"
 		call(cmd2.split())
-		sys.stdout.write("# Step3: generate expression matrix based on Negative Binomial distribution\n")
-		sys.stdout.flush()
-		cmd3 = udir + "/py_isoseqsim_generate_expr_matrix.py -i " + tempdir + "/normal_annotation.gpd" + " -n " + args.nbn + " -p " + args.nbp + " -o " + args.transcript
-		call(cmd3.split())
+		if args.expr is None:
+			sys.stdout.write("# Step3: generate expression matrix based on input counts\n")
+			sys.stdout.flush()
+			cmd3 = udir + "/py_isoseqsim_generate_expr_matrix.py -i " + tempdir + "/normal_annotation.gpd" + " -n " + args.nbn + " -p " + args.nbp + " -o " + args.transcript
+			call(cmd3.split())
+		else:
+			sys.stdout.write("# Step3: generate expression matrix based on Negative Binomial distribution\n")
+			sys.stdout.flush()
+			cmd3 = udir + "/py_isoseqsim_generate_expr_matrix_by_fixed_count.py -i " + tempdir + "/normal_annotation.gpd" + " -e " + args.expr + " -o " + args.transcript + " --number " + str(args.number)
+			call(cmd3.split())
 		sys.stdout.write("# Step4: simulate Iso-Seq reads\n")
 		sys.stdout.flush()
 		cmd4 = udir + "/py_isoseqsim_simulate_reads_normal.py -g " + args.transcript + " -t " + tempdir + "/normal_transcriptome.fa" + " -5 " + args.c5 + " -3 " + args.c3 + " -o " + args.output + " -s " + args.es + " -i " + args.ei + " -d " + args.ed + " -p " + args.cpu
@@ -152,6 +162,8 @@ def do_inputs():
 	group1.add_argument('--es',type=str,default='0.017',help="Error rate: substitution. For more choices, see README")
 	group1.add_argument('--ei',type=str,default='0.011',help="Error rate: insertion. For more choices, see README")
 	group1.add_argument('--ed',type=str,default='0.022',help="Error rate: deletion. For more choices, see README")
+	parser.add_argument('--number', '-n', help='number of reads to generate', default=20000, type=int)
+	group1.add_argument('--expr', type=str, default=None, help="Expression file")
 
 	group2 = parser.add_argument_group('Fusion mode options')
 	group2.add_argument('--fc',type=str,default='all',help="Number of fusion transcripts to generate. Note: total # of generated fusion transcripts = (# of gene)*(# of gene - 1)")

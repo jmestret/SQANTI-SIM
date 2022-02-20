@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 '''
-Stats from sqantisim
-Author: Jorge Mestre Tomas
-Date: 15/02/2021
-Last update: 15/02/2022
+sqanti3_stats.py
+Generate counts for sim
+
+@author Jorge Mestre Tomas (jormart2@alumni.uv.es)
+@date 20/02/2022
 '''
 
 import argparse
 from collections import defaultdict
-from operator import ge
-from termios import TCSETS
-from tracemalloc import start
 
 
 class myQueryIsoforms:

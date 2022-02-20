@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+# NOTE: this file was modified to fit the SQANTI-SIM pipeline
+# Contributor: Jorge Mestre
+
 import sys,time,argparse
 import numpy as np
 
@@ -38,7 +42,7 @@ def convert_gpd_to_fasta(input_fa_fl,input_gpd_fl,output_fa_fl):
 		seq = seq.upper()
 
 		up_seq_list = list(seq) # non AGCT nucleotide
-		for i in xrange(len(up_seq_list)):
+		for i in range(len(up_seq_list)):
 			if up_seq_list[i] in dic_nogatc_code:
 				up_seq_list[i] = np.random.choice(dic_nogatc_code[up_seq_list[i]])
 
@@ -49,8 +53,8 @@ def convert_gpd_to_fasta(input_fa_fl,input_gpd_fl,output_fa_fl):
 			seq = seq_com[::-1]
 		else:
 			seq = "".join(up_seq_list)
-		print >>output_fa_fl, ">" + iso
-		print >>output_fa_fl, seq
+		output_fa_fl.write(">" + iso + '\n')
+		output_fa_fl.write(seq + '\n')
 
 	input_fa_fl.close()
 	input_gpd_fl.close()

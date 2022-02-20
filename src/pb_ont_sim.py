@@ -1,16 +1,16 @@
+#!/usr/bin/env python3
 '''
+pb_ont_sim.py
 Generate counts for sim
 
 @author Jorge Mestre Tomas (jormart2@alumni.uv.es)
-@date 19/01/2020
+@date 20/02/2022
 '''
 
-from asyncio.log import logger
 import logging
 import os
-from pyexpat import model
 import subprocess
-from weakref import ref
+from collections import defaultdict
 
 
 def pb_simulation(args):
@@ -25,7 +25,7 @@ def pb_simulation(args):
                          '-o', os.path.join(args.output, 'PacBio_simulated'),
                          '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
                          '--es 0.01731', '--ed 0.01090', '--ei 0.02204',
-                         '--read_numer', str(args.read_count / 1000000.0),
+                         '-n', args.read_count,
                          '-m normal', '--cpu', str(args.cpus)                    
     ])
 
@@ -61,7 +61,7 @@ def ont_simulation(args):
         res = subprocess.run(['tar -xzf', model_name + '.tar.gz'])
         os.chdir(cwd)
         if res.returncode != 0:
-            logger.error('Unpacking NanoSim pre-trained model failed')
+            logging.error('Unpacking NanoSim pre-trained model failed')
 
     logging.info('***Simulating ONT reads with NanoSim')
     cmd = [nanosim, 'transcriptome', '-rt', str(args.transcriptome),
@@ -81,8 +81,9 @@ def ont_simulation(args):
         logging.error('***ERROR running NanoSim, contact developers for support')
         return
 
-    logger.info('***Renaming and counting ONT reads')
+    logging.info('***Renaming and counting ONT reads')
     ref_trans = set()
+    ref_dict = defaultdict(lambda: str())
     with open(args.annot, 'r') as f_in:
         for line in f_in:
             if not line.startswith('#'):
@@ -91,13 +92,17 @@ def ont_simulation(args):
                 if feature == 'exon':
                     trans_id = line_split[line_split.index('transcript_id') + 1]
                     trans_id = trans_id.replace(';', '').replace('"', '')
-                    ref_trans.add(trans_id)
+                    short_id = trans_id.split('.')[0]
+                    ref_trans.add(short_id)  # TODO: dont loose the whole transcript id
+                    ref_dict[short_id] = trans_id
     f_in.close()
 
     fastqs = [os.path.join(args.output, "ONT_simulated_aligned_reads.fastq"),
               os.path.join(args.output, "ONT_simulated_unaligned_reads.fastq")]
 
-    n_reads = 0
+    n_read = 0
+    pair_id = []
+    id_counts = defaultdict(lambda: 0)
     f_name = os.path.join(args.output, 'ONT_simulated.fastq')
     f_out = open(f_name, 'w')
 
@@ -108,4 +113,36 @@ def ont_simulation(args):
                 line = line.lstrip('@')
                 trans_id = line.split('_')[0]
 
-    # TODO: end changing names
+                if trans_id not in ref_trans:
+                    logging.warning(trans_id, 'was not found in the annotation')
+                else:
+                    trans_id = ref_dict[trans_id]
+                    
+                id_counts[trans_id] += 1
+                read_id = 'ONT_simulated_read_{}'.format(n_read)
+                n_read += 1
+                pair_id.append((read_id, trans_id))
+
+                f_out.write('@{}\n'.format(read_id))
+            else:
+                f_out.write(line)
+    f_in.close()
+    f_out.close()
+
+    logging.info('***Saving counts and read-to-isoform files')
+    f_name = os.path.join(args.output, 'ONT_simulated.read_to_isoform.tsv')
+    f_out = open(f_name, 'w')
+
+    for pair in pair_id:
+        f_out.write(str(pair[0]) + '\t' + str(pair[1]) + '\n')
+    f_out.close()
+
+    f_name = os.path.join(args.output, 'ONT_simulated.isoform_counts.tsv')
+    f_out = open(f_name, 'w')
+
+    for k, v in id_counts:
+        f_out.write(str(k) + '\t' + str(v) + '\n')
+    f_out.close()
+
+    logging.info('***NanoSim simulation done')
+    return

@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 '''
 expr_file_fixed_count.py
 Generate expression file for simulation
 
 @author Jorge Mestre Tomas (jormart2@alumni.uv.es)
-@date 19/01/2020
+@date 20/02/2022
 '''
 
 def create_expr_file(f_cat: str, f_del: str, n_trans: int, coverage: int, output: str):

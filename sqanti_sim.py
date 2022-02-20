@@ -7,7 +7,7 @@ controlled novelty and degradation of transcripts based on SQANTI3 structural
 categories
 
 @author Jorge Mestre Tomas (jormart2@alumni.uv.es)
-@date 19/01/2020
+@date 19/01/2022
 '''
 
 __version__ = '0.0'
