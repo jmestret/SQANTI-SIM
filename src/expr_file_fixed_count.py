@@ -29,8 +29,9 @@ def create_expr_file(f_cat: str, f_del: str, n_trans: int, coverage: int, output
 
     cat_in.close()
     
+    tpm = (1000000.0 * coverage) / (coverage * n_trans)
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     for trans in tot_trans:
-        f_out.write(trans + '\t' + coverage + '\t' + coverage + '\n')
+        f_out.write(trans + '\t' + str(coverage) + '\t' + tpm + '\n')
     f_out.close()
