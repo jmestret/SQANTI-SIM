@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict
 from src import classif_modif_gtf
 from src import expr_file_fixed_count
-
+from src import pb_ont_sim
 
 def classif():
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
@@ -43,13 +43,10 @@ def classif():
     if unknown:
         print('classif mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
 
-    cat_out = os.path.join(args.dir, (args.output + '_categories.txt'))
-    gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
-    del_trans = os.path.join(args.dir, (args.output + '_deleted.txt'))
-
     if not args.cat:
         # Classify GTF transcripts in SQANTI3 structural categories
         trans_info = classif_modif_gtf.classify_gtf(args)
+        cat_out = os.path.join(args.dir, (args.output + '_categories.txt'))
         args.cat = cat_out
 
     if not args.read_only:
@@ -87,6 +84,7 @@ def expr():
     parser.add_argument('-c', '--coverage', default = 5, type=int,  help = '\t\tNumber of counts to simulate for each transcript (coverage)', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('--read_only', action='store_true', help = '\t\tIf used the program will only categorize the GTF file but skipping writing a new modified GTF')
 
     args, unknown = parser.parse_known_args()
 
@@ -100,7 +98,34 @@ def expr():
     )
 
     return
+
+
+def sim():
+    parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
+    parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
+    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
+    parser.add_argument('--expr', default = False,  help = '\t\tExpression file as formated in README', required=True)
+    parser.add_argument('--read_count', default = 50000, type=int,  help = '\t\tNumber of reads to simulate', required=True)
+    parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation', required=True)
+    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
+    group = parser.add_argument_group('Sequencing technology', 'Choose PacBio or Nanopore reads')
+    group.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
+    group.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
     
+    args, unknown = parser.parse_known_args()
+
+    if unknown:
+        print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
+
+    args.output = cat_out = os.path.join(args.dir, args.output)
+
+    if args.pb:
+        pb_ont_sim.pb_simulation(args)
+    if args.ont:
+        pb_ont_sim.ont_simulation(args)
+
 
 #####################################
 #                                   #
@@ -124,7 +149,7 @@ print(
 
 if len(sys.argv) < 2:
     print('usage: python sqanti_sim.py <mode> --help\n', file=sys.sys.stderr)
-    print('modes: classif, sim, stats\n', file=sys.sys.stderr)
+    print('modes: classif, expr, sim, stats\n', file=sys.sys.stderr)
     sys.exit(1)
 
 else:
@@ -139,6 +164,12 @@ if mode == 'classif':
 if mode == 'expr':
     try:
         res = expr()
+    except:
+        sys.exit(1)
+
+if mode == 'sim':
+    try:
+        res = sim()
     except:
         sys.exit(1)
 

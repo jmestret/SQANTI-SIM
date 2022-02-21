@@ -19,14 +19,14 @@ def pb_simulation(args):
     isoseqsim = os.path.join(src_dir, 'IsoSeqSim/bin/isoseqsim')
     util_dir = os.path.join(src_dir, 'IsoSeqSim/utilities/')
     res = subprocess.run([isoseqsim, '-g', str(args.genome),
-                         '-a', str(args.annot), '--expr', str(args.expr),
+                         '-a', str(args.gtf), '--expr', str(args.expr),
                          '--c5', os.path.join(util_dir, '5_end_completeness.PacBio-Sequel.tab'),
                          '--c3', os.path.join(util_dir, '3_end_completeness.PacBio-Sequel.tab'),
                          '-o', os.path.join(args.output, 'PacBio_simulated'),
                          '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
                          '--es 0.01731', '--ed 0.01090', '--ei 0.02204',
                          '-n', args.read_count,
-                         '-m normal', '--cpu', str(args.cpus)                    
+                         '-m normal', '--cpu', str(args.cores)                    
     ])
 
     if res.returncode != 0:
@@ -69,7 +69,7 @@ def ont_simulation(args):
            '-c', str(model_dir + 'training'),
            '-o', os.path.join(args.output, 'ONT_simulated'),
            '-n', str(args.read_count), '-r', r_type,
-           '-b guppy', '-t', str(args.cpus), '--fastq'
+           '-b guppy', '-t', str(args.cores), '--fastq'
     ]
 
     if uracil:
@@ -84,7 +84,7 @@ def ont_simulation(args):
     logging.info('***Renaming and counting ONT reads')
     ref_trans = set()
     ref_dict = defaultdict(lambda: str())
-    with open(args.annot, 'r') as f_in:
+    with open(args.gtf, 'r') as f_in:
         for line in f_in:
             if not line.startswith('#'):
                 line_split = line.split()
