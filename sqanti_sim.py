@@ -13,20 +13,15 @@ categories
 __version__ = '0.0'
 
 import argparse
-import multiprocessing
 import os
 import sys
 from collections import defaultdict
-from tqdm import tqdm
 from src import classif_modif_gtf
+from src import expr_file_fixed_count
 
 
 def classif():
-    def initializer():
-            global min_ref_len
-            min_ref_len = args.min_ref_len
-
-    parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse option')
+    parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
@@ -46,62 +41,20 @@ def classif():
     args, unknown = parser.parse_known_args()
 
     if unknown:
-        print('classif unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
+        print('classif mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
 
     cat_out = os.path.join(args.dir, (args.output + '_categories.txt'))
     gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
     del_trans = os.path.join(args.dir, (args.output + '_deleted.txt'))
 
     if not args.cat:
-        # parsing transcripts from GTF
-        print('***Parsing transcripts from GTF reference annotation file\n')
-        trans_by_chr = classif_modif_gtf.gtf_parser(args.gtf)
-
-        # classify transcripts
-        print('***Classifying transcripts according to its SQANTI3 structural category\n')
-        trans_info = defaultdict(lambda: [])
-
-        if args.cores <= 1:
-            initializer()
-            for chrom in trans_by_chr:
-                print(chrom)
-                for record in tqdm(range(len(trans_by_chr[chrom]))):
-                    trans_by_region = trans_by_chr[chrom][record]
-                    tmp = classif_modif_gtf.transcript_classification(trans_by_region)
-                    for k in tmp:
-                        trans_info[k].extend(tmp[k])
-
-        else: # multiprocessing
-            all_regions = []
-            for chrom in trans_by_chr:
-                all_regions.extend(trans_by_chr[chrom])
-            
-            pool = multiprocessing.Pool(args.cores, initializer, ())
-            tmp = pool.map(classif_modif_gtf.transcript_classification, all_regions)
-            for x in tmp:
-                for k, v in x.items():
-                    trans_info[k].extend(v)
-
-        # Write category file
-        print("***Writting structural category file\n")
-        classif_modif_gtf.write_category_file(trans_info, cat_out)
-        cat_in = cat_out
+        # Classify GTF transcripts in SQANTI3 structural categories
+        trans_info = classif_modif_gtf.classify_gtf(args)
+        args.cat = cat_out
 
     if not args.read_only:
-        print('***Writting modified GTF\n')
-        counts = defaultdict(lambda: 0, {
-            'full-splice_match': 0,
-            'incomplete-splice_match': args.ISM,
-            'novel_in_catalog': args.NIC,
-            'novel_not_in_catalog':args.NNC,
-            'fusion' : args.Fusion,
-            'antisense': args.Antisense,
-            'genic_intron': args.GI,
-            'genic' :args.GG,
-            'intergenic':args.Intergenic
-        })
-        target = classif_modif_gtf.target_trans(cat_in, del_trans, counts)
-        classif_modif_gtf.modifyGTF(args.gtf, gtf_modif, target)
+        # Modify reference GTF
+        counts_end = classif_modif_gtf.simulate_gtf(args)
 
     if not args.cat:
         # Print summary table
@@ -121,10 +74,33 @@ def classif():
             'genic' :args.GG,
             'intergenic':args.Intergenic
         }) 
-        classif_modif_gtf.summary_table_del(counts_ini, counts)
+        classif_modif_gtf.summary_table_del(counts_ini, counts_end)
 
     return
 
+
+def expr():
+    parser = argparse.ArgumentParser(prog='sqanti_sim.py expr', description='sqanti_sim.py expr parse options')
+    parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
+    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans', required=True)
+    parser.add_argument('-nt', '--n_trans', default = 10000, type=int,  help = '\t\tNumber of different transcripts to simulate', required=True)
+    parser.add_argument('-c', '--coverage', default = 5, type=int,  help = '\t\tNumber of counts to simulate for each transcript (coverage)', required=True)
+    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+
+    args, unknown = parser.parse_known_args()
+
+    if unknown:
+        print('expr mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
+
+    f_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
+
+    expr_file_fixed_count.create_expr_file(args.cat, args.deleted, args.n_trans,
+                                           args.coverage, f_out
+    )
+
+    return
+    
 
 #####################################
 #                                   #
@@ -159,4 +135,11 @@ if mode == 'classif':
         res = classif()
     except:
         sys.exit(1)
+
+if mode == 'expr':
+    try:
+        res = expr()
+    except:
+        sys.exit(1)
+
 

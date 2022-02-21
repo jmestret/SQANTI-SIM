@@ -26,7 +26,6 @@ import itertools
 import multiprocessing as mp
 from collections import defaultdict, namedtuple
 from time import time
-from tkinter import N
 from tqdm import tqdm
 
 try:
@@ -1092,3 +1091,68 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
     f_out.close()
 
     return
+
+
+def classify_gtf(args):
+    def initializer():
+        global min_ref_len
+        min_ref_len = args.min_ref_len
+    # parsing transcripts from GTF
+
+    print('***Parsing transcripts from GTF reference annotation file\n')
+    trans_by_chr = gtf_parser(args.gtf)
+
+    # classify transcripts
+    print('***Classifying transcripts according to its SQANTI3 structural category\n')
+    trans_info = defaultdict(lambda: [])
+
+    if args.cores <= 1:
+        initializer()
+        for chrom in trans_by_chr:
+            print(chrom)
+            for record in tqdm(range(len(trans_by_chr[chrom]))):
+                trans_by_region = trans_by_chr[chrom][record]
+                tmp = transcript_classification(trans_by_region)
+                for k in tmp:
+                    trans_info[k].extend(tmp[k])
+
+    else: # multiprocessing
+        all_regions = []
+        for chrom in trans_by_chr:
+            all_regions.extend(trans_by_chr[chrom])
+        
+        pool = mp.Pool(args.cores, initializer, ())
+        tmp = pool.map(transcript_classification, all_regions)
+        for x in tmp:
+            for k, v in x.items():
+                trans_info[k].extend(v)
+
+    # Write category file
+    print("***Writting structural category file\n")
+    cat_out = os.path.join(args.dir, (args.output + '_categories.txt'))
+    write_category_file(trans_info, cat_out)
+
+    return trans_info
+
+
+def simulate_gtf(args, cat_in):
+    print('***Writting modified GTF\n')
+    counts = defaultdict(lambda: 0, {
+        'full-splice_match': 0,
+        'incomplete-splice_match': args.ISM,
+        'novel_in_catalog': args.NIC,
+        'novel_not_in_catalog':args.NNC,
+        'fusion' : args.Fusion,
+        'antisense': args.Antisense,
+        'genic_intron': args.GI,
+        'genic' :args.GG,
+        'intergenic':args.Intergenic
+    })
+
+    gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
+    del_trans = os.path.join(args.dir, (args.output + '_deleted.txt'))
+
+    target = target_trans(args.cat, del_trans, counts)
+    modifyGTF(args.gtf, gtf_modif, target)
+
+    return counts
