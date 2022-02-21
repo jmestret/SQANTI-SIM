@@ -19,6 +19,7 @@ from collections import defaultdict
 from src import classif_modif_gtf
 from src import expr_file_fixed_count
 from src import pb_ont_sim
+from src import sqanti3_stats
 
 def classif():
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
@@ -127,6 +128,28 @@ def sim():
         pb_ont_sim.ont_simulation(args)
 
 
+def eval():
+    parser = argparse.ArgumentParser(prog='sqanti_sim.py eval', description='sqanti_sim.py eval parse options')
+    parser.add_argument('--isoforms', default = False,  help = '\t\tGTF with trancriptome reconstructed with your pipeline', required=True)
+    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
+    parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
+    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans', required=True)
+    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
+    parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
+    parser.add_argument("--min_ref_len", type=int, default=0, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
+    
+    args, unknown = parser.parse_known_args()
+
+    if unknown:
+        print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
+
+    sqanti3_stats.run_sqanti3(args)
+    classification_file = cat_out = os.path.join(args.dir, (args.output + '_classification.txt'))
+    junctions_file = cat_out = os.path.join(args.dir, (args.output + '_junctions.txt'))
+    sqanti3_stats.stats(args, classification_file, junctions_file)
+
+
 #####################################
 #                                   #
 #               MAIN                #
@@ -149,7 +172,7 @@ print(
 
 if len(sys.argv) < 2:
     print('usage: python sqanti_sim.py <mode> --help\n', file=sys.sys.stderr)
-    print('modes: classif, expr, sim, stats\n', file=sys.sys.stderr)
+    print('modes: classif, expr, sim, eval\n', file=sys.sys.stderr)
     sys.exit(1)
 
 else:
@@ -173,4 +196,11 @@ if mode == 'sim':
     except:
         sys.exit(1)
 
+if mode == 'eval':
+    try:
+        res = eval()
+    except:
+        sys.exit(1)
 
+if mode == '--version':
+	sys.stderr.write('SQANTI-SIM v0.0.0\n')
