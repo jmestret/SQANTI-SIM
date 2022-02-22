@@ -43,7 +43,7 @@ except ImportError:
     sys.exit(-1)
 
 
-utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "utilities")
+utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "SQANTI3/utilities")
 GTF2GENEPRED_PROG = os.path.join(utilitiesPath,"gtfToGenePred")
 #GTF2GENEPRED_PROG = '/home/jorge/Desktop/SQANTI3/utilities/gtfToGenePred'
 

@@ -7,7 +7,6 @@ Generate counts for sim
 @date 20/02/2022
 '''
 
-from importlib.metadata import distribution
 import logging
 import os
 import sys
@@ -196,7 +195,7 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
     return
 
 
-def simulate_gtf(args, cat_in):
+def simulate_gtf(args):
     print('***Writting modified GTF\n')
     counts = defaultdict(lambda: 0, {
         'full-splice_match': 0,
@@ -221,7 +220,7 @@ def simulate_gtf(args, cat_in):
 
 def summary_table_del(counts_ini: dict, counts_end: dict):
     for sc in counts_end:
-        counts_ini[sc] = counts_ini[sc] - counts_end[sc]
+        counts_ini[sc] -= counts_end[sc]
     
     print('\033[94m_' * 79 + '\033[0m')
     print('\033[92mS Q A N T I - S I M\033[0m \U0001F4CA')

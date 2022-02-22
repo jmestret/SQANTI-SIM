@@ -17,7 +17,6 @@ import os
 import sys
 from collections import defaultdict
 from src import classif_gtf
-from src import expr_file
 from src import pb_ont_sim
 from src import sqanti3_stats
 
@@ -44,39 +43,15 @@ def classif():
     return
 
 
-def expr():
-    parser = argparse.ArgumentParser(prog='sqanti_sim.py expr', description='sqanti_sim.py expr parse options')
-    parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
-    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans', required=True)
-    parser.add_argument('-nt', '--n_trans', default = 10000, type=int,  help = '\t\tNumber of different transcripts to simulate', required=True)
-    parser.add_argument('-c', '--coverage', default = 5, type=int,  help = '\t\tNumber of counts to simulate for each transcript (coverage)', required=True)
-    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
-    parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
-    parser.add_argument('--read_only', action='store_true', help = '\t\tIf used the program will only categorize the GTF file but skipping writing a new modified GTF')
-
-    args, unknown = parser.parse_known_args()
-
-    if unknown:
-        print('expr mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
-
-    f_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
-
-    classif.create_expr_file(args.cat, args.deleted, args.n_trans,
-                                           args.coverage, f_out
-    )
-
-    return
-
-
 def sim():
     parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
     parser.add_argument('-i', '--read', default = False,  help = '\t\tInput reads for quantification')
-    parser.add_argument('-nt', '--n_trans', default = 20000, type=int,  help = '\t\tNumber of different transcripts to simulate', required=True)
-    parser.add_argument('--read_count', default = 100000, type=int,  help = '\t\tNumber of reads to simulate', required=True)
-    parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation', required=True)
+    parser.add_argument('-nt', '--n_trans', default = 20000, type=int,  help = '\t\tNumber of different transcripts to simulate')
+    parser.add_argument('--read_count', default = 100000, type=int,  help = '\t\tNumber of reads to simulate')
+    parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
