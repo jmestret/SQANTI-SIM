@@ -227,7 +227,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
     print()
     print('GTF modification summary Table \U0001F50E')
     print('\033[94m_' * 79 + '\033[0m')
-    for k, v in counts_end.items():
+    for k, v in counts_ini.items():
         print('\033[92m|\033[0m ' + k + ': ' + str(v))
 
 
