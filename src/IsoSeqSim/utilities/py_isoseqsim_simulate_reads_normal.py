@@ -146,7 +146,8 @@ def generate_simulated_reads(inputs):
 		generated_reads = []
 		for i in range(0,int(read_count)):
 			simu_fa_seq_line_list = []
-			read_seq_muta = mutate_read(read_seq,error_type,error_prob)
+			read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
+			read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
 			read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
 			if read_seq_muta_end != "":
 				lr_idx += 1

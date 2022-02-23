@@ -253,6 +253,8 @@ def create_expr_file_fixed_count(f_cat: str, f_del: str, n_trans: int, read_coun
                 break
 
     cat_in.close()
+    if len(tot_trans) != n_trans:
+        print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(len(tot_trans)))
     
 
     coverage = read_count//n_trans
@@ -260,7 +262,7 @@ def create_expr_file_fixed_count(f_cat: str, f_del: str, n_trans: int, read_coun
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     for trans in tot_trans:
-        f_out.write(trans + '\t' + str(coverage) + '\t' + tpm + '\n')
+        f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     f_out.close()
 
 def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str):
@@ -273,25 +275,26 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
     del_in.close()
 
 
-    tot_trans = deleted
+    known_trans = set()
     with open(f_cat, 'r') as cat_in:
         skip = cat_in.readline()
         for line in cat_in:
             trans = line.split()[0]
             if trans not in deleted:
-                tot_trans.add(trans)
-            if len(tot_trans) == n_trans:
+                known_trans.add(trans)
+            if (len(known_trans) + len(deleted)) == n_trans:
                 break
 
     cat_in.close()
 
-    nb_known = numpy.random.negative_binomial(nbn_known,nbp_known,len(tot_trans)-len(deleted)).tolist()
+    nb_known = numpy.random.negative_binomial(nbn_known,nbp_known,len(known_trans)).tolist()
     nb_novel = numpy.random.negative_binomial(nbn_novel,nbp_novel,len(deleted)).tolist()
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     i_known = 0
     i_novel = 0
+    tot_trans = set.union(deleted,known_trans)
     for trans in tot_trans:
         if trans in deleted:
             coverage = nb_novel[i_novel]
@@ -299,13 +302,15 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
         else:
             coverage = nb_known[i_known]
             i_known += 1
+        if coverage == 0: # minimum one count per transcript
+            coverage +=1
         tpm = (1000000.0 * coverage) / (coverage * n_trans)  
-        f_out.write(trans + '\t' + str(coverage) + '\t' + tpm + '\n')
+        f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     f_out.close()
 
 
 def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str, tech):
-    sam_file = ''.join(output.split[:-1]) + '_' + tech + '.sam'
+    sam_file = ''.join(output.split('.')[:-1]) + '_' + tech + '.sam'
 
     if tech == 'pb':
         res = subprocess.run(['minimap2', ref_trans, reads, '-x', 'map-pb',
@@ -322,7 +327,7 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
 
     trans_counts = defaultdict(lambda: 0)
 
-    with pysam.AligmentFile(sam_file, 'r') as sam_file_in:
+    with pysam.AlignmentFile(sam_file, 'r') as sam_file_in:
         for align in sam_file_in:
             trans_id = align.reference_name
 
@@ -355,30 +360,38 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
                 break
     cat_in.close()
 
+    print(len(deleted), len(known_trans), n_trans)
+
     lim_novel = (len(deleted)//3)*2
     lim_known = (len(known_trans)//3)*2
 
     novel_expr = expr_distr[:lim_novel]
-    known_expr =  expr_distr[lim_known:]
+    known_expr =  expr_distr[-lim_known:]
+
+    print(lim_novel, len(novel_expr))
+    print(lim_known, len(known_expr))
 
     expr_distr = expr_distr[lim_novel:lim_known]
     random.shuffle(expr_distr)
 
     novel_expr.extend(expr_distr[:len(deleted)-lim_novel])
-    known_expr.extend(expr_distr[len(known_trans)-lim_known:])
+    known_expr.extend(expr_distr[-(len(known_trans)-lim_known):])
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
 
+    print(len(deleted), len(novel_expr))
+    print(len(known_trans), len(known_expr))
+
     for i, trans in enumerate(deleted):
         coverage = novel_expr[i] 
         tpm = (1000000.0 * coverage) / (coverage * n_trans)
-        f_out.write(trans + '\t' + str(coverage) + '\t' + tpm + '\n')
+        f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     
     for i, trans in enumerate(known_trans):
         coverage = known_expr[i]
         tpm = (1000000.0 * coverage) / (coverage * n_trans)
-        f_out.write(trans + '\t' + str(coverage) + '\t' + tpm + '\n')
+        f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
 
     f_out.close()
 
@@ -431,7 +444,7 @@ def ont_simulation(args):
         logging.info('***Untar NanoSim model')
         cwd = os.getcwd()
         os.chdir(models)
-        res = subprocess.run(['tar -xzf', model_name + '.tar.gz'])
+        res = subprocess.run(['/bin/tar -xzf', model_name + '.tar.gz'])
         os.chdir(cwd)
         if res.returncode != 0:
             logging.error('Unpacking NanoSim pre-trained model failed')
