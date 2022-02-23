@@ -14,13 +14,15 @@ __version__ = '0.0'
 
 import argparse
 import os
+from random import choices
+from re import sub
 import sys
 from collections import defaultdict
 from src import classif_gtf
 from src import pb_ont_sim
 from src import sqanti3_stats
 
-def classif():
+def classif(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
@@ -28,7 +30,7 @@ def classif():
     parser.add_argument('--min_ref_len', type=int, default=0, help='\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
 
-    args, unknown = parser.parse_known_args()
+    args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print('classif mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
@@ -43,21 +45,36 @@ def classif():
     return
 
 
-def sim():
+def sim(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
+
+    subparsers = parser.add_subparsers(dest='subparser')
+
+    # Arguments for each simulation mode
+    parser_equal = subparsers.add_parser('equal', help = '\t\tSimulate with equal coverage for all reads')
+    parser_equal.add_argument('-nt', '--n_trans', default = 20000, type=int,  help = '\t\tNumber of different transcripts to simulate')
+    parser_equal.add_argument('--read_count', default = 100000, type=int,  help = '\t\tNumber of reads to simulate')
+
+    parser_custom = subparsers.add_parser('custom', help = '\t\tSimulate with diferent negative binomial distributions for novel and known transcripts')
+    parser_custom.add_argument('-nt', '--n_trans', default = 20000, type=int,  help = '\t\tNumber of different transcripts to simulate')
+    parser.add_argument('--nbn_known',type=str,default='50',help="Average read count per transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution)")
+    parser.add_argument('--nbp_known',type=str,default='0.5',help="The parameter 'p' of the Negative Binomial distribution")
+    parser.add_argument('--nbn_novel',type=str,default='5',help="Average read count per transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution)")
+    parser.add_argument('--nbp_novel',type=str,default='0.5',help="The parameter 'p' of the Negative Binomial distribution")
+    
+
+    parser_sample = subparsers.add_parser('sample', help = '\t\tSimulate using a real sample')
+    parser_sample.add_argument('-i', '--read', default = False,  help = '\t\tInput reads for quantification')
+
+    # General argments for all modes
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
+    parser.add_argument('-rt', help='reference transcripts in FASTA format (for custom simulation and/or ont reads)', type=str)
     parser.add_argument('--cat', default = False,  help = '\t\tFile with transcripts structural categories generated with SQANTI-SIM')
-    parser.add_argument('-i', '--read', default = False,  help = '\t\tInput reads for quantification')
-    parser.add_argument('-nt', '--n_trans', default = 20000, type=int,  help = '\t\tNumber of different transcripts to simulate')
-    parser.add_argument('--read_count', default = 100000, type=int,  help = '\t\tNumber of reads to simulate')
     parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
-    group = parser.add_argument_group('Sequencing technology', 'Choose PacBio or Nanopore reads')
-    group.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
-    group.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
     parser.add_argument('--ISM', default='2000', type=int, help = '\t\tNumber of incomplete-splice-matches to delete')
     parser.add_argument('--NIC', default='2000', type=int, help = '\t\tNumber of novel-in-catalog to delete')
     parser.add_argument('--NNC', default='2000', type=int, help = '\t\tNumber of novel-not-in-catalog to delete')
@@ -65,15 +82,13 @@ def sim():
     parser.add_argument('--Antisense', default='0', type=int, help = '\t\tNumber of Antisense to delete')
     parser.add_argument('--GG', default='0', type=int, help = '\t\tNumber of Genic-genomic to delete')
     parser.add_argument('--GI', default='0', type=int, help = '\t\tNumber of Genic-intron to delete')
-    parser.add_argument('--Intergenic', default='0', type=int, help = '\t\tNumber of Intergenic to delete')
-    parser.add_argument('-m', '--mode', default = '',  help = '\t\tQuantification mode: equal (all transcripts have same coverage), low (novel will have less coverage than known) or sample (given a fastq file with reads get count distribution)')
-    parser.add_argument('--nbn_known',type=str,default='50',help="Average read count per transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution)")
-    parser.add_argument('--nbp_known',type=str,default='0.5',help="The parameter 'p' of the Negative Binomial distribution")
-    parser.add_argument('--nbn_novel',type=str,default='5',help="Average read count per transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution)")
-    parser.add_argument('--nbp_novel',type=str,default='0.5',help="The parameter 'p' of the Negative Binomial distribution")
-    parser.add_argument("--reference_transcripts", "-r", help="reference transcripts in FASTA format", type=str)
-
-    args, unknown = parser.parse_known_args()
+    parser.add_argument('--Intergenic', default='0', type=int, help = '\t\tNumber of Intergenic to delete')    
+    group = parser.add_argument_group('Sequencing technology', 'Choose PacBio or Nanopore reads')
+    group.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
+    group.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
+    parser.add_argument('--no_sim', action='store_true', help = '\t\tIf used the program will not simulate just modify GTF')
+    
+    args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
@@ -94,44 +109,48 @@ def sim():
     }) 
     pb_ont_sim.summary_table_del(counts_ini, counts_end)
 
-    expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
-    deleted_out = os.path.join(args.dir, (args.output + '_deleted.txt'))
-
-    if mode == 'equal':
-        pb_ont_sim.create_expr_file_fixed_count(args.cat, deleted_out, args.n_trans,
-                                            args.read_count, expression_out
-        )
-    elif mode == 'custom':
-        pb_ont_sim.create_expr_file_nbinom(args.cat, deleted_out, args.n_trans,
-                                            args.nbn_known, args.nbp_known, 
-                                            args.nbn_novel, args.nbp_novel,
-                                            expression_out
-        )
     
-    elif mode == 'sample':
-        if args.pb:
-            pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
-                                            args.reference_transcripts, args.reads,
-                                            expression_out, 'pb'
-            )
-        if args.ont:
-            pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
-                                            args.reference_transcripts, args.reads,
-                                            expression_out, 'ont'
-            )
-    
+    if args.no_sim:
+        pass
     else:
-        print('Not valid sim mode', file=sys.stderr)
+        expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
+        deleted_out = os.path.join(args.dir, (args.output + '_deleted.txt'))
 
-    args.output = os.path.join(args.dir, args.output)
+        if args.subparse == 'equal':
+            pb_ont_sim.create_expr_file_fixed_count(args.cat, deleted_out, args.n_trans,
+                                                args.read_count, expression_out
+            )
+        elif args.subparse == 'custom':
+            pb_ont_sim.create_expr_file_nbinom(args.cat, deleted_out, args.n_trans,
+                                                args.nbn_known, args.nbp_known, 
+                                                args.nbn_novel, args.nbp_novel,
+                                                expression_out
+            )
+        
+        elif args.subparse == 'sample':
+            if args.pb:
+                pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
+                                                args.reference_transcripts, args.reads,
+                                                expression_out, 'pb'
+                )
+            if args.ont:
+                pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
+                                                args.reference_transcripts, args.reads,
+                                                expression_out, 'ont'
+                )
+        
+        else:
+            print('Not valid sim mode', file=sys.stderr)
 
-    if args.pb:
-        pb_ont_sim.pb_simulation(args)
-    if args.ont:
-        pb_ont_sim.ont_simulation(args)
+        args.output = os.path.join(args.dir, args.output)
+
+        if args.pb:
+            pb_ont_sim.pb_simulation(args)
+        if args.ont:
+            pb_ont_sim.ont_simulation(args)
 
 
-def eval():
+def eval(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py eval', description='sqanti_sim.py eval parse options')
     parser.add_argument('--isoforms', default = False,  help = '\t\tGTF with trancriptome reconstructed with your pipeline', required=True)
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
@@ -142,7 +161,7 @@ def eval():
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')
     parser.add_argument("--min_ref_len", type=int, default=0, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
     
-    args, unknown = parser.parse_known_args()
+    args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
@@ -180,30 +199,17 @@ if len(sys.argv) < 2:
 
 else:
     mode = sys.argv[1].lower()
+    input = sys.argv[:2]
 
 if mode == 'classif':
-    try:
-        res = classif()
-    except:
-        sys.exit(1)
-
-if mode == 'expr':
-    try:
-        res = expr()
-    except:
-        sys.exit(1)
+    res = classif(input)
 
 if mode == 'sim':
-    try:
-        res = sim()
-    except:
-        sys.exit(1)
+    res = sim(input)
 
 if mode == 'eval':
-    try:
-        res = eval()
-    except:
-        sys.exit(1)
+    res = eval(input)
+
 
 if mode == '--version':
 	sys.stderr.write('SQANTI-SIM v0.0.0\n')
