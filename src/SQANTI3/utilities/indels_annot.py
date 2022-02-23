@@ -31,7 +31,7 @@ def calc_indels_from_sam(samFile):
     :param samFile: aligned SAM file
     :return: indelsJunc (dict of pbid --> list of junctions near indel), indelsTotal (dict of pbid --> total indels count)
     """
-    sam = pysam.AlignmentFile(samFile, "r" ,check_sq=False )
+    sam = pysam.AlignmentFile(samFile, "r")
     out_file = samFile[:samFile.rfind('.')]+"_indels.txt"
     fhandle = open(out_file, "w")
     fout = DictWriter(fhandle, fieldnames=FIELDS_INDEL, delimiter='\t')

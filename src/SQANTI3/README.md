@@ -1,70 +1,50 @@
-# Challenge 1 Evaluation
+![SQANTI3 logo](https://github.com/FJPardoPalacios/public_figures/blob/master/sq3-logo.png)
 
-The evaluation of submitted transcript models will be done using [SQANTI3](https://github.com/ConesaLab/SQANTI3) descriptors and number of LRGASP-agreed evaluation metrics. The general procedure to assess these evaluation metrics on your data is to run **sqanti3_lrgasp.challenge1.py**, an adapted version of the original code that will generate automatically an HTML report with the results of the evaluation. Please, download/clone the entire [sqanti3_evaluation](https://github.com/LRGASP/lrgasp-challenge-1-evaluation.git) directory, including the **utilities** subfolder.
+#		 SQANTI3
 
-## Setting up the environment
+SQANTI3 is the newest version of the SQANTI tool ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/)) that merges features from SQANTI, ([code repository](https://github.com/ConesaLab/SQANTI)) and SQANTI2 ([code repository](https://github.com/Magdoll/SQANTI2)), together with new additions. SQANTI3 will continue as an integrated development aiming to provide the best characterization for your new long read-defined transcriptome. 
 
-In order to install all the dependencies needed by **sqanti3_lrgasp.challenge1.py**, please use the [YML](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/sqanti3_lrgasp.yml) file to build a conda environment. 
+SQANTI3 is the first module of the [Functional IsoTranscriptomics (FIT)](https://tappas.org/) framework, that also includes IsoAnnot and tappAS.
 
-```
-conda env create -f sqanti3_lrgasp.yml
-source activate sqanti3_lrgasp
-```
+## Lastest updates
+Current version (10/05/2021): SQANTI3 version 4.2
 
-SQANTI3 also takes advantage of some scripts of [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake/wiki#install). Please install it with the *sqanti3_lrgasp* environment activated and add `cDNA_Cupcake`and `cDNA_Cupcake/sequence` to your `PYTHONPATH`.
+New features implemented in SQANTI3
 
-```
-(sqanti3_lrgasp)$ git clone https://github.com/Magdoll/cDNA_Cupcake.git
-(sqanti3_lrgasp)$ cd cDNA_Cupcake
-(sqanti3_lrgasp)$ python setup.py build
-(sqanti3_lrgasp)$ python setup.py install
+**version 4.2:**
+* Extra aligner for mapping Long-Read sequences: **uLTRA** . To use it, set the option `--aligner_choice uLTRA`.
+* NMD prediction now takes into account the 50bp rule, meaning that isoforms will be tagged as `TRUE` for `prediction_NMD` if there's a predicted ORF and CDS ends at least 50bp before the last junction.
+* Fixed minor bugs
 
-(sqanti3_lrgasp)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/sequence/
-(sqanti3_lrgasp)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/
+**version 4.1:**
+* Change for `--gtf` argument. Now, by default, SQANTI3 will expect a GTF file as input. It will still be possible to provide the sequences of your isoforms as a FASTA or FASTQ file by activatingt the `--fasta` option.
+* New plots and minor bugs of the report fixed.
 
-```
+**version 4.0:**
+* Creation of HTML report. Using the `--report` argument, it is possible to choose which type of report: `html` (default), `pdf`, `both` or `skip`.
+* Short-reads processing pipeline included. Now, providing directly your short-read data (FASTA/FASTQ format), SQANTI3 will:
+    * Map them against the genome to identify SJ and calculate their coverage.
+    * Calculate the "ratio_TSS" value for each isoform of your transcriptome.
+    * If pair-end data is provided, isoform expression will be computed using kallisto.
+* New subcategories for FSM: Reference match, Alternative 3' UTR, Alternative 5' UTR and Alternative 5' and 3' UTRs.
+* IsoAnnotLite implemented to generate tappAS compatible GFF3 files. GFF3 output may incorporate functional annotation labels for model species supported by tappAS.
+* New plots:
+    *  Saturation curves only plot when `--saturation` option activated.
+* Installation provided as a conda yml environment file  
 
-Remember to activate the *sqanti3_lrgasp* environment and setting up the `PYTHONPATH` every time you are running the evaluation.
+## Wiki
 
-## Run SQANTI3
+Please, visit our wiki for more detailed information
 
-When running [SQANTI3](https://github.com/ConesaLab/SQANTI3), your transcript-models will be compared against the GENCODE annotation using the last version available of the reference genome. We highly recommend to use the mouse and human genome annotation files available at the [LRGASP submission github](https://github.com/LRGASP/lrgasp-submissions/blob/master/docs/reference-genomes.md), as they already include the spike-ins information (SIRVs and ERCC).
+* [What is SQANTI3?](https://github.com/ConesaLab/SQANTI3/wiki/What-is-SQANTI3%3F)
+* [SQANTI3 dependencies and installation](https://github.com/ConesaLab/SQANTI3/wiki/SQANTI3-dependencies-and-installation)
+* [Running SQANTI3 Quality Control](https://github.com/ConesaLab/SQANTI3/wiki/Running-SQANTI3-Quality-Control)
+* [Running SQANTI3 rules filter](https://github.com/ConesaLab/SQANTI3/wiki/Running-SQANTI3-rules-filter)
+* [SQANTI3 output explanation](https://github.com/ConesaLab/SQANTI3/wiki/SQANTI3-output-explanation)
 
-LRGASP will be using CAGE peak data, polyA motif list and Illumina junction coverage to evaluate your transcript models using SQANTI3. We therefore recommend you run **sqanti3_lrgasp.challenge1.py** enabling these analyses. To do so:
+## How to cite SQANTI3
 
--   **CAGE peak data**:  Download BED files of CAGE peak data for [human](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/refTSS.human.bed) and [mouse](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/refTSS.mouse.bed) and provide them to **sqanti3_lrgasp.challenge1.py** using the `--cage_peak` option
--   **polyA motif list**: This is a TXT file with the most common polyA motifs for human and mouse that can be downloaded from [here](https://raw.githubusercontent.com/LRGASP/lrgasp-challenge-1-evaluation/main/utilities/polyA_list.txt). Include this file when running **sqanti3_qc.py** using the `--polyA_motif_list` option.
--   **SJ coverage**:  As SJ information is dependent on the sample being analyzed, it is necessary to run previously STAR to map the Illumina reads against the genome and identify possible splice-junctions using the `--twopassMode`. Then, the resulting _*SJ.out.tab_ file can be input to **sqanti3_lrgasp.challenge1.py** with the parameter `-c`. This is an example of how we normally run STAR for this SJ detection:
+SQANTI3 paper is in preparation, in the meantime it is possible to cite the [original SQANTI paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/).
 
-1. Create a genome index with STAR without providing the reference annotation. We don't want to bias the SJ-detection towards the annotated splice sites.
-
-```
-STAR --runThreadN <num_threads> --runMode genomeGenerate --genomeDir <star_index> --genomeFastaFiles <reference_genome_FASTA> --outTmpDir <index_dir_tmp> 
-```
-
-2. Map short-reads using `--twopassMode`
-
-```
-STAR --runThreadN <num_threads> --genomeDir <star_index> --readFilesIn <read1> <read2> --outFileNamePrefix <output_prefix> --alignSJoverhangMin 8  --alignSJDBoverhangMin 1 --outFilterType BySJout --outSAMunmapped Within --outFilterMultimapNmax 20 --outFilterMismatchNoverLmax 0.04 --outFilterMismatchNmax 999 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --sjdbScore 1 --genomeLoad NoSharedMemory --outSAMtype BAM SortedByCoordinate --twopassMode Basic
-```
-
-It is also neccessary to provide metadata files in JSON format. To complete a submission it is mandatory to create experiment and entry JSON files and those are the ones that `sqanti3_lrgasp.challenge1.py` is expecting. [Here](https://lrgasp.github.io/lrgasp-submissions/docs/metadata.html) you can find more information about metadata files and some templates for them.
-
-If you don't have those JSON files ready yet, now `--experiment_json` and `--entry_json` are optional arguments. If they are not defined, inside `utilities/` folder there are a couple of *dummy* files that will do the job. This won't have an effect on the evaluation, but you will find the fake attributes in your report titles and in some columns of the `*_classification.txt`. Feel free to copy them and create your own "fake" JSON files with meaningful information. 
-
-
-### Example
-
-This is an example of how to run the **sqanti3_lrgasp.challenge1.py** script:
-
-```
-python sqanti3_lrgasp.challenge1.py human_submitted.gtf lrgasp_gencode_v38.gtf lrgasp_grch38_sirvs.fasta \
-	--gtf --experiment_json experiment.json --entry_json entry.json  \
-	--cage_peak refTSS.human.bed \
-	--polyA_motif_list polyA_list.txt -c my_test.SJ.out.tab \
-	-d /my_output/directory -o human_submission_test
-```
-
-This will generate in `/my_output/directory` the two main SQANTI3 outputs (`*_classification.txt` and `*_junctions.txt`) and a HTML file that will be called, in this case, `human_submission_test_Evaluation_report.html`.
-
+*Tardaguila M, de la Fuente L, Marti C, et al. SQANTI: extensive characterization of long-read transcript sequences for quality control in full-length transcriptome identification and quantification. Genome Res. 2018;28(3):396-411. doi:10.1101/gr.222976.117*
 
