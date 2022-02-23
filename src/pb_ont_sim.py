@@ -269,10 +269,10 @@ def create_expr_file_fixed_count(f_cat: str, f_del: str, n_trans: int, read_coun
     f_out.close()
 
     sns.set(style="whitegrid")
-    fig = sns.kdeplot([coverage]*len(deleted), shade=True, color="r")
-    fig = sns.kdeplot([coverage]*len(known_trans), shade=True, color="b")
-    #plt.show()
-    fig.savefig(output.split('.')[:-1] + '.png')
+    sns.histplot([coverage]*len(known_trans), color="skyblue", label="Known", kde=True)
+    sns.histplot([coverage]*len(deleted), color="red", label="Novel", kde=True)
+    plt.legend()
+    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
 
 
 def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str):
@@ -319,10 +319,10 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
     f_out.close()
 
     sns.set(style="whitegrid")
-    fig = sns.kdeplot(nb_novel, shade=True, color="r")
-    fig = sns.kdeplot(nb_known, shade=True, color="b")
-    #plt.show()
-    fig.savefig(output.split('.')[:-1] + '.png')
+    sns.histplot(nb_known, color="skyblue", label="Known", kde=True)
+    sns.histplot(nb_novel, color="red", label="Novel", kde=True)
+    plt.legend()
+    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
 
 
 def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str, tech):
@@ -376,16 +376,11 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
                 break
     cat_in.close()
 
-    print(len(deleted), len(known_trans), n_trans)
-
     lim_novel = (len(deleted)//3)*2
     lim_known = (len(known_trans)//3)*2
 
     novel_expr = expr_distr[:lim_novel]
     known_expr =  expr_distr[-lim_known:]
-
-    print(lim_novel, len(novel_expr))
-    print(lim_known, len(known_expr))
 
     expr_distr = expr_distr[lim_novel:lim_known]
     random.shuffle(expr_distr)
@@ -395,9 +390,6 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
-
-    print(len(deleted), len(novel_expr))
-    print(len(known_trans), len(known_expr))
 
     for i, trans in enumerate(deleted):
         coverage = novel_expr[i] 
@@ -414,13 +406,12 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
     sns.set(style="whitegrid")
     fig = sns.kdeplot(novel_expr, shade=True, color="r")
     fig = sns.kdeplot(known_expr, shade=True, color="b")
-    #plt.show()
-    fig.savefig(output.split('.')[:-1] + '.png')
+    sns.histplot(known_expr, color="skyblue", label="Known", kde=True)
+    sns.histplot(novel_expr, color="red", label="Novel", kde=True)
+    plt.legend()
+    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
 
     
-
-    
-
 def pb_simulation(args):
     logging.info('***Simulating PacBio reads with IsoSeqSim')
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -466,13 +457,13 @@ def ont_simulation(args):
         logging.info('***Untar NanoSim model')
         cwd = os.getcwd()
         os.chdir(models)
-        res = subprocess.run(['/bin/tar -xzf', model_name + '.tar.gz'])
+        res = subprocess.run(['tar', '-xzf', model_name + '.tar.gz'])
         os.chdir(cwd)
         if res.returncode != 0:
             logging.error('Unpacking NanoSim pre-trained model failed')
 
     logging.info('***Simulating ONT reads with NanoSim')
-    cmd = [nanosim, 'transcriptome', '-rt', str(args.transcriptome),
+    cmd = [nanosim, 'transcriptome', '-rt', str(args.rt),
            '-rg', str(args.genome), '-e', str(args.expr),
            '-c', str(model_dir + 'training'),
            '-o', os.path.join(args.output, 'ONT_simulated'),
