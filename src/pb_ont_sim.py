@@ -15,6 +15,8 @@ import random
 import numpy
 import pysam
 from collections import defaultdict
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 #------------------------------------
@@ -242,17 +244,18 @@ def create_expr_file_fixed_count(f_cat: str, f_del: str, n_trans: int, read_coun
     del_in.close()
 
 
-    tot_trans = deleted
+    known_trans = set()
     with open(f_cat, 'r') as cat_in:
         skip = cat_in.readline()
         for line in cat_in:
             trans = line.split()[0]
             if trans not in deleted:
-                tot_trans.add(trans)
-            if len(tot_trans) == n_trans:
+                known_trans.add(trans)
+            if (len(known_trans) + len(deleted)) == n_trans:
                 break
 
     cat_in.close()
+    tot_trans = set.union(deleted,known_trans)
     if len(tot_trans) != n_trans:
         print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(len(tot_trans)))
     
@@ -264,6 +267,13 @@ def create_expr_file_fixed_count(f_cat: str, f_del: str, n_trans: int, read_coun
     for trans in tot_trans:
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     f_out.close()
+
+    sns.set(style="whitegrid")
+    fig = sns.kdeplot([coverage]*len(deleted), shade=True, color="r")
+    fig = sns.kdeplot([coverage]*len(known_trans), shade=True, color="b")
+    #plt.show()
+    fig.savefig(output.split('.')[:-1] + '.png')
+
 
 def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str):
     deleted = set()
@@ -288,7 +298,9 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
     cat_in.close()
 
     nb_known = numpy.random.negative_binomial(nbn_known,nbp_known,len(known_trans)).tolist()
+    nb_known = [1 if n == 0 else n for n in nb_known] # minimum one count per transcript
     nb_novel = numpy.random.negative_binomial(nbn_novel,nbp_novel,len(deleted)).tolist()
+    nb_novel = [1 if n == 0 else n for n in nb_novel] # minimum one count per transcript
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
@@ -302,11 +314,15 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
         else:
             coverage = nb_known[i_known]
             i_known += 1
-        if coverage == 0: # minimum one count per transcript
-            coverage +=1
         tpm = (1000000.0 * coverage) / (coverage * n_trans)  
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     f_out.close()
+
+    sns.set(style="whitegrid")
+    fig = sns.kdeplot(nb_novel, shade=True, color="r")
+    fig = sns.kdeplot(nb_known, shade=True, color="b")
+    #plt.show()
+    fig.savefig(output.split('.')[:-1] + '.png')
 
 
 def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str, tech):
@@ -394,6 +410,12 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
 
     f_out.close()
+
+    sns.set(style="whitegrid")
+    fig = sns.kdeplot(novel_expr, shade=True, color="r")
+    fig = sns.kdeplot(known_expr, shade=True, color="b")
+    #plt.show()
+    fig.savefig(output.split('.')[:-1] + '.png')
 
     
 
