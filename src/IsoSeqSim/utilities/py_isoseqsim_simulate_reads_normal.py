@@ -149,17 +149,18 @@ def generate_simulated_reads(inputs):
 			read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
 			read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
 			read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
+			if read_seq_muta_end == "":
+				tries = 0
+				while read_seq_muta_end == "" and tries < 10:
+					read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
+					read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
+					read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
+					tries += 1
 			if read_seq_muta_end != "":
 				lr_idx += 1
-				#simu_fa_name_line = ">LR" + str(iso_list.index(iso)+1) + "." + str(lr_idx) + " " + iso + "\n"
 				for j in range(0,len(read_seq_muta_end),80):
 					simu_fa_seq_line_list.append(read_seq_muta_end[j:j+80])
-
-				#simu_fa_line = simu_fa_name_line + "\n".join(simu_fa_seq_line_list)
-				#simu_fa_all_lines_list.append(simu_fa_line)
-		#if simu_fa_all_lines_list != []:
-			#simu_fa_all_lines = "\n".join(simu_fa_all_lines_list)
-			#return simu_fa_all_lines
+					
 				simu_fa_line = "\n".join(simu_fa_seq_line_list)
 				generated_reads.append((simu_fa_line, iso))
 		if generated_reads != []:

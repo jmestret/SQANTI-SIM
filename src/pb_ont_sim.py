@@ -301,6 +301,7 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
     nb_known = [1 if n == 0 else n for n in nb_known] # minimum one count per transcript
     nb_novel = numpy.random.negative_binomial(nbn_novel,nbp_novel,len(deleted)).tolist()
     nb_novel = [1 if n == 0 else n for n in nb_novel] # minimum one count per transcript
+    n_reads =sum(nb_known) + sum(nb_novel)
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
@@ -314,7 +315,7 @@ def create_expr_file_nbinom(f_cat: str, f_del: str, n_trans, nbn_known, nbp_know
         else:
             coverage = nb_known[i_known]
             i_known += 1
-        tpm = (1000000.0 * coverage) / (coverage * n_trans)  
+        tpm = round(((1000000.0 * coverage) / n_reads), 2)
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     f_out.close()
 
@@ -387,18 +388,19 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
 
     novel_expr.extend(expr_distr[:len(deleted)-lim_novel])
     known_expr.extend(expr_distr[-(len(known_trans)-lim_known):])
+    n_reads =sum(novel_expr) + sum(known_expr)
 
     f_out = open(output, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
 
     for i, trans in enumerate(deleted):
         coverage = novel_expr[i] 
-        tpm = (1000000.0 * coverage) / (coverage * n_trans)
+        tpm = round(((1000000.0 * coverage) / n_reads), 2)
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
     
     for i, trans in enumerate(known_trans):
         coverage = known_expr[i]
-        tpm = (1000000.0 * coverage) / (coverage * n_trans)
+        tpm = round(((1000000.0 * coverage) / n_reads), 2)
         f_out.write(trans + '\t' + str(coverage) + '\t' + str(tpm) + '\n')
 
     f_out.close()
@@ -413,6 +415,16 @@ def create_expr_file_sample(f_cat: str, f_del: str, ref_trans,reads, output: str
 
     
 def pb_simulation(args):
+    if not args.read_count:
+        n = 0
+        with open(args.expr, 'r') as f_counts:
+            skip = f_counts.readline()
+            for line in f_counts:
+                line = line.split()
+                n += int(line[1])
+        f_counts.close()
+        args.read_count = n
+
     logging.info('***Simulating PacBio reads with IsoSeqSim')
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, 'IsoSeqSim/bin/isoseqsim')
@@ -423,9 +435,10 @@ def pb_simulation(args):
                          '--c3', os.path.join(util_dir, '3_end_completeness.PacBio-Sequel.tab'),
                          '-o', os.path.join(args.output, 'PacBio_simulated'),
                          '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
-                         '--es 0.01731', '--ed 0.01090', '--ei 0.02204',
-                         '-n', args.read_count,
-                         '-m normal', '--cpu', str(args.cores)                    
+                         '--es', '0.01731', '--ed', '0.01090', '--ei', '0.02204',
+                         '-n', str(args.read_count),
+                         '-m', 'normal', '--cpu', str(args.cores),
+                         '--tempdir', os.path.join(args.dir, 'temp_isoseqsim')                   
     ])
 
     if res.returncode != 0:
@@ -437,6 +450,16 @@ def pb_simulation(args):
 
 
 def ont_simulation(args):
+    if not args.read_count:
+        n = 0
+        with open(args.expr, 'r') as f_counts:
+            skip = f_counts.readline()
+            for line in f_counts:
+                line = line.split()
+                n += int(line[1])
+        f_counts.close()
+        args.read_count = n
+
     if args.read_type == 'dRNA':
         model_name = 'human_NA12878_dRNA_Bham1_guppy'
         r_type = 'dRNA'
@@ -450,7 +473,7 @@ def ont_simulation(args):
         return
     
     src_dir = os.path.dirname(os.path.realpath(__file__))
-    nanosim = os.path.join(src_dir, 'NanoSim')
+    nanosim = os.path.join(src_dir, 'NanoSim/src/simulator.py')
     models = os.path.join(src_dir, 'NanoSim/pre-trained_models/')
     model_dir = models + model_name + '/'
     if not os.path.exists(model_dir):
@@ -468,7 +491,7 @@ def ont_simulation(args):
            '-c', str(model_dir + 'training'),
            '-o', os.path.join(args.output, 'ONT_simulated'),
            '-n', str(args.read_count), '-r', r_type,
-           '-b guppy', '-t', str(args.cores), '--fastq'
+           '-b', 'guppy', '-t', str(args.cores), '--fastq'
     ]
 
     if uracil:

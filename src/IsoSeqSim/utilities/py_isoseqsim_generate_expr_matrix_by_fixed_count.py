@@ -26,7 +26,8 @@ def generate_expr_matrix(input_gpd_fl,input_txt_fl,output_expr_mtx, n_reads):
 	
 	for line in input_gpd_fl:
 		iso_id = line.strip().split("\t")[1]
-		print(line.strip() + "\t" + str(dic_iso_expr[iso_id]), file=output_expr_mtx)
+		if iso_id in dic_iso_expr:
+			print(line.strip() + "\t" + str(dic_iso_expr[iso_id]), file=output_expr_mtx)
 
 	input_txt_fl.close()
 	input_gpd_fl.close()

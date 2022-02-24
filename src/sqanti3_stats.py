@@ -50,9 +50,8 @@ def run_sqanti3(args):
     logging.info('***SQANTI3 quality control done')
 
 def stats(args, classification_file, junctions_file):
-    # Get junctions from deleted reads
-    ref_by_SC = defaultdict(lambda: [])
-    
+    # Get junctions from novel reads
+    novel_by_SC = defaultdict(lambda: [])
     with open(args.deleted, 'r') as f_del:
         skip = f_del.readline()
         for line in f_del:
@@ -73,7 +72,7 @@ def stats(args, classification_file, junctions_file):
                     juncs.add(str(d))
                     juncs.add(str(a))
             
-            ref_by_SC[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
+            novel_by_SC[SC].append(myQueryIsoforms(id=line[0], gene_id=line[1],
                                        str_class=line[2],
                                        genes=line[3].split('_'),
                                        transcripts=line[4].split('_'),
@@ -81,55 +80,38 @@ def stats(args, classification_file, junctions_file):
                                        start=TSS, end=TTS))
     f_del.close()
 
-    # Count ocurrencies, no need if NanoSim simulate the number of reads that you damm ask
-    '''
-    if args.nanosim:
-        with open(args.fsim, 'r') as f_sim:
-            for line in f_sim:
-                if line.startswith('@'):
-                    line = line.lstrip('@')
-                    id = line.split('_')[0]
+    known = []
+    with open(args.known, 'r') as f_del:
+        skip = f_del.readline()
+        for line in f_del:
+            juncs = set()
+            line = line.split()
+            SC = line[2]
+            TSS = line[5]
+            TTS = line[6]
 
-                    for SC in ref_by_SC:
-                        for i in range(len(ref_by_SC[SC])):
-                            if id == ref_by_SC[SC][i].id.split('.')[0]:
-                                ref_by_SC[SC][i].names.append(line)
-                                ref_by_SC[SC][i].counts += 1
-        f_sim.close()
-
-
-
-    elif args.isoseqsim:
-        with open(args.fsim, 'r') as f_sim:
-            for line in f_sim:
-                    line = line.split()
-                    simid = line[0]
-                    refid = line[1]
-
-                    for SC in ref_by_SC:
-                        for i in range(len(ref_by_SC[SC])):
-                            if refid == ref_by_SC[SC][i].id:
-                                ref_by_SC[SC][i].names.append(simid)
-                                ref_by_SC[SC][i].counts += 1
-        f_sim.close()  
-    
-
-    # Delete those simulated with low coverage (smaller than the threshhold used in the pipeline)
-    threshold = 3
-    for SC in ref_by_SC:
-        print(SC, len(ref_by_SC[SC]))
-        for rec in ref_by_SC[SC]:
-            if rec.counts < threshold:
-                ref_by_SC[SC].remove(rec)
-        print(SC, len(ref_by_SC[SC]))
-    '''
-
-
-    # READ read to isoform id by the pipeline file!
-    # for talon is read_annot.tsv       
-
+            donors = line[7].split(',')
+            acceptors = line[8].split(',')
+            if isinstance(donors[0], str):
+                juncs = set()
+            else:
+                for d, a in zip(donors, acceptors):
+                    d = int(d) + 1
+                    a = int(a) -1
+                    juncs.add(str(d))
+                    juncs.add(str(a))
+            
+            known.append(myQueryIsoforms(id=line[0], gene_id=line[1],
+                         str_class=line[2],
+                         genes=line[3].split('_'),
+                         transcripts=line[4].split('_'),
+                         junctions=juncs,
+                         start=TSS, end=TTS))
+    f_del.close()
+   
     # Get SC and ref from query isoforms
-    isos = defaultdict(lambda: myQueryIsoforms())
+    isoforms = defaultdict(lambda: myQueryIsoforms())
+    counts_by_SC = defaultdict(int)
     with open(classification_file, 'r') as f_class:
         skip = f_class.readline()
         for line in f_class:
@@ -140,12 +122,12 @@ def stats(args, classification_file, junctions_file):
             ref_t = line[7].split('_')
             TSS = line[47]
             TTS = line[48]
-            isos[iso] = myQueryIsoforms(id=iso, gene_id=None,
+            isoforms[iso] = myQueryIsoforms(id=iso, gene_id=None,
                                                  str_class=SC,
                                                  genes=ref_g,
                                                  transcripts=ref_t,
                                                  start=TSS, end=TTS)
-
+            counts_by_SC[SC] += 1
     f_class.close()
     
     # Get junctions from query isoforms
@@ -161,12 +143,14 @@ def stats(args, classification_file, junctions_file):
             juncs[iso].add(a)
     f_junc.close()
 
-    iso_by_SC = defaultdict(lambda: [])
-    for id, iso in isos.items():
-        iso.junctions = juncs[id]
-        iso_by_SC[iso.str_class].append(iso)
+    for id in isoforms.items():
+        isoforms[id].junctions = juncs[id]
 
-    # Get Stats
+    # Get Stats from KNOWN
+    # TODO: compute metris
+
+    # Get stats for NOVEL
+    # TODO
     metrics = defaultdict(lambda: [])
     for SC in ref_by_SC:
         TP = 0
