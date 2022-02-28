@@ -562,7 +562,7 @@ def ont_simulation(args):
     f_name = os.path.join(args.output, 'ONT_simulated.isoform_counts.tsv')
     f_out = open(f_name, 'w')
 
-    for k, v in id_counts:
+    for k, v in id_counts.items():
         f_out.write(str(k) + '\t' + str(v) + '\n')
     f_out.close()
 
