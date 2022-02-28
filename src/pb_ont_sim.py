@@ -536,7 +536,7 @@ def ont_simulation(args):
                 trans_id = line.split('_')[0]
 
                 if trans_id not in ref_trans:
-                    logging.warning(trans_id, 'was not found in the annotation')
+                    logging.warning('%s was not found in the annotation' %(trans_id))
                 else:
                     trans_id = ref_dict[trans_id]
                     
