@@ -33,22 +33,41 @@ setClass('QueryIsoform', slots = list(
   junctions='vector', start='numeric', end='numeric'
 ))
 
-calc_known_stats <- function(sc, data.query, data.known){
-  matches <- apply(data.query, 1, function(x, data.known){
+calc_known_stats <- function(query, data.known, data.del){
+  matches <- apply(query, 1, function(x, data.known){
+    # Check known
     for (row in 1:nrow(data.known)){
       ref_donor <- data.known[row,'Donors']
       ref_acceptor <- data.known[row,'Acceptors']
       ref_start <- data.known[row,'TSS']
       ref_end <- data.known[row,'TTS']
       
-      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor) && abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50){
-        return(TRUE)
+      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor)){
+        if (abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50) {
+          return('TP')
+        } else{
+          return('PTP')
+        }
       }
     }
-    return(FALSE)
+    
+    # Check deleted
+    for (row in 1:nrow(data.del)){
+      ref_donor <- data.del[row,'Donors']
+      ref_acceptor <- data.del[row,'Acceptors']
+      ref_start <- data.del[row,'TSS']
+      ref_end <- data.del[row,'TTS']
+      
+      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor)){
+        if (abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50) {
+          return('novel')
+        }
+      }
+    }
+    return('FP')
   })
-  TP <- sum(matches==T)
-  FP <- sum(matches==F)
+
+  return(data.frame(Stats=c('TP', 'PTP', 'FP'), Values=c(sum(matches=='TP'), sum(matches=='PTP'), sum(matches=='FP'))))
 }
 
 #######################################
@@ -121,10 +140,31 @@ colnames(data.expr) <- c('TransID', 'counts')
 # Transcript simulated with reference
 data.known <- data.cat[which(data.cat$TransID %in% data.expr$TransID & !(data.cat$TransID %in% data.del$TransID)),]
 
+# Metrics for known trans
 known.metrics <- list()
 for (sc in xaxislabelsF1){
-  list[sc] <- calc_known_stats(sc, data.query, data.known)
+  query <- data.query[which(data.query$structural_category == sc),]
+  known.metrics[sc] <- calc_known_stats(query, data.known, data.del)
+  known.metrics[[sc]]['Precision', 'Values'] <- known.metrics[[sc]]['TP'] / (known.metrics[[sc]]['TP'] + known.metrics[[sc]]['FP'] + known.metrics[[sc]]['PTP'])
 }
+
+TP <- 0
+PTP <- 0
+FP <- 0
+for (sc in xaxislabelsF1){
+  TP <- TP + known.metrics[[sc]]['TP', 'Values']
+  PTP <- PTP + known.metrics[[sc]]['PTP', 'Values']
+  FP <- FP + known.metrics[[sc]]['FP', 'Values']
+}
+known.metrics[['global']] <- data.frame(Stats=c('TP', 'PTP', 'FP'), Values=c(TP, PTP, FP))
+known.metrics[['global']]['FN', 'Values'] <- nrow(data.known) - (TP + PTP + FP)
+known.metrics[['global']]['Sensitivity', 'Values'] <- TP / (TP + PTP + FP)
+known.metrics[['global']]['Precision', 'Values'] <- TP / (TP + known.metrics[['global']]['FN'])
+known.metrics[['global']]['F-score', 'Values'] <- 2*((known.metrics[['global']]['Sensitivity', 'Values']*known.metrics[['global']]['Precision', 'Values'])/(known.metrics[['global']]['Sensitivity', 'Values']+known.metrics[['global']]['Precision', 'Values']))
+
+# Metrics for novel trans
+
+
 
 #######################################
 #                                     #

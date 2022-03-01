@@ -32,14 +32,14 @@ class myQueryIsoforms:
 def run_sqanti3(args):
     logging.info('***Running SQANTI3')
     src_dir = os.path.dirname(os.path.realpath(__file__))
-    sqanti3 = os.path.join(src_dir, 'SQANTI3/sqanti3_lrgasp.challenge1.py')
+    sqanti3 = os.path.join(src_dir, 'SQANTI3/sqanti3_qc.py')
 
     cmd =[sqanti3, args.isoforms, args.gtf, args.genome,
-                          '-o', args.output, '-d', args.dir, '--cpus', args.cores,
-                          '--gtf', '--force_id_ignore']
+                          '-o', args.output, '-d', args.dir, '--cpus', str(args.cores),
+                          '--force_id_ignore']
     if args.min_ref_len != 0:
         cmd.append('--min_ref_len')
-        cmd.append(args.min_ref_len)
+        cmd.append(str(args.min_ref_len))
     
     res = subprocess.run(cmd)
 
