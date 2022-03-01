@@ -33,6 +33,24 @@ setClass('QueryIsoform', slots = list(
   junctions='vector', start='numeric', end='numeric'
 ))
 
+calc_known_stats <- function(sc, data.query, data.known){
+  matches <- apply(data.query, 1, function(x, data.known){
+    for (row in 1:nrow(data.known)){
+      ref_donor <- data.known[row,'Donors']
+      ref_acceptor <- data.known[row,'Acceptors']
+      ref_start <- data.known[row,'TSS']
+      ref_end <- data.known[row,'TTS']
+      
+      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor) && abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50){
+        return(TRUE)
+      }
+    }
+    return(FALSE)
+  })
+  TP <- sum(matches==T)
+  FP <- sum(matches==F)
+}
+
 #######################################
 #                                     #
 #                MAIN                 #
@@ -103,6 +121,11 @@ colnames(data.expr) <- c('TransID', 'counts')
 # Transcript simulated with reference
 data.known <- data.cat[which(data.cat$TransID %in% data.expr$TransID & !(data.cat$TransID %in% data.del$TransID)),]
 
+known.metrics <- list()
+for (sc in xaxislabelsF1){
+  list[sc] <- calc_known_stats(sc, data.query, data.known)
+}
+
 #######################################
 #                                     #
 #     TABLE AND PLOT GENERATION       #
@@ -112,14 +135,14 @@ data.known <- data.cat[which(data.cat$TransID %in% data.expr$TransID & !(data.ca
 # -------------------- 
 # -------------------- 
 # TABLE INDEX
-# t1: summary table
-# t2: presence/ausence table
-# t3: SIRV metrics
+# t1:
 
 # -------------------- 
 # -------------------- 
 # PLOT INDEX
 # p1: simulated expression profile
+# p2: structural classification
+# p3: 
 
 print("***Generating plots for the report")
 
@@ -127,6 +150,10 @@ print("***Generating plots for the report")
 # SAME FORMAT AS SQANTI3 REPORT
 
 myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
+
+cat.palette = c("FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
+                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
 
 mytheme <- theme_classic(base_family = "Helvetica") +
   theme(axis.line.x = element_line(color="black", size = 0.4),
@@ -153,6 +180,21 @@ p1 <- expr.dist %>%
   mytheme +
   scale_fill_manual(values = c('orange', 'darkcyan'), guide='none') +
   ggtitle('Simulated counts distribution')
+
+# PLOT 2: structural classification
+p2 <- data.class %>%
+  ggplot(aes(x=structural_category)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)*100, alpha=0.6, fill=structural_category), color="black", size=0.3, width=0.7) +
+  scale_x_discrete(drop=FALSE) + 
+  xlab('') + 
+  ylab('Transcripts %') +
+  mytheme +
+  geom_blank(aes(y=((..count..)/sum(..count..))), stat = "count") +
+  theme(axis.text.x = element_text(angle = 45)) +
+  scale_fill_manual(values = cat.palette, guide='none') +
+  ggtitle("Isoform Distribution Across Structural Categories\n\n" ) +
+  theme(axis.title.x=element_blank()) +  theme(axis.text.x  = element_text(margin=ggplot2::margin(17,0,0,0), size=12)) +
+  theme(legend.justification=c(1,1), legend.position=c(1,1))
 
 
 
