@@ -2,6 +2,7 @@
 """
 @author: Chen Yang & Saber HafezQorani
 This script generates simulated Oxford Nanopore 2D reads (genomic and transcriptomic - cDNA/directRNA).
+Last modified: 01/03/2022 by Jorge Mestre (fix line 1387 str.translate method)
 """
 
 from __future__ import print_function
@@ -1383,7 +1384,7 @@ def simulation_unaligned(dna_type, min_l, max_l, median_l, sd_l, out_reads, base
 
             out_reads.write(id_begin + new_read_name + "_0_" + str(middle_ref) + "_0" + '\n')
             if uracil:
-                read_mutated = read_mutated.traslate(trantab)
+                read_mutated = read_mutated.translate(trantab)
             out_reads.write(read_mutated + "\n")
 
             if fastq:
