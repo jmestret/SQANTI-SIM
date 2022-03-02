@@ -156,6 +156,7 @@ data.del$structural_category = factor(data.del$SC,
 data.del$SC <- NULL
 data.del$Donors <- NULL
 data.del$Acceptors <- NULL
+sim.sc <- unique(data.del$structural_category)
 
 # Read cat file
 data.cat <- read.table(cat.file, header=T, as.is=T, sep="\t")
@@ -189,7 +190,7 @@ data.known <- data.cat[which(data.cat$TransID %in% data.expr$TransID & !(data.ca
 known.matches <- inner_join(data.query, data.known, by='junctions') %>%
   group_by(isoform) %>%
   mutate(diffTSS = abs(TSS_genomic_coord - TSS), diffTTS = abs(TTS_genomic_coord - TTS)) %>%
-  summarise(diffTSS = min(diffTSS), diffTTS =min(diffTTS))
+  summarise(structural_category=structural_category.x, diffTSS = min(diffTSS), diffTTS =min(diffTTS))
 known.perfect.matches <- known.matches[which(known.matches$diffTSS < 50 & known.matches$diffTTS < 50),]
 
 novel.matches <- inner_join(data.query, data.del, by='junctions') %>%
@@ -199,8 +200,32 @@ novel.matches <- inner_join(data.query, data.del, by='junctions') %>%
 novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < 50 & novel.matches$diffTTS < 50),]
 
 known.metrics <- list()
+novel.metrics <- list()
 for (sc in xaxislabelsF1){
-  TP <- length(novel.perfect.matches[])
+  known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category == sc),])
+  known.PTP <- nrow(known.matches[which(known.matches$structural_category == sc),]) - known.TP
+  
+  if (sc %in% sim.sc) {
+    novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category == sc),])
+    novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category == sc),]) - novel.TP
+    
+    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - novel.TP
+    novel.FN <- nrow(data.del[which(data.del$structural_category == sc),]) - novel.TP
+    
+    
+    novel.metrics[[sc]] <- data.frame(Values=c(novel.TP, novel.PTP, FP, novel.FN))
+    rownames(novel.metrics[[sc]]) <- c('TP', 'PTP', 'FP', 'FN')
+    novel.metrics[[sc]]['Sensitivity', 'Values'] <- novel.TP/ (novel.TP + novel.FN)
+    novel.metrics[[sc]]['Precision', 'Values'] <- novel.TP/ (novel.TP + FP)
+    
+  } else {
+    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP
+  }
+  
+  known.metrics[[sc]] <- data.frame(Values=c(known.TP, known.PTP, FP))
+  rownames(known.metrics[[sc]]) <- c('TP', 'PTP', 'FP')
+  known.metrics[[sc]]['Precision', 'Values'] <- known.TP/ (known.TP + FP)
+  
 }
 
 known.metrics <- list()
@@ -210,9 +235,14 @@ for (sc in xaxislabelsF1){
   known.metrics[[sc]]['Precision', 'Values'] <- known.metrics[[sc]]['TP'] / (known.metrics[[sc]]['TP'] + known.metrics[[sc]]['FP'] + known.metrics[[sc]]['PTP'])
 }
 
-TP <- 0
-PTP <- 0
-FP <- 0
+known.TP <- 0
+known.PTP <- 0
+known.FP <- 0
+known.FN <- 0
+novel.TP <- 0
+novel.PTP <- 0
+novel.FP <- 0
+novel.FN <- 0 
 for (sc in xaxislabelsF1){
   TP <- TP + known.metrics[[sc]]['TP', 'Values']
   PTP <- PTP + known.metrics[[sc]]['PTP', 'Values']
