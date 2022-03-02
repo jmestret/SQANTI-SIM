@@ -153,8 +153,8 @@ class myQueryTranscripts:
         self.q_splicesite_hit = q_splicesite_hit
         self.q_exon_overlap = q_exon_overlap
         self.junctions = junctions if len(junctions) > 0 else ['NA', 'NA']
-        self.tss = tss
-        self.tts = tts
+        self.tss = tss if self.strand == '+' else tts
+        self.tts = tts if self.strand == '+' else tss
 
     def get_total_diff(self):
         return abs(self.tss_diff)+abs(self.tts_diff)
