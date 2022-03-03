@@ -23,7 +23,7 @@ def pb_simulation(args):
     f_out = open(expr_f, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     with open(args.index, 'r') as idx:
-        header = idx.readline
+        header = idx.readline()
         header = header.split()
         i = header.index('requested_counts')
         j = header.index('requested_tpm')

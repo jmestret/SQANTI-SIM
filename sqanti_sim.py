@@ -21,7 +21,7 @@ from collections import defaultdict
 from src import classif_gtf
 from src import pb_ont_sim
 from src import sqanti3_stats
-from src import sim_peparatory
+from src import sim_preparatory
 
 def classif(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
@@ -95,7 +95,7 @@ def preparatory(input):
     numpy.random.seed(args.seed)
     
     # Modify GTF
-    counts_end = sim_peparatory.simulate_gtf(args)
+    counts_end = sim_preparatory.simulate_gtf(args)
     print('***Summary table from GTF modification\n')
     counts_ini = defaultdict(lambda: 0, {
         'full-splice_match': 0,
@@ -108,17 +108,17 @@ def preparatory(input):
         'genic' :args.GG,
         'intergenic':args.Intergenic
     }) 
-    sim_peparatory.summary_table_del(counts_ini, counts_end)
+    sim_preparatory.summary_table_del(counts_ini, counts_end)
 
     expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
     trans_index = os.path.join(args.dir, (args.output + '_index.tsv'))
 
     if args.subparser == 'equal':
-        sim_peparatory.create_expr_file_fixed_count(trans_index, args.n_trans,
+        sim_preparatory.create_expr_file_fixed_count(trans_index, args.n_trans,
                                             args.read_count, expression_out
         )
     elif args.subparser == 'custom':
-        sim_peparatory.create_expr_file_nbinom(trans_index, args.n_trans,
+        sim_preparatory.create_expr_file_nbinom(trans_index, args.n_trans,
                                             args.nbn_known, args.nbp_known, 
                                             args.nbn_novel, args.nbp_novel,
                                             expression_out
@@ -127,17 +127,17 @@ def preparatory(input):
     elif args.subparser == 'sample':
         '''
         if args.pb:
-            sim_peparatory.create_expr_file_sample(args.cat, deleted_out, 
+            sim_preparatory.create_expr_file_sample(args.cat, deleted_out, 
                                             args.rt, args.reads,
                                             expression_out, 'pb'
             )
         if args.ont:
-            sim_peparatory.create_expr_file_sample(args.cat, deleted_out, 
+            sim_preparatory.create_expr_file_sample(args.cat, deleted_out, 
                                             args.rt, args.reads,
                                             expression_out, 'ont'
             )
         '''
-        sim_peparatory.create_expr_file_sample(trans_index, 
+        sim_preparatory.create_expr_file_sample(trans_index, 
                                            args.rt, args.reads,
                                            expression_out, 'ont'
         )
