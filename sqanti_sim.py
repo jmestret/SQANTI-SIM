@@ -198,11 +198,7 @@ def eval(input):
     if unknown:
         print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
 
-    sqanti3_stats.run_sqanti3(args)
-    classification_file = cat_out = os.path.join(args.dir, (args.output + '_classification.txt'))
-    junctions_file = cat_out = os.path.join(args.dir, (args.output + '_junctions.txt'))
-    sqanti3_stats.stats(args, classification_file, junctions_file)
-
+    sqanti3_stats.sqanti3_stats(args)
 
 #####################################
 #                                   #

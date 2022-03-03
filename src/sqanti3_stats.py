@@ -36,7 +36,11 @@ def sqanti3_stats(args):
     classification_file = os.path.join(args.dir, (args.output + '_classification.txt'))
     junctions_file = os.path.join(args.dir, (args.output + '_junctions.txt'))
 
-    res = subprocess.run([os.path.join(src_dir,'SQANTI_SIM_report.R'),
+    res = subprocess.run(['Rscript', os.path.join(src_dir,'SQANTI_SIM_report.R'),
                           classification_file, junctions_file, args.deleted,
                           args.cat, args.expr, src_dir
     ])
+
+    if res.returncode != 0:
+        logging.error('***ERROR running report generation script')
+        return
