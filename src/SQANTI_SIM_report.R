@@ -39,10 +39,8 @@ suppressMessages(library(ggplot2))
 args <- commandArgs(trailingOnly = TRUE)
 class.file <- args[1] # classification file SQANTI3
 junc.file <- args[2] # junctions file SQANTI3
-del.file <- args[3] # deleted transcripts file preparatory step
-cat.file <- args[4] # categories files
-expr.file <- args[5] # sim counts file sim step
-src.path <- args[6] # path to src utilities
+index.file <- args[3] # index file
+src.path <- args[4] # path to src utilities
 
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
@@ -81,62 +79,38 @@ data.query <- full_join(data.class, data.junction, by='isoform')
 data.query <- data.query[,c('isoform', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
 
 # Read deleted file
-data.del <- read.table(del.file, header=T, as.is=T, sep="\t")
-data.del$Donors <- lapply(data.del$Donors, function(x){
+data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
+data.index$donors <- lapply(data.index$donors, function(x){
   paste(sort(unlist(as.numeric(unlist(strsplit(as.character(x), ",")))+1)), collapse=',')
 })
-data.del$Acceptors <- lapply(data.del$Acceptors, function(x){
+data.index$acceptors <- lapply(data.index$acceptors, function(x){
   paste(sort(unlist(as.numeric(unlist(strsplit(as.character(x), ",")))-1)), collapse=',')
 })
-data.del$junctions <- paste(data.del$Donors, data.del$Acceptors, sep=',')
-data.del$TSS <- data.del$TSS - 1
-data.del$structural_category = factor(data.del$SC,
+data.index$junctions <- paste(data.index$donors, data.index$acceptors, sep=',')
+data.index$TSS_genomic_coord  <- data.index$TSS_genomic_coord - 1
+data.index$structural_category = factor(data.index$structural_category,
                                       labels = xaxislabelsF1,
                                       levels = xaxislevelsF1,
                                       ordered=TRUE)
-data.del$SC <- NULL
-data.del$Donors <- NULL
-data.del$Acceptors <- NULL
-sim.sc <- unique(data.del$structural_category)
+data.index$donors <- NULL
+data.index$acceptors <- NULL
+sim.sc <- unique(data.index$structural_category)
 
-# Read cat file
-data.cat <- read.table(cat.file, header=T, as.is=T, sep="\t")
-# Sum 1 to donors and deduct 1 to acceptors to match with SQANTI3 format
-data.cat$Donors <- lapply(data.cat$Donors, function(x){
-  paste(sort(unlist(as.numeric(unlist(strsplit(as.character(x), ",")))+1)), collapse=',')
-})
-data.cat$Acceptors <- lapply(data.cat$Acceptors, function(x){
-  paste(sort(unlist(as.numeric(unlist(strsplit(as.character(x), ",")))-1)), collapse=',')
-})
-data.cat$junctions <- paste(data.cat$Donors, data.cat$Acceptors, sep=',')
-data.cat$TSS <- data.cat$TSS - 1
-
-data.cat$structural_category = factor(data.cat$SC,
-                                        labels = xaxislabelsF1,
-                                        levels = xaxislevelsF1,
-                                        ordered=TRUE)
-data.cat$SC <- NULL
-data.cat$Donors <- NULL
-data.cat$Acceptors <- NULL
-
-# Read sim expr file
-data.expr <- read.table(expr.file, header=F, as.is = T, sep="\t")
-colnames(data.expr) <- c('TransID', 'counts')
-
-# Transcript simulated with reference
-data.known <- data.cat[which(data.cat$TransID %in% data.expr$TransID & !(data.cat$TransID %in% data.del$TransID)),]
+# Transcript simulated
+data.novel <- data.index[which(data.index$sim_type == 'novel'),]
+data.known <- data.index[which(data.index$sim_type == 'known'),]
 
 # Matched for novel and known
 
 known.matches <- inner_join(data.query, data.known, by='junctions') %>%
   group_by(isoform) %>%
-  mutate(diffTSS = abs(TSS_genomic_coord - TSS), diffTTS = abs(TTS_genomic_coord - TTS)) %>%
+  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y)) %>%
   summarise(structural_category=structural_category.x, diffTSS = min(diffTSS), diffTTS =min(diffTTS))
 known.perfect.matches <- known.matches[which(known.matches$diffTSS < 50 & known.matches$diffTTS < 50),]
 
-novel.matches <- inner_join(data.query, data.del, by='junctions') %>%
+novel.matches <- inner_join(data.query, data.novel, by='junctions') %>%
   group_by(isoform) %>%
-  mutate(diffTSS = abs(TSS_genomic_coord - TSS), diffTTS = abs(TTS_genomic_coord - TTS)) %>%
+  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y)) %>%
   summarise(structural_category=structural_category.x,diffTSS = min(diffTSS), diffTTS =min(diffTTS))
 novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < 50 & novel.matches$diffTTS < 50),]
 
@@ -151,7 +125,7 @@ for (sc in xaxislabelsF1){
     novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category == sc),]) - novel.TP
     
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - novel.TP
-    novel.FN <- nrow(data.del[which(data.del$structural_category == sc),]) - novel.TP
+    novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
     
     
     novel.metrics['TP', sc] <- novel.TP
@@ -204,7 +178,7 @@ known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']
 novel.metrics['TP', 'global'] <- novel.TP
 novel.metrics['PTP', 'global'] <- novel.PTP
 novel.metrics['FP', 'global'] <- novel.FP
-novel.metrics['FN', 'global'] <- nrow(data.del) - novel.TP
+novel.metrics['FN', 'global'] <- nrow(data.novel) - novel.TP
 novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
 novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
 novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
@@ -270,13 +244,10 @@ t2 <- DT::datatable(novel.metrics) %>%
 
 # -------------------- 
 # PLOT 1: simulated expression profile
-expr.dist <- data.expr
-expr.dist$type <- sapply(expr.dist$TransID, function(x){
-  ifelse(x %in% data.del$TransID, 'novel', 'known')
-})
+expr.dist <- data.index[which(data.index$sim_type %in% c('novel', 'known')), c('sim_type', 'sim_counts')]
 
 p1 <- expr.dist %>%
-  ggplot( aes(x=counts, fill=type)) +
+  ggplot( aes(x=sim_counts, fill=sim_type)) +
   geom_histogram(color='white', alpha=0.6, position = 'identity') +
   mytheme +
   scale_fill_manual(values = c('orange', 'darkcyan')) +

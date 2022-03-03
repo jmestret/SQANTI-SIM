@@ -16,14 +16,14 @@ def main(args):
 	input_gpd_fl = args.input_gpd
 	#output_gpd_fl = args.output
 	output_fasta = open(args.output + ".fasta", "w")
-	output_read_info = open(args.output + ".read_to_isoform.tsv", "w")
+	#output_read_info = open(args.output + ".read_to_isoform.tsv", "w")
 	dic_iso_seq,iso_list = parse_transcriptome_fa(args.input_fa)
 	p = Pool(processes=args.cpu)
 	csize = 100
 	results = p.imap(func=generate_simulated_reads,iterable=generate_tx(input_gpd_fl,dic_iso_seq,iso_list,error_type,error_prob,bp5_list,pro5_list,bp3_list,pro3_list),chunksize=csize)
 	
 	read_counter = 0
-	isoform_counts = defaultdict(lambda: int())
+	#isoform_counts = defaultdict(lambda: int())
 	for res in results:
 		if not res: continue
 		#output_gpd_fl.write(res+"\n")
@@ -31,19 +31,20 @@ def main(args):
 		for read in res:
 			read_seq = read[0]
 			isoform_id = read[1]
-			read_id = "PacBio_simulated_read_" + str(read_counter)
+			read_id = isoform_id + '_PacBio_simulated_read_' + str(read_counter)
+			#read_id = "PacBio_simulated_read_" + str(read_counter)
 			read_counter += 1
 			output_fasta.write(">" + read_id + "\n" + read_seq + "\n")
-			output_read_info.write(read_id + "\t" + isoform_id + "\n")
-			isoform_counts[isoform_id] += 1
+			#output_read_info.write(read_id + "\t" + isoform_id + "\n")
+			#isoform_counts[isoform_id] += 1
 
-	output_counts = open(args.output + ".isoform_counts.tsv", "w")
-	for isoform_id in isoform_counts:
-		output_counts.write(isoform_id + "\t" + str(isoform_counts[isoform_id]) + "\n")
+	#output_counts = open(args.output + ".isoform_counts.tsv", "w")
+	#for isoform_id in isoform_counts:
+	#	output_counts.write(isoform_id + "\t" + str(isoform_counts[isoform_id]) + "\n")
 		
-	output_counts.close()
+	#output_counts.close()
 	output_fasta.close()
-	output_read_info.close()
+	#output_read_info.close()
 	
 	sys.stdout.write("Finish analysis: " + time.strftime("%a,%d %b %Y %H:%M:%S") + "\n")
 	sys.stdout.flush()

@@ -21,6 +21,7 @@ from collections import defaultdict
 from src import classif_gtf
 from src import pb_ont_sim
 from src import sqanti3_stats
+from src import sim_peparatory
 
 def classif(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
@@ -94,7 +95,7 @@ def preparatory(input):
     numpy.random.seed(args.seed)
     
     # Modify GTF
-    counts_end = pb_ont_sim.simulate_gtf(args)
+    counts_end = sim_peparatory.simulate_gtf(args)
     print('***Summary table from GTF modification\n')
     counts_ini = defaultdict(lambda: 0, {
         'full-splice_match': 0,
@@ -107,17 +108,17 @@ def preparatory(input):
         'genic' :args.GG,
         'intergenic':args.Intergenic
     }) 
-    pb_ont_sim.summary_table_del(counts_ini, counts_end)
+    sim_peparatory.summary_table_del(counts_ini, counts_end)
 
     expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
-    deleted_out = os.path.join(args.dir, (args.output + '_deleted.txt'))
+    trans_index = os.path.join(args.dir, (args.output + '_index.tsv'))
 
     if args.subparser == 'equal':
-        pb_ont_sim.create_expr_file_fixed_count(args.cat, deleted_out, args.n_trans,
+        sim_peparatory.create_expr_file_fixed_count(trans_index, args.n_trans,
                                             args.read_count, expression_out
         )
     elif args.subparser == 'custom':
-        pb_ont_sim.create_expr_file_nbinom(args.cat, deleted_out, args.n_trans,
+        sim_peparatory.create_expr_file_nbinom(trans_index, args.n_trans,
                                             args.nbn_known, args.nbp_known, 
                                             args.nbn_novel, args.nbp_novel,
                                             expression_out
@@ -126,17 +127,17 @@ def preparatory(input):
     elif args.subparser == 'sample':
         '''
         if args.pb:
-            pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
+            sim_peparatory.create_expr_file_sample(args.cat, deleted_out, 
                                             args.rt, args.reads,
                                             expression_out, 'pb'
             )
         if args.ont:
-            pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
+            sim_peparatory.create_expr_file_sample(args.cat, deleted_out, 
                                             args.rt, args.reads,
                                             expression_out, 'ont'
             )
         '''
-        pb_ont_sim.create_expr_file_sample(args.cat, deleted_out, 
+        sim_peparatory.create_expr_file_sample(trans_index, 
                                            args.rt, args.reads,
                                            expression_out, 'ont'
         )
@@ -153,7 +154,7 @@ def sim(input):
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('--rt', help='reference transcripts in FASTA format (for custom simulation and/or ont reads)', type=str)
-    parser.add_argument('--expr', default = False,  help = '\t\tExpression file', required=True)
+    parser.add_argument('-i', '--index', default = False,  help = '\t\tIndex file', required=True)
     parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
@@ -185,9 +186,7 @@ def eval(input):
     parser.add_argument('--isoforms', default = False,  help = '\t\tGTF with trancriptome reconstructed with your pipeline', required=True)
     parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format')
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
-    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans')
-    parser.add_argument('--cat', default = False,  help = '\t\tFile with deleted trans')
-    parser.add_argument('--expr', default = False,  help = '\t\tFile with deleted trans')
+    parser.add_argument('-i', '--index', default = False,  help = '\t\tIndex file', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')

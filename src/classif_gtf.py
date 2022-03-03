@@ -855,7 +855,7 @@ def write_category_file(data: dict, out_name: str):
     '''
 
     f_out = open(out_name, 'w')
-    f_out.write('TransID\tGeneID\tSC\tRefGene\tRefTrans\tTSS\tTTS\tDonors\tAcceptors\n')
+    f_out.write('transcript_id\tgene_id\tstructural_category\tassociated_gene\tassociated_trans\tstrand\texons\tdonors\tacceptors\tTSS_genomic_coord\tTTS_genomic_coord\n')
 
     for chrom in data.values():
         for trans in chrom:
@@ -865,15 +865,16 @@ def write_category_file(data: dict, out_name: str):
                 donors.append(d)
                 acceptors.append(a)
             if isinstance(donors[0], str):
-                pass
+                donors = ['NA']
+                acceptors = ['NA']
             else:
                 donors = [str(d) for d in donors] 
                 acceptors = [str(a+1) for a in acceptors] # Change to 1-based exon start
             trans.tss += 1 # Change to 1-based exon start
             if trans.str_class == 'intergenic':
-                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'None', '_'.join(trans.transcripts), trans.tss, trans.tts, ','.join(donors), ','.join(acceptors)))
+                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'novel', '_'.join(trans.transcripts), trans.strand, trans.num_exons, ','.join(donors), ','.join(acceptors), trans.tss, trans.tts))
             else:
-                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts), trans.tss, trans.tts, ','.join(donors), ','.join(acceptors)))
+                f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts), trans.strand, trans.num_exons, ','.join(donors), ','.join(acceptors), trans.tss, trans.tts))
 
     f_out.close()
 
