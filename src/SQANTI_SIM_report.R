@@ -5,7 +5,7 @@
 #######################################
 
 # Author: Jorge Meste
-# Last modified: 28/02/2022 by Jorge Mestre
+# Last modified: 03/02/2022 by Jorge Mestre
 
 
 #######################################
@@ -28,69 +28,6 @@ suppressMessages(library(ggplot2))
 #                                     #
 #######################################
 
-setClass('QueryIsoform', slots = list(
-  id='character', gene_id='character', str_class='character',
-  junctions='vector', start='numeric', end='numeric'
-))
-
-calc_known_stats <- function(query, data.known, data.del){
-  matches <- apply(query, 1, function(x){
-    # Check known
-    for (row in 1:nrow(data.known)){
-      ref_donor <- data.known[row,'Donors']
-      ref_acceptor <- data.known[row,'Acceptors']
-      ref_start <- data.known[row,'TSS']
-      ref_end <- data.known[row,'TTS']
-      
-      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor)){
-        if (abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50) {
-          return('TP')
-        } else{
-          return('PTP')
-        }
-      }
-    }
-    
-    # Check deleted
-    for (row in 1:nrow(data.del)){
-      ref_donor <- data.del[row,'Donors']
-      ref_acceptor <- data.del[row,'Acceptors']
-      ref_start <- data.del[row,'TSS']
-      ref_end <- data.del[row,'TTS']
-      
-      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor)){
-        if (abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50) {
-          return('novel')
-        }
-      }
-    }
-    return('FP')
-  })
-
-  return(data.frame(Stats=c('TP', 'PTP', 'FP'), Values=c(sum(matches=='TP'), sum(matches=='PTP'), sum(matches=='FP'))))
-}
-
-calc_novel_stats <- function(data.query, ref.novel){
-  matches <- apply(data.query, 1, function(x, ref.novel){
-    # Check for match
-    for (row in 1:nrow(ref.novel)){
-      ref_donor <- ref.novel[row,'Donors']
-      ref_acceptor <- ref.novel[row,'Acceptors']
-      ref_start <- ref.novel[row,'TSS']
-      ref_end <- ref.novel[row,'TTS']
-      
-      if (setequal(x$Donors, ref_donor) && setequal(x$Acceptors, ref_acceptor)){
-        if (abs(start - x$TSS) < 50 && abs(end - x$TTS) < 50) {
-          return('TP')
-        } else{
-          return('PTP')
-        }
-      }
-    }
-    return('FP')
-  })
-  return(data.frame(Stats=c('TP', 'PTP', 'FP'), Values=c(sum(matches=='TP'), sum(matches=='PTP'), sum(matches=='FP'))))
-}
 
 #######################################
 #                                     #
@@ -105,12 +42,16 @@ junc.file <- args[2] # junctions file SQANTI3
 del.file <- args[3] # deleted transcripts file preparatory step
 cat.file <- args[4] # categories files
 expr.file <- args[5] # sim counts file sim step
+src.path <- args[6] # path to src utilities
 
-class.file <- 'sqanti_sim_classification.txt'
-junc.file <- 'sqanti_sim_junctions.txt'
-del.file <- 'mix_deleted.txt'
-cat.file <- 'chr3.gencode.v39_categories.txt'
-expr.file <- 'PacBio_simulated.isoform_counts.tsv'
+output_directory <- dirname(class.file)
+output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
+
+#class.file <- 'sqanti_sim_classification.txt'
+#junc.file <- 'sqanti_sim_junctions.txt'
+#del.file <- 'mix_deleted.txt'
+#cat.file <- 'chr3.gencode.v39_categories.txt'
+#expr.file <- 'PacBio_simulated.isoform_counts.tsv'
 
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
@@ -199,8 +140,8 @@ novel.matches <- inner_join(data.query, data.del, by='junctions') %>%
   summarise(structural_category=structural_category.x,diffTSS = min(diffTSS), diffTTS =min(diffTTS))
 novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < 50 & novel.matches$diffTTS < 50),]
 
-known.metrics <- list()
-novel.metrics <- list()
+known.metrics <- data.frame(init=c())
+novel.metrics <- data.frame(init=c())
 for (sc in xaxislabelsF1){
   known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category == sc),])
   known.PTP <- nrow(known.matches[which(known.matches$structural_category == sc),]) - known.TP
@@ -213,26 +154,22 @@ for (sc in xaxislabelsF1){
     novel.FN <- nrow(data.del[which(data.del$structural_category == sc),]) - novel.TP
     
     
-    novel.metrics[[sc]] <- data.frame(Values=c(novel.TP, novel.PTP, FP, novel.FN))
-    rownames(novel.metrics[[sc]]) <- c('TP', 'PTP', 'FP', 'FN')
-    novel.metrics[[sc]]['Sensitivity', 'Values'] <- novel.TP/ (novel.TP + novel.FN)
-    novel.metrics[[sc]]['Precision', 'Values'] <- novel.TP/ (novel.TP + FP)
+    novel.metrics['TP', sc] <- novel.TP
+    novel.metrics['PTP', sc] <- novel.PTP
+    novel.metrics['FP', sc] <- FP
+    novel.metrics['FN', sc] <- novel.FN
+    novel.metrics['Sensitivity', sc] <- novel.TP/ (novel.TP + novel.FN)
+    novel.metrics['Precision', sc] <- novel.TP/ (novel.TP + FP)
     
   } else {
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP
   }
   
-  known.metrics[[sc]] <- data.frame(Values=c(known.TP, known.PTP, FP))
-  rownames(known.metrics[[sc]]) <- c('TP', 'PTP', 'FP')
-  known.metrics[[sc]]['Precision', 'Values'] <- known.TP/ (known.TP + FP)
+  known.metrics['TP', sc] <- known.TP
+  known.metrics['PTP', sc] <- known.PTP
+  known.metrics['FP', sc] <- FP
+  known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
   
-}
-
-known.metrics <- list()
-for (sc in xaxislabelsF1){
-  query <- data.query[which(data.query$structural_category == sc),]
-  known.metrics[sc] <- calc_known_stats(query, data.known, data.del)
-  known.metrics[[sc]]['Precision', 'Values'] <- known.metrics[[sc]]['TP'] / (known.metrics[[sc]]['TP'] + known.metrics[[sc]]['FP'] + known.metrics[[sc]]['PTP'])
 }
 
 known.TP <- 0
@@ -244,23 +181,40 @@ novel.PTP <- 0
 novel.FP <- 0
 novel.FN <- 0 
 for (sc in xaxislabelsF1){
-  TP <- TP + known.metrics[[sc]]['TP', 'Values']
-  PTP <- PTP + known.metrics[[sc]]['PTP', 'Values']
-  FP <- FP + known.metrics[[sc]]['FP', 'Values']
+  known.TP <- known.TP + known.metrics['TP', sc]
+  known.PTP <- known.PTP + known.metrics['PTP', sc]
+  known.FP <- known.FP + known.metrics['FP', sc]
+  if (sc %in% sim.sc){
+    novel.TP <- novel.TP + novel.metrics['TP', sc]
+    novel.PTP <- novel.PTP + novel.metrics['PTP', sc]
+    novel.FP <- novel.FP + novel.metrics['FP', sc]
+  }
 }
-known.metrics[['global']] <- data.frame(Stats=c('TP', 'PTP', 'FP'), Values=c(TP, PTP, FP))
-known.metrics[['global']]['FN', 'Values'] <- nrow(data.known) - (TP + PTP + FP)
-known.metrics[['global']]['Sensitivity', 'Values'] <- TP / (TP + PTP + FP)
-known.metrics[['global']]['Precision', 'Values'] <- TP / (TP + known.metrics[['global']]['FN'])
-known.metrics[['global']]['F-score', 'Values'] <- 2*((known.metrics[['global']]['Sensitivity', 'Values']*known.metrics[['global']]['Precision', 'Values'])/(known.metrics[['global']]['Sensitivity', 'Values']+known.metrics[['global']]['Precision', 'Values']))
 
-# Metrics for novel trans
-novel.metrics <- list()
-for (sc in levels(data.del$structural_category)){
-  ref.novel <- data.del[which(data.del$structural_category == sc),]
-  novel.metrics[sc] <- calc_novel_stats(data.query, ref.novel)
-  novel.metrics[[sc]]['Precision', 'Values'] <- known.metrics[[sc]]['TP'] / (known.metrics[[sc]]['TP'] + known.metrics[[sc]]['FP'] + known.metrics[[sc]]['PTP'])
-}
+
+
+known.metrics['TP', 'global'] <- known.TP
+known.metrics['PTP', 'global'] <- known.PTP
+known.metrics['FP', 'global'] <- known.FP
+known.metrics['FN', 'global'] <- nrow(data.known) - known.TP
+known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.FP)
+known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
+known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
+
+novel.metrics['TP', 'global'] <- novel.TP
+novel.metrics['PTP', 'global'] <- novel.PTP
+novel.metrics['FP', 'global'] <- novel.FP
+novel.metrics['FN', 'global'] <- nrow(data.del) - novel.TP
+novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
+novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
+novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
+
+
+col.order <- c("global", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")
+row.order <- c('TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score')
+known.metrics <- known.metrics[intersect(row.order, rownames(known.metrics)), intersect(col.order, colnames(known.metrics))]
+novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), intersect(col.order, colnames(novel.metrics))]
+
 
 
 
@@ -273,7 +227,7 @@ for (sc in levels(data.del$structural_category)){
 # -------------------- 
 # -------------------- 
 # TABLE INDEX
-# t1:
+# t1: known metrics
 
 # -------------------- 
 # -------------------- 
@@ -304,25 +258,36 @@ mytheme <- theme_classic(base_family = "Helvetica") +
   theme(plot.title = element_text(lineheight=.4, size=15, hjust = 0.5)) +
   theme(plot.margin = unit(c(2.5,1,1,1), "cm"))
 
+# -------------------- 
+# TABLE 1: known metrics
+t1 <- DT::datatable(known.metrics) %>%
+  formatRound(colnames(known.metrics), digits = 3, rows=c(5,6,7), zero.print = 0)
+
+# TABLE 2: novel metrics
+t2 <- DT::datatable(novel.metrics) %>%
+  formatRound(colnames(novel.metrics), digits = 3, rows=c(5,6,7), zero.print = 0)
+
 
 # -------------------- 
 # PLOT 1: simulated expression profile
 expr.dist <- data.expr
-expr.dist$type <- lapply(expr.dist$TransID, function(x){
+expr.dist$type <- sapply(expr.dist$TransID, function(x){
   ifelse(x %in% data.del$TransID, 'novel', 'known')
 })
 
 p1 <- expr.dist %>%
   ggplot( aes(x=counts, fill=type)) +
-  geom_histogram(alpha=0.6, position = 'identity') +
+  geom_histogram(color='white', alpha=0.6, position = 'identity') +
   mytheme +
-  scale_fill_manual(values = c('orange', 'darkcyan'), guide='none') +
+  scale_fill_manual(values = c('orange', 'darkcyan')) +
+  xlab('Counts') + 
+  ylab('Number of transcripts') +
   ggtitle('Simulated counts distribution')
 
 # PLOT 2: structural classification
 p2 <- data.class %>%
   ggplot(aes(x=structural_category)) +
-  geom_bar(aes(y = (..count..)/sum(..count..)*100, alpha=0.6, fill=structural_category), color="black", size=0.3, width=0.7) +
+  geom_bar(aes(y = (..count..)/sum(..count..)*100, fill=structural_category), color="black", size=0.3, width=0.7) +
   scale_x_discrete(drop=FALSE) + 
   xlab('') + 
   ylab('Transcripts %') +
@@ -335,14 +300,10 @@ p2 <- data.class %>%
   theme(legend.justification=c(1,1), legend.position=c(1,1))
 
 
-
-
-
-
-
-
-
-
-
-
+# -------------------- Output report
+rmarkdown::render(
+  input = paste(src.path, 'SQANTI_SIM_report.Rmd', sep = "/"),
+  output_dir = output_directory,
+  output_file = paste0(output_name, "_SQANTI_SIM_report.html")
+)
 

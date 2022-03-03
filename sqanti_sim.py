@@ -183,9 +183,11 @@ def sim(input):
 def eval(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py eval', description='sqanti_sim.py eval parse options')
     parser.add_argument('--isoforms', default = False,  help = '\t\tGTF with trancriptome reconstructed with your pipeline', required=True)
-    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format', required=True)
+    parser.add_argument('--gtf', default = False,  help = '\t\tReference annotation in GTF format')
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA')
-    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans', required=True)
+    parser.add_argument('--deleted', default = False,  help = '\t\tFile with deleted trans')
+    parser.add_argument('--cat', default = False,  help = '\t\tFile with deleted trans')
+    parser.add_argument('--expr', default = False,  help = '\t\tFile with deleted trans')
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files. Default: Directory where the script was run')
     parser.add_argument('-k', '--cores', default='1', type=int, help = '\t\tNumber of cores to run in parallel')

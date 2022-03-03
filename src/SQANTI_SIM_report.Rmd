@@ -1,0 +1,59 @@
+---
+title: "SQANTI3 OUTPUT COMPARISON REPORT"
+author: "`r paste0('  ','Author', ': ',Sys.getenv('USERNAME'))`"
+date: "`r paste0('  ','Date', ': ', format(Sys.time(), '%d %B %Y'))`"
+output:
+  html_document:
+    number_sections: false
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: spacelab
+---
+
+<!-- Basic setting -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FALSE)
+```
+
+<!-- Report generation -->
+
+# SQANTI-SIM REPORT
+
+```{r, results='asis'}
+n.sim.trans <- nrow(data.expr)
+n.known.trans <- nrow(data.known)
+n.novel.trans <- nrow(data.del)
+
+cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
+cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
+cat('\n\n**Number of novel transcripts**: ', n.novel.trans, '\n\n')
+```
+
+## Simulated counts distribution
+
+```{r}
+p1
+```
+
+## Isoform classification distribution
+
+```{r}
+p2
+```
+
+## Stats for known transcripts
+
+```{r}
+t1
+```
+
+## Stats for novel transcripts
+
+```{r}
+t2
+```
+
+
+
