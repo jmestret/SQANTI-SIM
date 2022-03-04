@@ -19,15 +19,15 @@ def generate_expr_matrix(input_gpd_fl,input_txt_fl,output_expr_mtx, n_reads):
 	dic_iso_expr = {}
 	skip = input_txt_fl.readline() # header
 	for line in input_txt_fl:
-		values = line.strip().split("\t") 
+		values = line.strip().split() 
 		iso_id = values[0]
 		expr_v = values[2] # expr_v is TPM now
 		dic_iso_expr[iso_id] = int(round(mill_reads * float(expr_v)))
 	
 	for line in input_gpd_fl:
-		iso_id = line.strip().split("\t")[1]
+		iso_id = line.strip().split()[1]
 		if iso_id in dic_iso_expr:
-			print(line.strip() + "\t" + str(dic_iso_expr[iso_id]), file=output_expr_mtx)
+			output_expr_mtx.write(line.strip() + "\t" + str(dic_iso_expr[iso_id]) + '\n')
 
 	input_txt_fl.close()
 	input_gpd_fl.close()

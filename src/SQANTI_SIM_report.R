@@ -45,11 +45,10 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-#class.file <- 'sqanti_sim_classification.txt'
-#junc.file <- 'sqanti_sim_junctions.txt'
-#del.file <- 'mix_deleted.txt'
-#cat.file <- 'chr3.gencode.v39_categories.txt'
-#expr.file <- 'PacBio_simulated.isoform_counts.tsv'
+class.file <- 'sqanti_sim_classification.txt'
+junc.file <- 'sqanti_sim_junctions.txt'
+index.file <- 'mix_index.tsv'
+
 
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
@@ -76,6 +75,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 
 
 data.query <- full_join(data.class, data.junction, by='isoform')
+data.query$junctions[which(is.na(data.query$junctions))] <- ''
 data.query <- data.query[,c('isoform', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
 
 # Read deleted file
@@ -87,6 +87,7 @@ data.index$acceptors <- lapply(data.index$acceptors, function(x){
   paste(sort(unlist(as.numeric(unlist(strsplit(as.character(x), ",")))-1)), collapse=',')
 })
 data.index$junctions <- paste(data.index$donors, data.index$acceptors, sep=',')
+data.index$junctions[which(data.index$junctions == ',')] <- ''
 data.index$TSS_genomic_coord  <- data.index$TSS_genomic_coord - 1
 data.index$structural_category = factor(data.index$structural_category,
                                       labels = xaxislabelsF1,
@@ -94,35 +95,36 @@ data.index$structural_category = factor(data.index$structural_category,
                                       ordered=TRUE)
 data.index$donors <- NULL
 data.index$acceptors <- NULL
-sim.sc <- unique(data.index$structural_category)
+
 
 # Transcript simulated
 data.novel <- data.index[which(data.index$sim_type == 'novel'),]
 data.known <- data.index[which(data.index$sim_type == 'known'),]
+sim.sc <- unique(data.novel$structural_category)
 
 # Matched for novel and known
 
 known.matches <- inner_join(data.query, data.known, by='junctions') %>%
-  group_by(isoform) %>%
-  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y)) %>%
-  summarise(structural_category=structural_category.x, diffTSS = min(diffTSS), diffTTS =min(diffTTS))
+  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
+  arrange(difftot) %>%
+  distinct(isoform, .keep_all = T)
 known.perfect.matches <- known.matches[which(known.matches$diffTSS < 50 & known.matches$diffTTS < 50),]
 
 novel.matches <- inner_join(data.query, data.novel, by='junctions') %>%
-  group_by(isoform) %>%
-  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y)) %>%
-  summarise(structural_category=structural_category.x,diffTSS = min(diffTSS), diffTTS =min(diffTTS))
+  mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
+  arrange(difftot) %>%
+  distinct(isoform, .keep_all = T)
 novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < 50 & novel.matches$diffTTS < 50),]
 
 known.metrics <- data.frame(init=c())
 novel.metrics <- data.frame(init=c())
 for (sc in xaxislabelsF1){
-  known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category == sc),])
-  known.PTP <- nrow(known.matches[which(known.matches$structural_category == sc),]) - known.TP
+  known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
+  known.PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - known.TP
   
   if (sc %in% sim.sc) {
-    novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category == sc),])
-    novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category == sc),]) - novel.TP
+    novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.x == sc),])
+    novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - novel.TP
     
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - novel.TP
     novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
@@ -269,6 +271,9 @@ p2 <- data.class %>%
   ggtitle("Isoform Distribution Across Structural Categories\n\n" ) +
   theme(axis.title.x=element_blank()) +  theme(axis.text.x  = element_text(margin=ggplot2::margin(17,0,0,0), size=12)) +
   theme(legend.justification=c(1,1), legend.position=c(1,1))
+
+# PLOT 3: novel precision vs sensitivity
+
 
 
 # -------------------- Output report

@@ -40,7 +40,7 @@ dependencies:
   - r-scales
   - r-rmarkdown
   - r-stringi
-  - r-dt
+  - r-dt>=0.21
   - r-plotly
   - r-plyr
   - samtools

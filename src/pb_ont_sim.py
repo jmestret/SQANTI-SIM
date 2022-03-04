@@ -18,15 +18,15 @@ from collections import defaultdict
 
     
 def pb_simulation(args):
-    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.index)),'tmp_expression.tsv')
+    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
     n = 0
     f_out = open(expr_f, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
-    with open(args.index, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        i = header.index('requested_counts')
-        j = header.index('requested_tpm')
+    with open(args.trans_index, 'r') as idx:
+        col_names = idx.readline()
+        col_names = col_names.split()
+        i = col_names.index('requested_counts')
+        j = col_names.index('requested_tpm')
         for line in idx:
             line = line.split()
             if int(line[i]) == 0:
@@ -37,8 +37,12 @@ def pb_simulation(args):
     f_out.close()
 
     if not args.read_count:
-        n = 0
         args.read_count = n
+
+    if os.path.isdir(args.output):
+        print('WARNING: output direcory already exists. Overwritting!')
+    else:
+        os.makedirs(args.output)
 
     logging.info('***Simulating PacBio reads with IsoSeqSim')
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -62,7 +66,7 @@ def pb_simulation(args):
     os.remove(expr_f)
     logging.info('***IsoSeqSim simulation done')
     logging.info('***Counting PacBio reads')
-    output_read_info = open(args.output + "PacBio_simulated.read_to_isoform.tsv", "w")
+    output_read_info = open(os.path.join(args.output, "PacBio_simulated.read_to_isoform.tsv"), "w")
     id_counts = defaultdict(lambda: 0)
     with open(os.path.join(args.output, 'PacBio_simulated.fasta'), 'r') as sim_fasta:
         for line in sim_fasta:
@@ -74,13 +78,13 @@ def pb_simulation(args):
     sim_fasta.close()
     output_read_info.close()
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(args.index)),'tmp_preparatory.tsv')
+    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
     f_out = open(tmp, 'w')
-    with open(args.index, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        header.append('sim_counts')
-        f_out.write('\t'.join(header) + '\n')
+    with open(args.trans_index, 'r') as idx:
+        col_names = idx.readline()
+        col_names = col_names.split()
+        col_names.append('sim_counts')
+        f_out.write('\t'.join(col_names) + '\n')
         for line in idx:
             line = line.split()
             trans_id = line[0]
@@ -91,8 +95,8 @@ def pb_simulation(args):
     idx.close()
     f_out.close()
 
-    os.remove(args.index)
-    os.rename(tmp, args.index)
+    os.remove(args.trans_index)
+    os.rename(tmp, args.trans_index)
 
     #output_counts = open(args.output + ".isoform_counts.tsv", "w")
 	#for isoform_id in isoform_counts:
@@ -102,15 +106,15 @@ def pb_simulation(args):
 
 
 def ont_simulation(args):
-    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.index)),'tmp_expression.tsv')
+    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
     n = 0
     f_out = open(expr_f, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
-    with open(args.index, 'r') as idx:
-        header = idx.readline
-        header = header.split()
-        i = header.index('requested_counts')
-        j = header.index('requested_tpm')
+    with open(args.trans_index, 'r') as idx:
+        col_names = idx.readline
+        col_names = col_names.split()
+        i = col_names.index('requested_counts')
+        j = col_names.index('requested_tpm')
         for line in idx:
             line = line.split()
             if int(line[i]) == 0:
@@ -121,8 +125,12 @@ def ont_simulation(args):
     f_out.close()
 
     if not args.read_count:
-        n = 0
         args.read_count = n
+
+    if os.path.isdir(args.output):
+        print('WARNING: output direcory already exists. Overwritting!')
+    else:
+        os.makedirs(args.output)
 
     if args.read_type == 'dRNA':
         model_name = 'human_NA12878_dRNA_Bham1_guppy'
@@ -233,13 +241,13 @@ def ont_simulation(args):
     f_out.close()
     '''
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(args.index)),'tmp_preparatory.tsv')
+    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
     f_out = open(tmp, 'w')
-    with open(args.index, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        header.append('sim_counts')
-        f_out.write('\t'.join(header) + '\n')
+    with open(args.trans_index, 'r') as idx:
+        col_names = idx.readline()
+        col_names = col_names.split()
+        col_names.append('sim_counts')
+        f_out.write('\t'.join(col_names) + '\n')
         for line in idx:
             line = line.split()
             trans_id = line[0]
@@ -250,8 +258,8 @@ def ont_simulation(args):
     idx.close()
     f_out.close()
 
-    os.remove(args.index)
-    os.rename(tmp, args.index)
+    os.remove(args.trans_index)
+    os.rename(tmp, args.trans_index)
 
     logging.info('***NanoSim simulation done')
     return

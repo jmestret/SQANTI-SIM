@@ -40,7 +40,7 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
 
     # Build a list for each SC with all transcripts that were classified there
     with open(f_name, 'r') as cat:
-        header = cat.readline()
+        col_names = cat.readline()
         for line in cat:
             line_split = line.split()
             gene = line_split[1]
@@ -110,10 +110,10 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
 
     f_out = open(f_name_out, 'w')
     with open(f_name, 'r') as cat:
-        header = cat.readline()
-        header = header.split()
-        header.append('sim_type')
-        f_out.write('\t'.join(header) + '\n')
+        col_names = cat.readline()
+        col_names = col_names.split()
+        col_names.append('sim_type')
+        f_out.write('\t'.join(col_names) + '\n')
         for line in cat:
             line = line.split()
             trans_id = line[0]
@@ -256,8 +256,8 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, outp
     known_trans = known_trans[:(n_trans-len(novel_trans))]
 
     tot_trans = len(novel_trans) + len(known_trans)
-    if len(tot_trans) != n_trans:
-        print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(len(tot_trans)))
+    if tot_trans != n_trans:
+        print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(tot_trans))
 
     coverage = read_count//n_trans
     tpm = (1000000.0 * coverage) / (coverage * n_trans) # Not taking into account transcript length
@@ -265,10 +265,10 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, outp
     tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
     f_out = open(tmp, 'w')
     with open(f_idx, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        header.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(header) + '\n')
+        col_names = idx.readline()
+        col_names = col_names.split()
+        col_names.extend(['requested_counts', 'requested_tpm'])
+        f_out.write('\t'.join(col_names) + '\n')
         for line in idx:
             line = line.split()
             trans_id = line[0]
@@ -319,10 +319,10 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     i_known = 0
     i_novel = 0
     with open(f_idx, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        header.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(header) + '\n')
+        col_names = idx.readline()
+        col_names = col_names.split()
+        col_names.extend(['requested_counts', 'requested_tpm'])
+        f_out.write('\t'.join(col_names) + '\n')
         for line in idx:
             line = line.split()
             trans_id = line[0]
@@ -422,10 +422,10 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, tech):
     i_known = 0
     i_novel = 0
     with open(f_idx, 'r') as idx:
-        header = idx.readline()
-        header = header.split()
-        header.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(header) + '\n')
+        col_names = idx.readline()
+        col_names = col_names.split()
+        col_names.extend(['requested_counts', 'requested_tpm'])
+        f_out.write('\t'.join(col_names) + '\n')
         for line in idx:
             line = line.split()
             trans_id = line[0]

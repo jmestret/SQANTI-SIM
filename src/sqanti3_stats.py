@@ -19,10 +19,8 @@ def sqanti3_stats(args):
 
     cmd =[sqanti3, args.isoforms, args.gtf, args.genome,
                           '-o', args.output, '-d', args.dir, '--cpus', str(args.cores),
+                          '--min_ref_len', str(args.min_ref_len),
                           '--force_id_ignore']
-    if args.min_ref_len != 0:
-        cmd.append('--min_ref_len')
-        cmd.append(str(args.min_ref_len))
     
     res = subprocess.run(cmd)
 
@@ -37,7 +35,7 @@ def sqanti3_stats(args):
     junctions_file = os.path.join(args.dir, (args.output + '_junctions.txt'))
 
     res = subprocess.run(['Rscript', os.path.join(src_dir,'SQANTI_SIM_report.R'),
-                          classification_file, junctions_file, args.index, src_dir
+                          classification_file, junctions_file, args.trans_index, src_dir
     ])
 
     if res.returncode != 0:

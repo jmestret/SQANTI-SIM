@@ -22,9 +22,9 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 # SQANTI-SIM REPORT
 
 ```{r, results='asis'}
-n.sim.trans <- nrow(data.expr)
+n.sim.trans <- nrow(data.known) +  nrow(data.novel)
 n.known.trans <- nrow(data.known)
-n.novel.trans <- nrow(data.del)
+n.novel.trans <- nrow(data.novel)
 
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
 cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
