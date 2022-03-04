@@ -16,10 +16,12 @@
 
 suppressMessages(library(dplyr))
 suppressMessages(library(DT))
+suppressMessages(library(ggplot2))
 suppressMessages(library(gridExtra))
 suppressMessages(library(knitr))
 suppressMessages(library(rmarkdown))
-suppressMessages(library(ggplot2))
+suppressMessages(library(tidyr))
+
 
 
 #######################################
@@ -210,7 +212,9 @@ novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), in
 # PLOT INDEX
 # p1: simulated expression profile
 # p2: structural classification
-# p3: 
+# p3: sensitivity by trans per gene
+#    p3.1: discrete
+#    p3.2: factor
 
 print("***Generating plots for the report")
 
@@ -272,8 +276,54 @@ p2 <- data.class %>%
   theme(axis.title.x=element_blank()) +  theme(axis.text.x  = element_text(margin=ggplot2::margin(17,0,0,0), size=12)) +
   theme(legend.justification=c(1,1), legend.position=c(1,1))
 
-# PLOT 3: novel precision vs sensitivity
+# PLOT 3: sensitivity by trans per gene
+trans.per.gene <- data.index %>%
+  group_by(gene_id) %>%
+  summarise(n_trans = n())
+trans.per.gene <- right_join(trans.per.gene, data.novel, by='gene_id')
+trans.per.gene$found <- sapply(trans.per.gene$transcript_id, function(x){
+  if (x %in% novel.perfect.matches$transcript_id){
+    return('TP')
+  } else {return('FN')}
+})
+trans.per.gene <- trans.per.gene %>%
+  group_by(n_trans, found) %>%
+  summarise(counts=n()) %>%
+  pivot_wider(names_from = found, values_from = counts, values_fill = 0) %>%
+  mutate(sensitivity=(TP/(TP+FN)))
 
+p3.1 <- trans.per.gene %>%
+  ggplot(aes(x=n_trans, y=sensitivity,)) +
+  geom_point(color='orange', size=3) +
+  mytheme +
+  ylab('Sensitivity') +
+  xlab('Number of annotated transcripts per gene')
+
+trans.per.gene$cat <- sapply(trans.per.gene$n_trans, function(x){
+  if (x <= 2){
+    return('1-2')
+  } else if (3 <= x & x <= 10){
+    return('3-10')
+  } else if (10 < x & x <= 20){
+    return('11-20')
+  } else {
+      return('>20')
+    }
+})
+
+trans.per.gene$cat <- factor(trans.per.gene$cat, levels=c('1-2', '3-10','11-20', '>20'))
+trans.per.gene <- trans.per.gene %>%
+  group_by(cat) %>%
+  summarise(TP=sum(TP), FN=sum(FN)) %>%
+  mutate(sensitivity=(TP/(TP+FN)))
+
+p3.2 <- trans.per.gene %>%
+  ggplot(aes(x=cat, y=sensitivity)) +
+  geom_segment(aes(x=cat, xend=cat, y=0, yend=sensitivity), color='darkcyan') +
+  geom_point(color='orange', size=4) +
+  mytheme +
+  ylab('Sensitivity') +
+  xlab('Number of annotated transcripts per gene')
 
 
 # -------------------- Output report

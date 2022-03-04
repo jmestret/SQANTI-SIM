@@ -2074,9 +2074,12 @@ def run(args):
     if args.report != 'skip':
         print("**** Generating SQANTI3 report....", file=sys.stderr)
         cmd = RSCRIPTPATH + " {d}/{f} {c} {j} {p} {d} {a} {b}".format(d=utilitiesPath, f=RSCRIPT_REPORT, c=outputClassPath, j=outputJuncPath, p=args.doc, a=args.saturation, b=args.report)
-        if subprocess.check_call(cmd, shell=True)!=0:
+        try:
+            if subprocess.check_call(cmd, shell=True)!=0:
+                print("ERROR running command: {0}".format(cmd), file=sys.stderr)
+                #sys.exit(-1)
+        except:
             print("ERROR running command: {0}".format(cmd), file=sys.stderr)
-            sys.exit(-1)
     stop3 = timeit.default_timer()
 
     print("Removing temporary files....", file=sys.stderr)

@@ -25,10 +25,12 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 n.sim.trans <- nrow(data.known) +  nrow(data.novel)
 n.known.trans <- nrow(data.known)
 n.novel.trans <- nrow(data.novel)
+n.class.trans <- nrow(data.query)
 
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
 cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
 cat('\n\n**Number of novel transcripts**: ', n.novel.trans, '\n\n')
+cat('\n\n**Number of classified transcripts**: ', n.class.trans, '\n\n')
 ```
 
 ## Simulated counts distribution
@@ -55,5 +57,11 @@ t1
 t2
 ```
 
+### Sensitivity deppending on the number of annotated transcripts per gene
+
+```{r}
+p3.1
+p3.2
+```
 
 
