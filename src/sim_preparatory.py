@@ -7,7 +7,6 @@ Generate counts for sim
 @date 03/03/2022
 '''
 
-import logging
 import os
 import sys
 import subprocess
@@ -215,10 +214,12 @@ def simulate_gtf(args):
     })
 
     gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
-    trans_index = os.path.join(args.dir, (args.output + '_index.tsv'))
+    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
 
-    target = target_trans(args.cat, trans_index, counts)
+    target = target_trans(args.trans_index, tmp, counts)
     modifyGTF(args.gtf, gtf_modif, target)
+    os.remove(args.trans_index)
+    os.rename(tmp, args.trans_index)
 
     return counts
 
@@ -355,18 +356,16 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, tech):
     sam_file = ''.join(output.split('.')[:-1]) + '_' + tech + '.sam'
 
     if tech == 'pb':
-        res = subprocess.run(['minimap2', ref_trans, reads, '-x', 'map-pb',
-                              '-a', '--secondary=no', '-o', sam_file
-        ])
+        cmd = ['minimap2', ref_trans, reads, '-x', 'map-pb',
+               '-a', '--secondary=no', '-o', sam_file]
     elif tech == 'ont':
-        res = subprocess.run(['minimap2', ref_trans, reads, '-x', 'map-ont',
-                              '-a', '--secondary=no', '-o', sam_file
-        ])
-    
-    if res.returncode != 0:
-        logging.error('minimap2 failed with code %d' %(res.returncode))
-        sys.exit(1)
+        cmd=['minimap2', ref_trans, reads, '-x', 'map-ont',
+             '-a', '--secondary=no', '-o', sam_file]
 
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR running minimap2: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
+    
     trans_counts = defaultdict(lambda: 0)
 
     with pysam.AlignmentFile(sam_file, 'r') as sam_file_in:

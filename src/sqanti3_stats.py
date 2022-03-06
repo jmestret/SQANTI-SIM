@@ -9,11 +9,11 @@ Generate counts for sim
 
 import argparse
 import subprocess
-import logging
 import os
+import sys
 
 def sqanti3_stats(args):
-    logging.info('***Running SQANTI3')
+    print('***Running SQANTI3')
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, 'SQANTI3/sqanti3_qc.py')
 
@@ -22,22 +22,21 @@ def sqanti3_stats(args):
                           '--min_ref_len', str(args.min_ref_len),
                           '--force_id_ignore']
     
-    res = subprocess.run(cmd)
-
-    if res.returncode != 0:
-        logging.error('***ERROR running SQANTI3, contact developers for support')
-        return
     
-    logging.info('***Generating SQANTI-SIM report')
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR running SQANTI3: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
 
+    print('***Generating SQANTI-SIM report')
     src_dir = os.path.dirname(os.path.realpath(__file__))
     classification_file = os.path.join(args.dir, (args.output + '_classification.txt'))
     junctions_file = os.path.join(args.dir, (args.output + '_junctions.txt'))
 
-    res = subprocess.run(['Rscript', os.path.join(src_dir,'SQANTI_SIM_report.R'),
-                          classification_file, junctions_file, args.trans_index, src_dir
-    ])
+    cmd=['Rscript', os.path.join(src_dir,'SQANTI_SIM_report.R'),
+         classification_file, junctions_file, args.trans_index, src_dir]
 
-    if res.returncode != 0:
-        logging.error('***ERROR running report generation script')
-        return
+    res = subprocess.run()
+
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR running SQANTI-SIM report generation: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)

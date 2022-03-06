@@ -7,7 +7,6 @@ Simulation step
 @date 20/02/2022
 '''
 
-import logging
 import os
 import sys
 import subprocess
@@ -40,32 +39,31 @@ def pb_simulation(args):
         args.read_count = n
 
     if os.path.isdir(args.output):
-        print('WARNING: output direcory already exists. Overwritting!')
+        print('WARNING: output direcory already exists. Overwritting!', file=sys.stderr)
     else:
         os.makedirs(args.output)
 
-    logging.info('***Simulating PacBio reads with IsoSeqSim')
+    print('***Simulating PacBio reads with IsoSeqSim')
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, 'IsoSeqSim/bin/isoseqsim')
     util_dir = os.path.join(src_dir, 'IsoSeqSim/utilities/')
-    res = subprocess.run([isoseqsim, '-g', str(args.genome),
-                         '-a', str(args.gtf), '--expr', str(expr_f),
-                         '--c5', os.path.join(util_dir, '5_end_completeness.PacBio-Sequel.tab'),
-                         '--c3', os.path.join(util_dir, '3_end_completeness.PacBio-Sequel.tab'),
-                         '-o', os.path.join(args.output, 'PacBio_simulated'),
-                         '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
-                         '--es', '0.01731', '--ed', '0.01090', '--ei', '0.02204',
-                         '-n', str(args.read_count),
-                         '-m', 'normal', '--cpu', str(args.cores),
-                         '--tempdir', os.path.join(args.dir, 'temp_isoseqsim')                   
-    ])
+    cmd = [isoseqsim, '-g', str(args.genome),
+           '-a', str(args.gtf), '--expr', str(expr_f),
+           '--c5', os.path.join(util_dir, '5_end_completeness.PacBio-Sequel.tab'),
+           '--c3', os.path.join(util_dir, '3_end_completeness.PacBio-Sequel.tab'),
+           '-o', os.path.join(args.output, 'PacBio_simulated'),
+           '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
+           '--es', '0.01731', '--ed', '0.01090', '--ei', '0.02204',
+           '-n', str(args.read_count),
+           '-m', 'normal', '--cpu', str(args.cores),
+           '--tempdir', os.path.join(args.dir, 'temp_isoseqsim')]
+    
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR running IsoSeqSim: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
 
-    if res.returncode != 0:
-        logging.error('***ERROR running IsoSeqSim, contact developers for support')
-        return
     os.remove(expr_f)
-    logging.info('***IsoSeqSim simulation done')
-    logging.info('***Counting PacBio reads')
+    print('***Counting PacBio reads')
     output_read_info = open(os.path.join(args.output, "PacBio_simulated.read_to_isoform.tsv"), "w")
     id_counts = defaultdict(lambda: 0)
     with open(os.path.join(args.output, 'PacBio_simulated.fasta'), 'r') as sim_fasta:
@@ -101,7 +99,7 @@ def pb_simulation(args):
     #output_counts = open(args.output + ".isoform_counts.tsv", "w")
 	#for isoform_id in isoform_counts:
 	#	output_counts.write(isoform_id + "\t" + str(isoform_counts[isoform_id]) + "\n")
-
+    print('***IsoSeqSim simulation done')
     return
 
 
@@ -141,7 +139,7 @@ def ont_simulation(args):
         r_type = 'cDNA_1D2'
         uracil = False
     else:
-        logging.error('***ERROR not valid read_type value %s' %(args.read_type))
+        print('***ERROR not valid read_type value %s' %(args.read_type), file=sys.stderr)
         return
     
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -149,15 +147,15 @@ def ont_simulation(args):
     models = os.path.join(src_dir, 'NanoSim/pre-trained_models/')
     model_dir = models + model_name + '/'
     if not os.path.exists(model_dir):
-        logging.info('***Untar NanoSim model')
+        print('***Untar NanoSim model')
         cwd = os.getcwd()
         os.chdir(models)
         res = subprocess.run(['tar', '-xzf', model_name + '.tar.gz'])
         os.chdir(cwd)
         if res.returncode != 0:
-            logging.error('Unpacking NanoSim pre-trained model failed')
+            print('Unpacking NanoSim pre-trained model failed', file=sys.stderr)
 
-    logging.info('***Simulating ONT reads with NanoSim')
+    print('***Simulating ONT reads with NanoSim')
     cmd = [nanosim, 'transcriptome', '-rt', str(args.rt),
            '-rg', str(args.genome), '-e', str(expr_f),
            '-c', str(model_dir + 'training'),
@@ -169,14 +167,12 @@ def ont_simulation(args):
     if uracil:
         cmd.append('--uracil')
 
-    res = subprocess.run(cmd)
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR running NanoSim: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
 
-    if res.returncode != 0:
-        logging.error('***ERROR running NanoSim, contact developers for support')
-        return
     os.remove(expr_f)
-
-    logging.info('***Renaming and counting ONT reads')
+    print('***Renaming and counting ONT reads')
     ref_trans = set()
     ref_dict = defaultdict(lambda: str())
     with open(args.gtf, 'r') as f_in:
@@ -209,7 +205,7 @@ def ont_simulation(args):
                 trans_id = line.split('_')[0]
 
                 if trans_id not in ref_trans:
-                    logging.warning('%s was not found in the annotation' %(trans_id))
+                    print('%s was not found in the annotation' %(trans_id), file=sys.stderr)
                 else:
                     trans_id = ref_dict[trans_id]
                     
@@ -224,7 +220,7 @@ def ont_simulation(args):
     f_in.close()
     f_out.close()
 
-    logging.info('***Saving counts and read-to-isoform files')
+    print('***Saving counts and read-to-isoform files')
     f_name = os.path.join(args.output, 'ONT_simulated.read_to_isoform.tsv')
     f_out = open(f_name, 'w')
 
@@ -261,5 +257,5 @@ def ont_simulation(args):
     os.remove(args.trans_index)
     os.rename(tmp, args.trans_index)
 
-    logging.info('***NanoSim simulation done')
+    print('***NanoSim simulation done')
     return

@@ -915,7 +915,7 @@ def classify_gtf(args):
 
     # Write category file
     print("***Writting structural category file\n")
-    cat_out = os.path.join(args.dir, (args.output + '_categories.txt'))
+    cat_out = os.path.join(args.dir, (args.output + '_index.tsv'))
     write_category_file(trans_info, cat_out)
 
     return trans_info
