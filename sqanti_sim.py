@@ -2,7 +2,7 @@
 '''
 sqanti3_sim.py
 
-Wrapper of long-read RNA-seq simulators (NanoSim and IsoSeqSim) to simulate
+Wrapper for long-read RNA-seq simulators (NanoSim and IsoSeqSim) to simulate
 controlled novelty and degradation of transcripts based on SQANTI3 structural
 categories
 
@@ -10,7 +10,7 @@ categories
 @date 19/01/2022
 '''
 
-__version__ = '0.0'
+__version__ = '0.1'
 
 import argparse
 import os
@@ -23,7 +23,17 @@ from src import pb_ont_sim
 from src import sqanti3_stats
 from src import sim_preparatory
 
+
 def classif(input):
+    '''Classify transcripts in SQANTI3 structural categories
+
+    Given a GTF annotation generates an index file with the SQANTI3 structural
+    category to simulate of each transcript
+
+    Args:
+        input (list): arguments to parse
+    '''
+
     parser = argparse.ArgumentParser(prog='sqanti_sim.py classif', description='sqanti_sim.py classif parse options')
     parser.add_argument('--gtf', type = str,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
@@ -46,12 +56,22 @@ def classif(input):
     print('***Finished succesfully')
     return
 
+
 def preparatory(input):
+    '''Generates the expression matrix to simulate
+
+    Given the nove and known transcripts to simulate and its counts, generates
+    the expression matrix to give as input to the long-read RNA-seq simulators
+
+    Args:
+        input (list): arguments to parse
+    '''
+
     parser = argparse.ArgumentParser(prog='sqanti_sim.py preparatory', description='sqanti_sim.py preparatory parse options')
     parser.add_argument('mode', default = 'equal', choices=['equal', 'custom', 'sample'],  help = '\t\tDifferent modes to generate the expression matrix: equal (simulate with equal coverage for all reads), custom (simulate with diferent negative binomial distributions for novel and known transcripts) or sample (simulate using a real sample)')
     parser.add_argument('-i', '--trans_index', type= str,  help = '\t\tFile with transcript information generated with SQANTI-SIM', required=True)
     parser.add_argument('--gtf', type=str, help = '\t\tReference annotation in GTF format', required=True)
-    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
+    parser.add_argument('-o', '--output', default=str(), help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
     parser.add_argument('--read_count', default = 50000, type=int,  help = '\t\tNumber of reads to simulate (required for "equal" mode)')
     parser.add_argument('-nt', '--trans_number', default = 10000, type=int,  help = '\t\tNumber of different transcripts to simulate (required for "equal" or "custom" mode)')
@@ -91,12 +111,12 @@ def preparatory(input):
         if not args.rt or not (args.pb_reads or args.ont_reads):
             print('sqanti_sim.py preparatory sample: error: the following arguments are required: --rt, {--pb_reads, --ont_reads}', file=sys.stderr)
             sys.exit(1)
-
-    random.seed(args.seed)
-    numpy.random.seed(args.seed)
     
     # Modify GTF
+    random.seed(args.seed)
+    numpy.random.seed(args.seed)
     counts_end = sim_preparatory.simulate_gtf(args)
+
     print('***Summary table from GTF modification\n')
     counts_ini = defaultdict(lambda: 0, {
         'full-splice_match': 0,
@@ -111,41 +131,44 @@ def preparatory(input):
     }) 
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
+    if not args.output:
+        output = os.path.basename(args.trans_index).split('_')
+        args.output = '_'.join(output[:-1])
     expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
-    trans_index = os.path.join(args.dir, (args.output + '_index.tsv'))
+    index_out = os.path.join(args.dir, (args.output + '_index.tsv'))
 
+    # Generate expression matrix
     if args.mode == 'equal':
-        sim_preparatory.create_expr_file_fixed_count(trans_index, args.trans_number,
-                                            args.read_count, expression_out
-        )
+        sim_preparatory.create_expr_file_fixed_count(args.trans_index, args.trans_number,
+                                            args.read_count, expression_out, index_out)
     elif args.mode == 'custom':
-        sim_preparatory.create_expr_file_nbinom(trans_index, args.trans_number,
+        sim_preparatory.create_expr_file_nbinom(args.trans_index, args.trans_number,
                                             args.nbn_known, args.nbp_known, 
                                             args.nbn_novel, args.nbp_novel,
-                                            expression_out
-        )
-    
+                                            expression_out, index_out)
     elif args.mode == 'sample':
         if args.pb_reads:
-            sim_preparatory.create_expr_file_sample(trans_index, 
+            sim_preparatory.create_expr_file_sample(args.trans_index, 
                                             args.rt, args.pb_reads,
-                                            expression_out, 'pb'
-            )
+                                            expression_out, index_out, 'pb')
         else:
-            sim_preparatory.create_expr_file_sample(trans_index, 
+            sim_preparatory.create_expr_file_sample(args.trans_index, 
                                             args.rt, args.ont_reads,
-                                            expression_out, 'ont'
-            )
-
-    
+                                            expression_out, index_out, 'ont')
     else:
         print('Not valid sim mode', file=sys.stderr)
 
 
 def sim(input):
-    parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
+    '''Simulate reads
 
-    # General argments for all modes
+    Simulate PacBio and/or ONT reads using the IsoSeqSim or NanoSim pipelines
+
+    Args:
+        input (list): arguments to parse
+    '''
+
+    parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
     parser.add_argument('--gtf', type = str,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA', required=True)
     parser.add_argument('--rt', default=str(), type=str, help='\t\tReference transcripts in FASTA format')
@@ -167,13 +190,13 @@ def sim(input):
     if not args.ont and not args.pb:
         print('sqanti_sim.py sim: error: one of the following arguments is required: --pb, --ont', file=sys.stderr)
         sys.exit(1)
+
     if args.ont and not args.rt:
         print('sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt', file=sys.stderr)
         sys.exit(1)
 
     random.seed(args.seed)
     numpy.random.seed(args.seed)
-    
     args.output = os.path.join(args.dir, args.output)
 
     if args.pb:
@@ -183,6 +206,15 @@ def sim(input):
 
 
 def eval(input):
+    '''Generates SQANTI-SIM report
+
+    Runs SQANTI3 with the reconstructed transcript retrieved by your pipeline
+    and generates the SQANTI-SIM report with the evaluation metrics
+
+    Args:
+        input (list): arguments to parse
+    '''
+
     parser = argparse.ArgumentParser(prog='sqanti_sim.py eval', description='sqanti_sim.py eval parse options')
     parser.add_argument('--isoforms', default = str(),  help = '\t\tGTF with trancriptome reconstructed with your pipeline', required=True)
     parser.add_argument('--gtf', type = str,  help = '\t\tReference annotation in GTF format', required=True)
@@ -199,6 +231,7 @@ def eval(input):
         print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
 
     sqanti3_stats.sqanti3_stats(args)
+    
 
 #####################################
 #                                   #
@@ -230,15 +263,19 @@ else:
     input = sys.argv[2:]
 
 if mode == 'classif':
+    print('CLASSIF MODE')
     res = classif(input)
 
 elif mode == 'preparatory':
+    print('PREPARATORY MODE')
     res = preparatory(input)
 
 elif mode == 'sim':
+    print('SIM MODE')
     res = sim(input)
 
 elif mode == 'eval':
+    print('EVAL MODE')
     res = eval(input)
 
 elif mode in ['--version', '-v']:

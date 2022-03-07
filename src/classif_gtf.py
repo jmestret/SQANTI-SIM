@@ -2,14 +2,13 @@
 '''
 sqanti3_sim.py
 Given a GTF file as input, determine its potential SQANTI3 structural
-category not taking into account himself in the reference.
-Modify original GTF deleting transcripts to simulate reads.
-Code modified from original SQANTI3 v4.2.
+category not taking into account itself in the reference.
+The classification step is adapted from the original SQANTI3 v4.2.
 (sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 
-Author: Jorge Mestre Tomas
+Author: Jorge Mestre
 Date: 19/01/2021
-Last update: 11/02/2022
+Last update: 07/03/2022
 '''
 
 __author__ = 'jormart2@alumni.uv.es'
@@ -19,36 +18,30 @@ import os
 import sys
 import distutils.spawn
 import bisect
-import argparse
 import subprocess
 import itertools
 import multiprocessing as mp
 from collections import defaultdict, namedtuple
-from time import time
 from tqdm import tqdm
 
 try:
     from bx.intervals import Interval, IntervalTree
 except ImportError:
-    print("Unable to import bx-python! Please make sure bx-python is installed.", file=sys.stderr)
+    print('Unable to import bx-python! Please make sure bx-python is installed.', file=sys.stderr)
     sys.exit(-1)
 
 try:
     from cupcake.tofu.compare_junctions import compare_junctions
-    #from cupcake.tofu.filter_away_subset import read_count_file
-    #from cupcake.io.BioReaders import GMAPSAMReader
-    #from cupcake.io.GFF import collapseGFFReader, write_collapseGFF_format
 except ImportError:
-    print("Unable to import cupcake.tofu! Please make sure you install cupcake.", file=sys.stderr)
+    print('Unable to import cupcake.tofu! Please make sure you install cupcake.', file=sys.stderr)
     sys.exit(-1)
 
 
-utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "SQANTI3/utilities")
-GTF2GENEPRED_PROG = os.path.join(utilitiesPath,"gtfToGenePred")
-#GTF2GENEPRED_PROG = '/home/jorge/Desktop/SQANTI3/utilities/gtfToGenePred'
+utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'SQANTI3/utilities')
+GTF2GENEPRED_PROG = os.path.join(utilitiesPath,'gtfToGenePred')
 
 if distutils.spawn.find_executable(GTF2GENEPRED_PROG) is None:
-    print("Cannot find executable {0}. Abort!".format(GTF2GENEPRED_PROG), file=sys.stderr)
+    print('Cannot find executable {0}. Abort!'.format(GTF2GENEPRED_PROG), file=sys.stderr)
     sys.exit(-1)
 
 
@@ -86,7 +79,7 @@ class genePredRecord(object):
         self.cdsStart = cdsStart       # 1-based start
         self.cdsEnd = cdsEnd           # 1-based end
         self.exonCount = exonCount
-        self.exonStarts = exonStarts   # 0-based starts # TODO Jorge: why 0-based?
+        self.exonStarts = exonStarts   # 0-based starts
         self.exonEnds = exonEnds       # 1-based ends
         self.gene = gene
 
@@ -198,7 +191,6 @@ def gtf_parser(gtf_name: str)-> defaultdict:
     for r in genePredReader(queryFile):
         isoforms_list[r.chrom].append(r)
 
-    # TODO: is sorting necessary?
     for k in isoforms_list:
         isoforms_list[k].sort(key=lambda r: r.txStart)
 
@@ -239,8 +231,6 @@ def transcript_classification(trans_by_region: list)-> dict:
 
     res = defaultdict(lambda: [])
     for trans in trans_by_region:
-        # TODO: we could improve this step and make it faster
-
         # dict of junctions by region in the chr
         junctions_by_chr = defaultdict(lambda: {'donors': set(), 'acceptors': set(), 'da_pairs': set()})
         # dict of junctions by gene
@@ -772,7 +762,6 @@ def associationOverlapping(isoforms_hit, trec, junctions_by_chr, trans_by_region
             if trec.chrom in junctions_by_chr:
                 # no hit even on opp strand
                 # see if it is completely contained within a junction
-                # TODO: VERY IMPORTART see which is the reference for that junction to add as reference gene to not delete it in the moodify GTF step
                 da_pairs = junctions_by_chr[trec.chrom]['da_pairs']
                 i = bisect.bisect_left(da_pairs, (trec.txStart, trec.txEnd))
                 while i < len(da_pairs) and da_pairs[i][0] <= trec.txStart:

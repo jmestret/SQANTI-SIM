@@ -14,6 +14,7 @@ import random
 import numpy
 import pysam
 from collections import defaultdict
+from Bio import SeqIO
 
     
 def pb_simulation(args):
@@ -258,4 +259,77 @@ def ont_simulation(args):
     os.rename(tmp, args.trans_index)
 
     print('***NanoSim simulation done')
+    return
+
+
+def illumina_simulation(args):
+    print('***Simulating Illumina reads')
+
+    src_dir = os.path.dirname(os.path.realpath(__file__))
+    rsem_dir = os.path.join(src_dir, "RSEM")
+
+    if not os.path.exists(os.path.join(rsem_dir, 'rsem-simulate-reads')):
+        print('***Compiling RSEM')
+        cwd = os.getcwd()
+        os.chdir(rsem_dir)
+        if subprocess.check_call(['make'], shell=True)!=0:
+            print('ERROR compiling RSEM: {0}'.format(['make']), file=sys.stderr)
+            sys.exit(1)
+        os.chdir(cwd)
+
+    if not os.path.exists(os.path.join(rsem_dir, 'rsem-simulate-reads')):
+        print('ERROR compiling RSEM: {0}'.format(['make']), file=sys.stderr)
+        sys.exit(1)
+    
+    print('***Preparing expression matrix')
+    tpm_d = defaultdict(float)
+    n = 0
+    with open(args.trans_index, 'r') as idx:
+        col_names = idx.readline()
+        col_names = col_names.split()
+        i = col_names.index('requested_counts')
+        j = col_names.index('requested_tpm')
+        for line in idx:
+            line = line.split()
+            if int(line[i]) == 0:
+                continue
+            tpm_d[line[0]] = float(line[i])
+            n += int(line[i])
+    idx.close()
+
+    if not args.read_count:
+        args.read_count = n
+
+    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
+    f_out = open(expr_f, 'w')
+    f_out.write('transcript_id\tgene_id\tlength\teffective_length\texpected_count\tTPM\tFPKM\tIsoPct\n')
+    mean_frag_len = 300
+    for trans in SeqIO.parse(args.rt, 'fasta'):
+        real_len = len(trans.seq)
+        eff_len = float(max(1, real_len - mean_frag_len))
+        tpm = tpm_d[trans.id]
+        isopct = 100.0 if tpm > 0.0 else 0.0
+        f_out.write("%s\t%s\t%d\t%.2f\t0.00\t%.2f\t0.00\t%.2f\n" %
+                    (trans.id, trans.id, real_len, eff_len, tpm, isopct))
+    f_out.close()
+
+    print('***Preparing reference data')
+    sim_out = os.path.join(args.dir, 'rsem_sim')
+    os.makedirs(sim_out)
+    cmd = [os.path.join(rsem_dir, 'rsem-prepare-reference'),
+           args.rt, os.path.join(sim_out, 'RSEM')]
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR preparing RSEM reference data: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
+    
+    print('***Simulating with RSEM')
+    cmd = [os.path.join(rsem_dir, 'rsem-simulate-reads'),
+           os.path.join(sim_out, 'RSEM'), os.path.join(rsem_dir, 'models/illumina.rna.model'),
+           expr_f, '0', str(args.read_count), os.path.join(args.output, 'Illumina_simulated'),
+           '--seed', str(args.seed)]
+    if subprocess.check_call(cmd, shell=True)!=0:
+        print('ERROR simulatin with RSEM: {0}'.format(cmd), file=sys.stderr)
+        sys.exit(1)
+    
+    print('***RSEM simulation done')
     return

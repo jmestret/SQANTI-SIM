@@ -237,7 +237,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         print('\033[92m|\033[0m ' + k + ': ' + str(v))
 
 
-def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, output: str):
+def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, expr_out: str, index_out:str):
 
     novel_trans = []
     known_trans = []
@@ -263,7 +263,10 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, outp
     coverage = read_count//n_trans
     tpm = (1000000.0 * coverage) / (coverage * n_trans) # Not taking into account transcript length
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    if f_idx == index_out:
+        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    else:
+        tmp = index_out
     f_out = open(tmp, 'w')
     with open(f_idx, 'r') as idx:
         col_names = idx.readline()
@@ -281,17 +284,18 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, outp
     idx.close()
     f_out.close()
 
-    os.remove(f_idx)
-    os.rename(tmp, f_idx)
+    if f_idx == index_out:
+        os.remove(f_idx)
+        os.rename(tmp, f_idx)
 
     sns.set(style="whitegrid")
     sns.histplot([coverage]*len(known_trans), color="skyblue", label="Known", kde=True)
     sns.histplot([coverage]*len(novel_trans), color="red", label="Novel", kde=True)
     plt.legend()
-    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
+    plt.savefig(''.join(expr_out.split('.')[:-1]) + '.png')
 
 
-def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str):
+def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str, index_out: str):
     novel_trans = []
     known_trans = []
 
@@ -315,7 +319,10 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     nb_novel = [1 if n == 0 else n for n in nb_novel] # minimum one count per transcript
     n_reads =sum(nb_known) + sum(nb_novel)
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    if f_idx == index_out:
+        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    else:
+        tmp = index_out
     f_out = open(tmp, 'w')
     i_known = 0
     i_novel = 0
@@ -342,8 +349,9 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     idx.close()
     f_out.close()
 
-    os.remove(f_idx)
-    os.rename(tmp, f_idx)
+    if f_idx == index_out:
+        os.remove(f_idx)
+        os.rename(tmp, f_idx)
 
     sns.set(style="whitegrid")
     sns.histplot(nb_known, color="skyblue", label="Known", kde=True)
@@ -352,7 +360,7 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     plt.savefig(''.join(output.split('.')[:-1]) + '.png')
 
 
-def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, tech):
+def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, index_out:str, tech):
     sam_file = ''.join(output.split('.')[:-1]) + '_' + tech + '.sam'
 
     if tech == 'pb':
@@ -416,7 +424,10 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, tech):
     n_reads =sum(novel_expr) + sum(known_expr)
 
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    if f_idx == index_out:
+        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
+    else:
+        tmp = index_out
     f_out = open(tmp, 'w')
     i_known = 0
     i_novel = 0
@@ -443,8 +454,9 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, tech):
     idx.close()
     f_out.close()
 
-    os.remove(f_idx)
-    os.rename(tmp, f_idx)
+    if f_idx == index_out:
+        os.remove(f_idx)
+        os.rename(tmp, f_idx)
 
     sns.set(style="whitegrid")
     fig = sns.kdeplot(novel_expr, shade=True, color="r")
