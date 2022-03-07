@@ -18,7 +18,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
+def target_trans(f_name: str, f_name_out: str, counts: dict, seed: int)-> tuple:
     '''
     Choose those transcripts that will be deleted from the original GTF
     to generate the modified file to use as the reference annotation
@@ -55,7 +55,7 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
     for SC in counts:
         if counts[SC] > 0:
             SCtrans = trans_by_SC[SC]
-            random.Random(1234).shuffle(SCtrans)
+            random.Random(seed).shuffle(SCtrans)
             for trans in SCtrans:
                 trans_id = trans[0]
                 gene_id = trans[1]
@@ -63,14 +63,14 @@ def target_trans(f_name: str, f_name_out: str, counts: dict)-> tuple:
                 ref_g = trans[3]
                 ref_t = trans[4]
 
-                if SC in ['full-splice_match', 'incomplete-splice_match', 'genic_intron'] and counts[SC] > 0:
-                    if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes and ref_t not in target_trans:
+                if SC in ['full-splice_match', 'incomplete-splice_match'] and counts[SC] > 0:
+                    if trans_id not in ref_trans and gene_id not in ref_genes and ref_t not in target_trans:
                         target_trans.add(trans_id)
                         target_genes.add(gene_id)
                         ref_trans.add(ref_t)
                         counts[SC] -= 1
 
-                elif SC in ['novel_in_catalog', 'novel_not_in_catalog'] and counts[SC] > 0:
+                elif SC in ['novel_in_catalog', 'novel_not_in_catalog', 'genic_intron'] and counts[SC] > 0:
                     if trans_id not in ref_trans and gene_id not in ref_genes and gene_id not in target_genes and ref_g not in target_genes:
                         target_trans.add(trans_id)
                         target_genes.add(gene_id)
@@ -216,7 +216,7 @@ def simulate_gtf(args):
     gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
     tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
 
-    target = target_trans(args.trans_index, tmp, counts)
+    target = target_trans(args.trans_index, tmp, counts, args.seed)
     modifyGTF(args.gtf, gtf_modif, target)
     os.remove(args.trans_index)
     os.rename(tmp, args.trans_index)

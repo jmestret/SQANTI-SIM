@@ -280,7 +280,7 @@ def transcript_classification(trans_by_region: list)-> dict:
             isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
         elif isoform_hit.str_class in ("", "geneOverlap"):
             # possibly NNC, genic, genic intron, anti-sense, or intergenic
-            isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr)
+            isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr, trans_by_region)
 
         # Save trans classification
         res[isoform_hit.chrom].append(isoform_hit)
@@ -753,7 +753,7 @@ def novelIsoformsKnownGenes(isoforms_hit, trec, junctions_by_chr, junctions_by_g
     return isoforms_hit
 
 
-def associationOverlapping(isoforms_hit, trec, junctions_by_chr):
+def associationOverlapping(isoforms_hit, trec, junctions_by_chr, trans_by_region):
     # at this point: definitely not FSM or ISM or NIC or NNC
     # possibly (in order of preference assignment):
     #  - antisense  (on opp strand of a known gene)
@@ -778,6 +778,10 @@ def associationOverlapping(isoforms_hit, trec, junctions_by_chr):
                 while i < len(da_pairs) and da_pairs[i][0] <= trec.txStart:
                     if da_pairs[i][0] <= trec.txStart <= trec.txStart <= da_pairs[i][1]:
                         isoforms_hit.str_class = "genic_intron"
+                        for ref in trans_by_region:
+                            if da_pairs[i][0] in ref.exonEnds and da_pairs[i][1] in ref.exonStarts:
+                                if ref.exonEnds.index(da_pairs[i][0]) == (ref.exonStarts.index(da_pairs[i][1]) - 1):
+                                    isoforms_hit.genes = [ref.gene]
                         break
                     i += 1
             else:
@@ -871,7 +875,7 @@ def write_category_file(data: dict, out_name: str):
                 donors = [str(d) for d in donors] 
                 acceptors = [str(a+1) for a in acceptors] # Change to 1-based exon start
             trans.tss += 1 # Change to 1-based exon start
-            if trans.str_class in ['intergenic', 'genic_intron']:
+            if trans.str_class == 'intergenic':
                 f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, 'novel', '_'.join(trans.transcripts), trans.strand, trans.num_exons, ','.join(donors), ','.join(acceptors), trans.tss, trans.tts))
             else:
                 f_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %(trans.id, trans.gene_id, trans.str_class, '_'.join(trans.genes), '_'.join(trans.transcripts), trans.strand, trans.num_exons, ','.join(donors), ','.join(acceptors), trans.tss, trans.tts))
