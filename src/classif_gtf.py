@@ -267,7 +267,7 @@ def transcript_classification(trans_by_region: list)-> dict:
 
         if isoform_hit.str_class in ('anyKnownJunction', 'anyKnownSpliceSite'):
             # not FSM or ISM --> see if it is NIC, NNC, or fusion
-            isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene, start_ends_by_gene)
+            isoform_hit = novelIsoformsKnownGenes(isoform_hit, trans, junctions_by_chr, junctions_by_gene)
         elif isoform_hit.str_class in ('', 'geneOverlap'):
             # possibly NNC, genic, genic intron, anti-sense, or intergenic
             isoform_hit = associationOverlapping(isoform_hit, trans, junctions_by_chr, trans_by_region)
