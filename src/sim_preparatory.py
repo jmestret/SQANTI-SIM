@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 '''
 sim_preparatory.py
-Generate counts for sim
+
+Modifies index file and add expression values for the simulation step
 
 @author Jorge Mestre Tomas (jormart2@alumni.uv.es)
 @date 03/03/2022
@@ -13,21 +14,33 @@ import subprocess
 import random
 import numpy
 import pysam
+import pandas
 from collections import defaultdict
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def target_trans(f_name: str, f_name_out: str, counts: dict, seed: int)-> tuple:
+def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int)-> tuple:
     '''
     Choose those transcripts that will be deleted from the original GTF
     to generate the modified file to use as the reference annotation
 
     Args:
-        f_name (str) name of the file with the GTF classification
-        counts (dict) dictinary with the number of transcripts of each SC to be
-                      deleted
+        f_idx (str): name of the input transcript index file
+        f_idx_out (str): name of the output transcript index file
+        counts (dict): dictinary with the number of transcripts of each
+                       structural category to be deleted
+        seed (int): Randomizer seed
+    
+    Returns:
+        final_target (set): all transcripts to be simulated (deleted from GTF)
     '''
+
+    def pick_sim_type(row):
+        if row['transcript_id'] in target_trans:
+            return 'novel'
+        else:
+            return 'known'
 
     trans_by_SC = defaultdict(lambda: [])
     trans_by_gene = defaultdict(lambda: [])
@@ -38,7 +51,7 @@ def target_trans(f_name: str, f_name_out: str, counts: dict, seed: int)-> tuple:
     ref_genes = set()
 
     # Build a list for each SC with all transcripts that were classified there
-    with open(f_name, 'r') as cat:
+    with open(f_idx, 'r') as cat:
         col_names = cat.readline()
         for line in cat:
             line_split = line.split()
@@ -107,26 +120,12 @@ def target_trans(f_name: str, f_name_out: str, counts: dict, seed: int)-> tuple:
                 if len(trans_by_gene[gene]) == 0:
                     final_target.add(gene)
 
-    f_out = open(f_name_out, 'w')
-    with open(f_name, 'r') as cat:
-        col_names = cat.readline()
-        col_names = col_names.split()
-        col_names.append('sim_type')
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in cat:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id in target_trans:
-                line.append('novel')
-            else:
-                line.append('known')
-            f_out.write('\t'.join(line) + '\n')
     
-    cat.close()
-    f_out.close()
-    
+    trans_index = pandas.read_csv(f_idx, sep='\t', header=1)
+    trans_index['sim_type'] = trans_index.apply(pick_sim_type, axis=1)
+    trans_index.to_csv(f_idx_out, sep='\t', na_rep='NA', header=True, index=False)
+
     return final_target
-    #return target_trans, ref_genes, ref_trans
 
 
 def getGeneID(line: str)-> str:
@@ -214,12 +213,10 @@ def simulate_gtf(args):
     })
 
     gtf_modif = os.path.join(args.dir, (args.output + '_modified.gtf'))
-    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
+    f_idx_out = os.path.join(args.dir, (args.output + '_index.tsv'))
 
-    target = target_trans(args.trans_index, tmp, counts, args.seed)
+    target = target_trans(args.trans_index, f_idx_out, counts, args.seed)
     modifyGTF(args.gtf, gtf_modif, target)
-    os.remove(args.trans_index)
-    os.rename(tmp, args.trans_index)
 
     return counts
 

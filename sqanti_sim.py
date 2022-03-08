@@ -111,10 +111,15 @@ def preparatory(input):
         if not args.rt or not (args.pb_reads or args.ont_reads):
             print('sqanti_sim.py preparatory sample: error: the following arguments are required: --rt, {--pb_reads, --ont_reads}', file=sys.stderr)
             sys.exit(1)
+        
+    if not args.output:
+        output = os.path.basename(args.trans_index).split('_')
+        args.output = '_'.join(output[:-1])
     
     # Modify GTF
     random.seed(args.seed)
     numpy.random.seed(args.seed)
+
     counts_end = sim_preparatory.simulate_gtf(args)
 
     print('***Summary table from GTF modification\n')
@@ -131,9 +136,6 @@ def preparatory(input):
     }) 
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
-    if not args.output:
-        output = os.path.basename(args.trans_index).split('_')
-        args.output = '_'.join(output[:-1])
     expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
     index_out = os.path.join(args.dir, (args.output + '_index.tsv'))
 
