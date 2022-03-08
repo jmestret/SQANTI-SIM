@@ -620,7 +620,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
         for ref in ref_chr:
             if trec.id == ref.id or ref.length < min_ref_len:
                 continue # cannot use itself as reference
-            if hits_exon(trec, ref) and ref.exonCount == 1:
+            #if hits_exon(trec, ref) and ref.exonCount == 1:
+            if trec.txStart <= ref.txEnd and ref.txStart <= trec.txEnd and ref.exonCount == 1:
                 if ref.strand != trec.strand:
                     # opposite strand, just record it in AS_genes
                     isoform_hit.AS_genes.add(ref.gene)
@@ -646,7 +647,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
             for ref in ref_chr:
                 if trec.id == ref.id or ref.length < min_ref_len:
                     continue # to not match with itself
-                if hits_exon(trec, ref) and ref.exonCount >= 2:
+                #if hits_exon(trec, ref) and ref.exonCount >= 2:
+                if trec.txStart <= ref.txEnd and ref.txStart <= trec.txEnd and ref.exonCount >= 2:
                     if calc_exon_overlap(trec.exons, ref.exons) == 0:   # no exonic overlap, skip!
                         continue
 
