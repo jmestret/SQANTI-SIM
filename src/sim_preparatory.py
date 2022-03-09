@@ -8,6 +8,7 @@ Modifies index file and add expression values for the simulation step
 @date 03/03/2022
 '''
 
+from glob import glob
 import os
 import sys
 import subprocess
@@ -16,8 +17,6 @@ import numpy
 import pysam
 import pandas
 from collections import defaultdict
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int)-> tuple:
@@ -121,7 +120,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int)-> tuple:
                     final_target.add(gene)
 
     
-    trans_index = pandas.read_csv(f_idx, sep='\t', header=1)
+    trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
     trans_index['sim_type'] = trans_index.apply(pick_sim_type, axis=1)
     trans_index.to_csv(f_idx_out, sep='\t', na_rep='NA', header=True, index=False)
 
@@ -234,7 +233,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         print('\033[92m|\033[0m ' + k + ': ' + str(v))
 
 
-def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, expr_out: str, index_out:str):
+def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
 
     novel_trans = []
     known_trans = []
@@ -256,46 +255,34 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int, expr
     tot_trans = len(novel_trans) + len(known_trans)
     if tot_trans != n_trans:
         print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(tot_trans))
-
+    
+    tot_trans = novel_trans.extend(known_trans)
     coverage = read_count//n_trans
     tpm = (1000000.0 * coverage) / (coverage * n_trans) # Not taking into account transcript length
 
-    if f_idx == index_out:
-        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
-    else:
-        tmp = index_out
-    f_out = open(tmp, 'w')
-    with open(f_idx, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        col_names.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in idx:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id in novel_trans or trans_id in known_trans:
-                line.extend([str(coverage), str(tpm)])
-            else:
-                line.extend(['0', '0'])
-            f_out.write('\t'.join(line) + '\n')
-    idx.close()
-    f_out.close()
-
-    if f_idx == index_out:
-        os.remove(f_idx)
-        os.rename(tmp, f_idx)
-
-    sns.set(style="whitegrid")
-    sns.histplot([coverage]*len(known_trans), color="skyblue", label="Known", kde=True)
-    sns.histplot([coverage]*len(novel_trans), color="red", label="Novel", kde=True)
-    plt.legend()
-    plt.savefig(''.join(expr_out.split('.')[:-1]) + '.png')
+    trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
+    trans_index['requested_counts'] = numpy.where(trans_index['transcript_id'] in tot_trans, str(coverage), '0')
+    trans_index['requested_tpm'] = numpy.where(trans_index['transcript_id'] in tot_trans, str(tpm), '0')
+    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)
 
 
-def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel, output: str, index_out: str):
+def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel):
+    global i_novel
+    global i_known
+
+    def nbinom_coverage(row):
+        if row['transcript_id'] in novel_trans:
+            coverage = nb_novel[i_novel]
+            i_novel += 1
+        elif row['transcript_id'] in known_trans:
+            coverage = nb_known[i_known]
+            i_known += 1
+        else:
+            coverage = 0
+        return coverage
+
     novel_trans = []
     known_trans = []
-
     with open(f_idx, 'r') as f_in:
         skip = f_in.readline()
         for line in f_in:
@@ -316,49 +303,30 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     nb_novel = [1 if n == 0 else n for n in nb_novel] # minimum one count per transcript
     n_reads =sum(nb_known) + sum(nb_novel)
 
-    if f_idx == index_out:
-        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
-    else:
-        tmp = index_out
-    f_out = open(tmp, 'w')
     i_known = 0
     i_novel = 0
-    with open(f_idx, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        col_names.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in idx:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id in novel_trans:
-                coverage = nb_novel[i_novel]
-                i_novel += 1
-            elif trans_id in known_trans:
-                coverage = nb_known[i_known]
-                i_known += 1
-            else:
-                coverage = 0
-
-            tpm = round(((1000000.0 * coverage) / n_reads), 2)
-            line.extend([str(coverage), str(tpm)])
-            f_out.write('\t'.join(line) + '\n')
-    idx.close()
-    f_out.close()
-
-    if f_idx == index_out:
-        os.remove(f_idx)
-        os.rename(tmp, f_idx)
-
-    sns.set(style="whitegrid")
-    sns.histplot(nb_known, color="skyblue", label="Known", kde=True)
-    sns.histplot(nb_novel, color="red", label="Novel", kde=True)
-    plt.legend()
-    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
+    trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
+    trans_index['requested_counts'] = trans_index.apply(nbinom_coverage, axis=1)
+    trans_index['requested_tpm'] = round(((1000000.0 * trans_index['requested_counts']) / n_reads), 2)
+    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)
 
 
-def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, index_out:str, tech):
-    sam_file = ''.join(output.split('.')[:-1]) + '_' + tech + '.sam'
+def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
+    global i_novel
+    global i_known
+
+    def sample_coverage(row):
+        if row['transcript_id'] in novel_trans:
+            coverage = novel_expr[i_novel]
+            i_novel += 1
+        elif row['transcript_id'] in known_trans:
+            coverage = known_expr[i_known]
+            i_known += 1
+        else:
+            coverage = 0
+        return coverage
+
+    sam_file = ''.join(f_idx.split('_')[:-1]) + '_align_' + tech + '.sam'
 
     if tech == 'pb':
         cmd = ['minimap2', ref_trans, reads, '-x', 'map-pb',
@@ -420,45 +388,9 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, output: str, index_out:
     known_expr.extend(expr_distr[-(len(known_trans)-lim_known):])
     n_reads =sum(novel_expr) + sum(known_expr)
 
-
-    if f_idx == index_out:
-        tmp = os.path.join(os.path.dirname(os.path.abspath(f_idx)),'tmp_preparatory.tsv')
-    else:
-        tmp = index_out
-    f_out = open(tmp, 'w')
     i_known = 0
     i_novel = 0
-    with open(f_idx, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        col_names.extend(['requested_counts', 'requested_tpm'])
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in idx:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id in novel_trans:
-                coverage = novel_expr[i_novel]
-                i_novel += 1
-            elif trans_id in known_trans:
-                coverage = known_expr[i_known]
-                i_known += 1
-            else:
-                coverage = 0
-
-            tpm = round(((1000000.0 * coverage) / n_reads), 2)
-            line.extend([str(coverage), str(tpm)])
-            f_out.write('\t'.join(line) + '\n')
-    idx.close()
-    f_out.close()
-
-    if f_idx == index_out:
-        os.remove(f_idx)
-        os.rename(tmp, f_idx)
-
-    sns.set(style="whitegrid")
-    fig = sns.kdeplot(novel_expr, shade=True, color="r")
-    fig = sns.kdeplot(known_expr, shade=True, color="b")
-    sns.histplot(known_expr, color="skyblue", label="Known", kde=True)
-    sns.histplot(novel_expr, color="red", label="Novel", kde=True)
-    plt.legend()
-    plt.savefig(''.join(output.split('.')[:-1]) + '.png')
+    trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
+    trans_index['requested_counts'] = trans_index.apply(sample_coverage, axis=1)
+    trans_index['requested_tpm'] = round(((1000000.0 * trans_index['requested_counts']) / n_reads), 2)
+    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)

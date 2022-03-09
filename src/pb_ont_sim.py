@@ -10,6 +10,7 @@ Simulation step
 import os
 import sys
 import subprocess
+import pandas
 import random
 import numpy
 import pysam
@@ -18,6 +19,9 @@ from Bio import SeqIO
 
     
 def pb_simulation(args):
+    def counts_to_index(row):
+        return id_counts[row['transcript_id']]
+
     expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
     n = 0
     f_out = open(expr_f, 'w')
@@ -77,34 +81,19 @@ def pb_simulation(args):
     sim_fasta.close()
     output_read_info.close()
 
-    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
-    f_out = open(tmp, 'w')
-    with open(args.trans_index, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        col_names.append('sim_counts')
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in idx:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id not in id_counts:
-                line[11] = 'absent'
-            line.append(str(id_counts[trans_id]))
-            f_out.write('\t'.join(line) + '\n')
-    idx.close()
-    f_out.close()
+    trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
+    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
+    trans_index.loc[trans_index.transcript_id not in id_counts, 'sim_type'] = 'absent'
+    trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
-    os.remove(args.trans_index)
-    os.rename(tmp, args.trans_index)
-
-    #output_counts = open(args.output + ".isoform_counts.tsv", "w")
-	#for isoform_id in isoform_counts:
-	#	output_counts.write(isoform_id + "\t" + str(isoform_counts[isoform_id]) + "\n")
     print('***IsoSeqSim simulation done')
     return
 
 
 def ont_simulation(args):
+    def counts_to_index(row):
+        return id_counts[row['transcript_id']]
+        
     expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
     n = 0
     f_out = open(expr_f, 'w')
@@ -229,34 +218,10 @@ def ont_simulation(args):
         f_out.write(str(pair[0]) + '\t' + str(pair[1]) + '\n')
     f_out.close()
 
-    '''
-    f_name = os.path.join(args.output, 'ONT_simulated.isoform_counts.tsv')
-    f_out = open(f_name, 'w')
-
-    for k, v in id_counts.items():
-        f_out.write(str(k) + '\t' + str(v) + '\n')
-    f_out.close()
-    '''
-
-    tmp = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_preparatory.tsv')
-    f_out = open(tmp, 'w')
-    with open(args.trans_index, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        col_names.append('sim_counts')
-        f_out.write('\t'.join(col_names) + '\n')
-        for line in idx:
-            line = line.split()
-            trans_id = line[0]
-            if trans_id not in id_counts:
-                line[11] = 'absent'
-            line.append(str(id_counts[trans_id]))
-            f_out.write('\t'.join(line) + '\n')
-    idx.close()
-    f_out.close()
-
-    os.remove(args.trans_index)
-    os.rename(tmp, args.trans_index)
+    trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
+    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
+    trans_index.loc[trans_index.transcript_id not in id_counts, 'sim_type'] = 'absent'
+    trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
     print('***NanoSim simulation done')
     return

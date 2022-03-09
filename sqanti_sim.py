@@ -137,26 +137,23 @@ def preparatory(input):
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
     expression_out = os.path.join(args.dir, (args.output + '_expression.tsv'))
-    index_out = os.path.join(args.dir, (args.output + '_index.tsv'))
+    index_file = os.path.join(args.dir, (args.output + '_index.tsv'))
 
     # Generate expression matrix
     if args.mode == 'equal':
-        sim_preparatory.create_expr_file_fixed_count(args.trans_index, args.trans_number,
-                                            args.read_count, expression_out, index_out)
+        sim_preparatory.create_expr_file_fixed_count(index_file, args.trans_number,
+                                            args.read_count)
     elif args.mode == 'custom':
-        sim_preparatory.create_expr_file_nbinom(args.trans_index, args.trans_number,
+        sim_preparatory.create_expr_file_nbinom(index_file, args.trans_number,
                                             args.nbn_known, args.nbp_known, 
-                                            args.nbn_novel, args.nbp_novel,
-                                            expression_out, index_out)
+                                            args.nbn_novel, args.nbp_novel)
     elif args.mode == 'sample':
         if args.pb_reads:
-            sim_preparatory.create_expr_file_sample(args.trans_index, 
-                                            args.rt, args.pb_reads,
-                                            expression_out, index_out, 'pb')
+            sim_preparatory.create_expr_file_sample(index_file, 
+                                            args.rt, args.pb_reads, 'pb')
         else:
-            sim_preparatory.create_expr_file_sample(args.trans_index, 
-                                            args.rt, args.ont_reads,
-                                            expression_out, index_out, 'ont')
+            sim_preparatory.create_expr_file_sample(index_file, 
+                                            args.rt, args.ont_reads, 'ont')
     else:
         print('Not valid sim mode', file=sys.stderr)
 

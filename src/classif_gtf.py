@@ -416,7 +416,7 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
         
         if len(hits_by_gene) == 0: return isoform_hit
 
-        for ref_gene in hits_by_gene:
+        for ref_gene in sorted(hits_by_gene): # TODO: dont do this sorting
             isoform_hit = myQueryTranscripts(id=trec.id, gene_id=trec.gene, tts_diff='NA', tss_diff='NA',\
                                             num_exons=trec.exonCount,
                                             length=trec.length,
