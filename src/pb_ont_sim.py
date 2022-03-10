@@ -229,7 +229,6 @@ def ont_simulation(args):
 
 def illumina_simulation(args):
     print('***Simulating Illumina reads')
-
     src_dir = os.path.dirname(os.path.realpath(__file__))
     rsem_dir = os.path.join(src_dir, "RSEM")
 

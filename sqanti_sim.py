@@ -178,6 +178,7 @@ def sim(input):
     parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')  
     parser.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
     parser.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
+    parser.add_argument('--illumina', action='store_true', help = '\t\tIf used the program will simulate Illumina reads with RSEM')
     parser.add_argument('--read_count', default = None, type=int,  help = '\t\tNumber of reads to simulate (if not given it will use the counts of the given expression file)')
     parser.add_argument('-s', '--seed', help='\t\tRandomizer seed [123]', default=123, type=int)
 
@@ -190,7 +191,7 @@ def sim(input):
         print('sqanti_sim.py sim: error: one of the following arguments is required: --pb, --ont', file=sys.stderr)
         sys.exit(1)
 
-    if args.ont and not args.rt:
+    if (args.ont or args.illumina) and not args.rt:
         print('sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt', file=sys.stderr)
         sys.exit(1)
 
@@ -202,6 +203,8 @@ def sim(input):
         pb_ont_sim.pb_simulation(args)
     if args.ont:
         pb_ont_sim.ont_simulation(args)
+    if args.illumina:
+        pb_ont_sim.illumina_simulation(args)
 
 
 def eval(input):

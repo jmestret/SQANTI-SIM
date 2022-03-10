@@ -234,6 +234,10 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
 
 
 def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
+    def fixed_coverage(row):
+        if row['transcript_id'] in tot_trans:
+            return coverage
+        return 0
 
     novel_trans = []
     known_trans = []
@@ -256,27 +260,22 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     if tot_trans != n_trans:
         print('Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated' %(tot_trans))
     
-    tot_trans = novel_trans.extend(known_trans)
+    tot_trans = novel_trans + known_trans
     coverage = read_count//n_trans
     tpm = (1000000.0 * coverage) / (coverage * n_trans) # Not taking into account transcript length
 
     trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
-    trans_index['requested_counts'] = numpy.where(trans_index['transcript_id'] in tot_trans, str(coverage), '0')
-    trans_index['requested_tpm'] = numpy.where(trans_index['transcript_id'] in tot_trans, str(tpm), '0')
-    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)
+    trans_index['requested_counts'] = trans_index.apply(fixed_coverage, axis=1)
+    trans_index['requested_tpm'] = round(((1000000.0 * trans_index['requested_counts']) / (trans_index['requested_counts'] * n_trans)), 2)
+    trans_index.to_csv(f_idx, sep='\t', na_rep=0, header=True, index=False)
 
 
 def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel):
-    global i_novel
-    global i_known
-
     def nbinom_coverage(row):
         if row['transcript_id'] in novel_trans:
-            coverage = nb_novel[i_novel]
-            i_novel += 1
+            coverage = nb_novel.pop()
         elif row['transcript_id'] in known_trans:
-            coverage = nb_known[i_known]
-            i_known += 1
+            coverage = nb_known.pop()
         else:
             coverage = 0
         return coverage
@@ -303,25 +302,18 @@ def create_expr_file_nbinom(f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel
     nb_novel = [1 if n == 0 else n for n in nb_novel] # minimum one count per transcript
     n_reads =sum(nb_known) + sum(nb_novel)
 
-    i_known = 0
-    i_novel = 0
     trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
     trans_index['requested_counts'] = trans_index.apply(nbinom_coverage, axis=1)
     trans_index['requested_tpm'] = round(((1000000.0 * trans_index['requested_counts']) / n_reads), 2)
-    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)
+    trans_index.to_csv(f_idx, sep='\t', na_rep=0, header=True, index=False)
 
 
 def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
-    global i_novel
-    global i_known
-
     def sample_coverage(row):
         if row['transcript_id'] in novel_trans:
-            coverage = novel_expr[i_novel]
-            i_novel += 1
+            coverage = novel_expr.pop()
         elif row['transcript_id'] in known_trans:
-            coverage = known_expr[i_known]
-            i_known += 1
+            coverage = known_expr.pop()
         else:
             coverage = 0
         return coverage
@@ -388,9 +380,7 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
     known_expr.extend(expr_distr[-(len(known_trans)-lim_known):])
     n_reads =sum(novel_expr) + sum(known_expr)
 
-    i_known = 0
-    i_novel = 0
     trans_index = pandas.read_csv(f_idx, sep='\t', header=0)
     trans_index['requested_counts'] = trans_index.apply(sample_coverage, axis=1)
     trans_index['requested_tpm'] = round(((1000000.0 * trans_index['requested_counts']) / n_reads), 2)
-    trans_index.to_csv(f_idx, sep='\t', na_rep='NA', header=True, index=False)
+    trans_index.to_csv(f_idx, sep='\t', na_rep=0, header=True, index=False)
