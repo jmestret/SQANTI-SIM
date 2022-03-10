@@ -43,11 +43,11 @@ def pb_simulation(args):
     if not args.read_count:
         args.read_count = n
 
-    if os.path.isdir(args.output):
+    if os.path.isdir(args.dir):
         print('WARNING: output direcory already exists. Overwritting!', file=sys.stderr)
     else:
-        os.makedirs(args.output)
-
+        os.makedirs(args.dir)
+    
     print('***Simulating PacBio reads with IsoSeqSim')
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, 'IsoSeqSim/bin/isoseqsim')
@@ -56,22 +56,23 @@ def pb_simulation(args):
            '-a', str(args.gtf), '--expr', str(expr_f),
            '--c5', os.path.join(util_dir, '5_end_completeness.PacBio-Sequel.tab'),
            '--c3', os.path.join(util_dir, '3_end_completeness.PacBio-Sequel.tab'),
-           '-o', os.path.join(args.output, 'PacBio_simulated'),
-           '-t', os.path.join(args.output, 'PacBio_simulated.tsv'),
+           '-o', os.path.join(args.dir, 'PacBio_simulated'),
+           '-t', os.path.join(args.dir, 'PacBio_simulated.tsv'),
            '--es', '0.01731', '--ed', '0.01090', '--ei', '0.02204',
            '-n', str(args.read_count),
            '-m', 'normal', '--cpu', str(args.cores),
            '--tempdir', os.path.join(args.dir, 'temp_isoseqsim')]
     
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR running IsoSeqSim: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)
 
     os.remove(expr_f)
     print('***Counting PacBio reads')
-    output_read_info = open(os.path.join(args.output, "PacBio_simulated.read_to_isoform.tsv"), "w")
+    output_read_info = open(os.path.join(args.dir, "PacBio_simulated.read_to_isoform.tsv"), "w")
     id_counts = defaultdict(lambda: 0)
-    with open(os.path.join(args.output, 'PacBio_simulated.fasta'), 'r') as sim_fasta:
+    with open(os.path.join(args.dir, 'PacBio_simulated.fasta'), 'r') as sim_fasta:
         for line in sim_fasta:
             if line.startswith('>'):
                 line = line.lstrip('>')
@@ -82,8 +83,8 @@ def pb_simulation(args):
     output_read_info.close()
 
     trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
-    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
-    trans_index.loc[trans_index.transcript_id not in id_counts, 'sim_type'] = 'absent'
+    trans_index['pb_sim_counts'] = trans_index.apply(counts_to_index, axis=1)
+    trans_index['sim_type'] = trans_index.apply(lambda row: row['sim_type'] if row['transcript_id'] in id_counts else 'absent', axis=1)
     trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
     print('***IsoSeqSim simulation done')
@@ -115,10 +116,10 @@ def ont_simulation(args):
     if not args.read_count:
         args.read_count = n
 
-    if os.path.isdir(args.output):
+    if os.path.isdir(args.dir):
         print('WARNING: output direcory already exists. Overwritting!')
     else:
-        os.makedirs(args.output)
+        os.makedirs(args.dir)
 
     if args.read_type == 'dRNA':
         model_name = 'human_NA12878_dRNA_Bham1_guppy'
@@ -149,7 +150,7 @@ def ont_simulation(args):
     cmd = [nanosim, 'transcriptome', '-rt', str(args.rt),
            '-rg', str(args.genome), '-e', str(expr_f),
            '-c', str(model_dir + 'training'),
-           '-o', os.path.join(args.output, 'ONT_simulated'),
+           '-o', os.path.join(args.dir, 'ONT_simulated'),
            '-n', str(args.read_count), '-r', r_type,
            '-b', 'guppy', '-t', str(args.cores), '--fastq'
     ]
@@ -157,6 +158,7 @@ def ont_simulation(args):
     if uracil:
         cmd.append('--uracil')
 
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR running NanoSim: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)
@@ -178,13 +180,13 @@ def ont_simulation(args):
                     ref_dict[short_id] = trans_id
     f_in.close()
 
-    fastqs = [os.path.join(args.output, "ONT_simulated_aligned_reads.fastq"),
-              os.path.join(args.output, "ONT_simulated_unaligned_reads.fastq")]
+    fastqs = [os.path.join(args.dir, "ONT_simulated_aligned_reads.fastq"),
+              os.path.join(args.dir, "ONT_simulated_unaligned_reads.fastq")]
 
     n_read = 0
     pair_id = []
     id_counts = defaultdict(lambda: 0)
-    f_name = os.path.join(args.output, 'ONT_simulated.fastq')
+    f_name = os.path.join(args.dir, 'ONT_simulated.fastq')
     f_out = open(f_name, 'w')
 
     for f in fastqs:
@@ -211,7 +213,7 @@ def ont_simulation(args):
     f_out.close()
 
     print('***Saving counts and read-to-isoform files')
-    f_name = os.path.join(args.output, 'ONT_simulated.read_to_isoform.tsv')
+    f_name = os.path.join(args.dir, 'ONT_simulated.read_to_isoform.tsv')
     f_out = open(f_name, 'w')
 
     for pair in pair_id:
@@ -219,8 +221,8 @@ def ont_simulation(args):
     f_out.close()
 
     trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
-    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
-    trans_index.loc[trans_index.transcript_id not in id_counts, 'sim_type'] = 'absent'
+    trans_index['ont_sim_counts'] = trans_index.apply(counts_to_index, axis=1)
+    trans_index['sim_type'] = trans_index.apply(lambda row: row['sim_type'] if row['transcript_id'] in id_counts else 'absent', axis=1)
     trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
     print('***NanoSim simulation done')
@@ -236,7 +238,7 @@ def illumina_simulation(args):
         print('***Compiling RSEM')
         cwd = os.getcwd()
         os.chdir(rsem_dir)
-        if subprocess.check_call(['make'], shell=True)!=0:
+        if subprocess.check_call('make', shell=True)!=0:
             print('ERROR compiling RSEM: {0}'.format(['make']), file=sys.stderr)
             sys.exit(1)
         os.chdir(cwd)
@@ -282,6 +284,7 @@ def illumina_simulation(args):
     os.makedirs(sim_out)
     cmd = [os.path.join(rsem_dir, 'rsem-prepare-reference'),
            args.rt, os.path.join(sim_out, 'RSEM')]
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR preparing RSEM reference data: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)
@@ -289,8 +292,9 @@ def illumina_simulation(args):
     print('***Simulating with RSEM')
     cmd = [os.path.join(rsem_dir, 'rsem-simulate-reads'),
            os.path.join(sim_out, 'RSEM'), os.path.join(rsem_dir, 'models/illumina.rna.model'),
-           expr_f, '0', str(args.read_count), os.path.join(args.output, 'Illumina_simulated'),
+           expr_f, '0', str(args.read_count), os.path.join(args.dir, 'Illumina_simulated'),
            '--seed', str(args.seed)]
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR simulatin with RSEM: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)

@@ -4,61 +4,123 @@
 
 # SQANTI-SIM
 
-**SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a plugin for the SQANTI3 tool ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
-SQANTI-SIM is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) or [NanoSim](https://github.com/bcgsc/NanoSim)(formerly Trans-NanoSim).
-Currently this simulators don't focus in simulating the structural categories of the transcripts sequenced, neither aiming to simulate the novelty and degradation with a reliable ground-truth.
+**SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. SQANTI-SIM is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim)(formerly Trans-NanoSim) to simulate novel and degraded transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
+
 The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a controlled way using as ground-truth real transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
-## Requirements and Installation
+## Lastest updates
 
-As SQANTI-SIM is a plugin for the real SQANTI3 programm, in order to use it is necessary to install the SQANTI3 dependencies (or anaconda enviroment) as described in its [wiki](https://github.com/ConesaLab/SQANTI3/wiki/SQANTI3-dependencies-and-installation). Moreover, it is needed to intall the python package tqdm. You can installit in your SQANTI3 conda enviroment as follows:
+Current version (10/03/2020): SQANTI-SIM version alpha
 
-```
-conda activate SQANTI3.env
+Updates, patches and releases:
 
-conda install -c conda-forge tqdm 
-```
+**alpha:**
+- In development
 
-## Running SQANTI-SIM
+## Short guide
 
-SQANTI-SIM can be used in two different ways: (i) to classify all transcripts from a GTF file and then modifiy the original annotation GTF file or (ii) give as input the intermediary file with the structural categories and just modify the original GTF for different porpuses.
+### Requirements and Installation
 
-![SQANTI-SIM workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_workflow.png)
-
-### Required input
-
-- **--gtf** expects a GTF reference annotation file to analyze and then generate a modified file from this one.
-
-### Optional input
-
-- **--cat** expects the intermediate file with the structural categories of the transcripts from the reference GTF. This argument is used when you have already classified the transcripts from a GTF and you just want to generate a new modified GTF from the same reference.
-- **-o** is the prefix for the output files (default = sqanti_sim)
-- **-d** is the path to the directory to save the output files (default = .)
-- You can choose how many transcripts from each structural category you want to delete from the reference using **--ISM**, **--NIC** and **--NNC** (default = 0).
-- **-k** to choose the number of cores to run simultaneusly in the structural categorization
-- **-v** to show up the version of the tool 
+In order to use the SQANTI-SIM pipeline it is necesarry to install its dependencies. You can install the SQANTI-SIM conda enviroment as follows:
 
 ```
-#!bash
-$ python sqanti3_sim.py -h
+conda env create -f SQANTI_SIM.conda_env.yml
+export PYTHONPATH=$PYTHONPATH:<path_to_Cupcake>
+export PYTHONPATH=$PYTHONPATH:<path_to_Cupcake>/sequence/
+conda activate SQANTI-SIM
+```
 
-usage: sqanti3_sim.py [-h] --gtf GTF [--cat CAT] [-o OUTPUT] [-d DIR]
-                      [--ISM ISM] [--NIC NIC] [--NNC NNC] [--Fusion FUSION]
-                      [--Antisense ANTISENSE] [--GG GG] [--GI GI]
-                      [--Intergenic INTERGENIC] [--read_only] [-k CORES] [-v]
+### Running SQANTI-SIM
 
-SQANTI-SIM: a simulator of controlled novelty and degradation of transcripts
-sequence by long-reads
+The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline.
+
+#### 1. Simulation step
+
+First, we must generate our transcript index file with all the transcripts form the reference annotation GTF classified in SQANTI3 structural categories
+
+```
+usage: sqanti_sim.py classif [-h] --gtf GTF [-o OUTPUT] [-d DIR]
+                             [--min_ref_len MIN_REF_LEN] [-k CORES]
+
+sqanti_sim.py classif parse options
 
 optional arguments:
   -h, --help            show this help message and exit
   --gtf GTF             Reference annotation in GTF format
-  --cat CAT             File with transcripts structural categories generated
-                        with SQANTI-SIM
   -o OUTPUT, --output OUTPUT
                         Prefix for output files
-  -d DIR, --dir DIR     Directory for output files. Default: Directory where
-                        the script was run
+  -d DIR, --dir DIR     Directory for output files (default: .)
+  --min_ref_len MIN_REF_LEN
+                        Minimum reference transcript length (default: 0 bp as
+                        in largasp challenge 1 evaluation)
+  -k CORES, --cores CORES
+                        Number of cores to run in parallel
+```
+
+Then create your desired expression profile and generate the modified GTF that you must use in your transcript reconstruction pipeline
+
+```
+usage: sqanti_sim.py preparatory [-h] -i TRANS_INDEX --gtf GTF [-o OUTPUT]
+                                 [-d DIR] [--read_count READ_COUNT]
+                                 [-nt TRANS_NUMBER] [--nbn_known NBN_KNOWN]
+                                 [--nbp_known NBP_KNOWN]
+                                 [--nbn_novel NBN_NOVEL]
+                                 [--nbp_novel NBP_NOVEL] [--rt RT]
+                                 [--pb_reads PB_READS | --ont_reads ONT_READS]
+                                 [--ISM ISM] [--NIC NIC] [--NNC NNC]
+                                 [--Fusion FUSION] [--Antisense ANTISENSE]
+                                 [--GG GG] [--GI GI] [--Intergenic INTERGENIC]
+                                 [-k CORES] [-s SEED]
+                                 {equal,custom,sample}
+
+sqanti_sim.py preparatory parse options
+
+positional arguments:
+  {equal,custom,sample}
+                        Different modes to generate the expression matrix:
+                        equal (simulate with equal coverage for all reads),
+                        custom (simulate with diferent negative binomial
+                        distributions for novel and known transcripts) or
+                        sample (simulate using a real sample)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i TRANS_INDEX, --trans_index TRANS_INDEX
+                        File with transcript information generated with
+                        SQANTI-SIM
+  --gtf GTF             Reference annotation in GTF format
+  -o OUTPUT, --output OUTPUT
+                        Prefix for output files
+  -d DIR, --dir DIR     Directory for output files (default: .)
+  --read_count READ_COUNT
+                        Number of reads to simulate (required for "equal"
+                        mode)
+  -nt TRANS_NUMBER, --trans_number TRANS_NUMBER
+                        Number of different transcripts to simulate (required
+                        for "equal" or "custom" mode)
+  --nbn_known NBN_KNOWN
+                        Average read count per known transcript to simulate
+                        (i.e., the parameter "n" of the Negative Binomial
+                        distribution) (required for "custom" mode)
+  --nbp_known NBP_KNOWN
+                        The parameter "p" of the Negative Binomial
+                        distribution for known transcripts (required for
+                        "custom" mode)
+  --nbn_novel NBN_NOVEL
+                        Average read count per novel transcript to simulate
+                        (i.e., the parameter "n" of the Negative Binomial
+                        distribution) (required for "custom" mode)
+  --nbp_novel NBP_NOVEL
+                        The parameter "p" of the Negative Binomial
+                        distribution for novel transcripts (required for
+                        "custom" mode)
+  --rt RT               Reference transcripts in FASTA format (required for
+                        "sample" mode)
+  --pb_reads PB_READS   Input PacBio reads for quantification (required for
+                        "sample" mode)
+  --ont_reads ONT_READS
+                        Input ONT reads for quantification (required for
+                        "sample" mode)
   --ISM ISM             Number of incomplete-splice-matches to delete
   --NIC NIC             Number of novel-in-catalog to delete
   --NNC NNC             Number of novel-not-in-catalog to delete
@@ -69,63 +131,90 @@ optional arguments:
   --GI GI               Number of Genic-intron to delete
   --Intergenic INTERGENIC
                         Number of Intergenic to delete
-  --read_only           If used the program will only categorize the GTF file
-                        but skipping writing a new modified GTF
   -k CORES, --cores CORES
                         Number of cores to run in parallel
-  -v, --version         Display program version number
+  -s SEED, --seed SEED  Randomizer seed [123]
 ```
 
-## Classification criteria
-
-![classification workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_class_decision_tree.png)
-
-## Example run
-
-Example data can be found in `data/example_data.tar.gz`. Unpack it using `tar -xzf example_data.tar.gz` in `data` folder.
-
-### Using a new reference GTF as input
-
-`python sqanti3_sim.py --gtf data/example_ref.gtf -o test -d data --ISM 100 --NIC 200 --NNC 100`
-
-### Using an existing SC classification file
-`python sqanti3_sim.py --gtf data/example_ref.gtf --cat data/test_categories.txt -o test -d data --ISM 200 --NIC 100 --NNC 200`
-
-## Output explanation
-
-This tool generates mainly 2 output files:
-
-- The modified GTF file used to "simulate" using it as reference annotation file, with the suffix **_modified.gtf**
-- An intermediate file with the suffix **_categories.txt** that contains the classification in SQANTI3 structural categories for each transcript o the reference GTF (this is the ground-truth)
+Finally, simulate the PacBio and/or ONT data. You can also simulate Illumina data to use it as input in your transcript discovery and reconstruction pipeline
 
 ```
-TransID	GeneID	SC	RefGene	RefTrans
-ENST00000456328.2	ENSG00000223972.5	novel_not_in_catalog	ENSG00000223972.5	novel
-ENST00000450305.2	ENSG00000223972.5	novel_not_in_catalog	ENSG00000223972.5	novel
-ENST00000488147.1	ENSG00000227232.5	antisense	novelGene_ENSG00000243485.5_AS	novel
-ENST00000619216.1	ENSG00000278267.1	genic_intron		novel
-ENST00000473358.1	ENSG00000243485.5	novel_not_in_catalog	ENSG00000243485.5	novel
-ENST00000469289.1	ENSG00000243485.5	incomplete-splice_match	ENSG00000243485.5	ENST00000473358.1
-ENST00000607096.1	ENSG00000284332.1	incomplete-splice_match	ENSG00000243485.5	ENST00000469289.1
-ENST00000417324.1	ENSG00000237613.2	novel_not_in_catalog	ENSG00000237613.2	novel
-ENST00000461467.1	ENSG00000237613.2	incomplete-splice_match	ENSG00000237613.2	ENST00000417324.1
+usage: sqanti_sim.py sim [-h] --gtf GTF --genome GENOME [--rt RT] -i
+                         TRANS_INDEX [--read_type READ_TYPE] [-d DIR]
+                         [-k CORES] [--pb] [--ont] [--illumina]
+                         [--read_count READ_COUNT] [-s SEED]
+
+sqanti_sim.py sim parse options
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --gtf GTF             Reference annotation in GTF format
+  --genome GENOME       Reference genome FASTA
+  --rt RT               Reference transcripts in FASTA format
+  -i TRANS_INDEX, --trans_index TRANS_INDEX
+                        File with transcript information generated with
+                        SQANTI-SIM
+  --read_type READ_TYPE
+                        Read type for NanoSim simulation
+  -d DIR, --dir DIR     Directory for output files (default: .)
+  -k CORES, --cores CORES
+                        Number of cores to run in parallel
+  --pb                  If used the program will simulate PacBio reads with
+                        IsoSeqSim
+  --ont                 If used the program will simulate ONT reads with
+                        NanoSim
+  --illumina            If used the program will simulate Illumina reads with
+                        RSEM
+  --read_count READ_COUNT
+                        Number of reads to simulate (if not given it will use
+                        the counts of the given expression file)
+  -s SEED, --seed SEED  Randomizer seed [123]
 ```
 
-Moreover, in the terminal it shows a sumary table with all the transcripts classified for each structural category:
+#### 2. Run transcript reconstruction pipeline
+
+Run your transcript discovery and reconstruction pipeline with the modified GTF generate in the step before as your reference annotation GTF.
+
+#### 3. Generate SQANTI-SIM report
+
+Finally, run SQANTI3 with the modified GTF and generate the SQANTI-SIM report to evaluate the performance of the pipeline.
 
 ```
-S Q A N T I - S I M 📊
+usage: sqanti_sim.py eval [-h] --isoforms ISOFORMS --gtf GTF --genome GENOME
+                          -i TRANS_INDEX [-o OUTPUT] [-d DIR]
+                          [--min_ref_len MIN_REF_LEN] [-k CORES]
 
-Summary Table 🔎
-_______________________________________________________________________________
-| full-splice_match: 5564
-| incomplete-splice_match: 40929
-| novel_in_catalog: 73698
-| novel_not_in_catalog: 78958
-| fusion: 2139
-| antisense: 5462
-| genic_intron: 88
-| genic: 1574
-| intergenic: 28600
+sqanti_sim.py eval parse options
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --isoforms ISOFORMS   GTF with trancriptome reconstructed with your pipeline
+  --gtf GTF             Reference annotation in GTF format
+  --genome GENOME       Reference genome FASTA
+  -i TRANS_INDEX, --trans_index TRANS_INDEX
+                        File with transcript information generated with
+                        SQANTI-SIM
+  -o OUTPUT, --output OUTPUT
+                        Prefix for output files
+  -d DIR, --dir DIR     Directory for output files (default: .)
+  --min_ref_len MIN_REF_LEN
+                        Minimum reference transcript length (use the same as
+                        in the classif step)
+  -k CORES, --cores CORES
+                        Number of cores to run in parallel
 ```
 
+## Wiki
+
+For more information visit our wiki
+
+- [What is SQANTI-SIM?]()
+- [SQANTI-SIM dependencies and installation]() 
+- [Running SQANTI-SIM simulation]() 
+- [Running SQANTI-SIM evaluation]() 
+- [SQANTI-SIM output explanation]()
+- [SQANTI-SIM example]()  
+
+## How to cite SQANTI-SIM
+
+There is not SQANTI-SIM paper :disappointed:

@@ -173,7 +173,6 @@ def sim(input):
     parser.add_argument('--rt', default=str(), type=str, help='\t\tReference transcripts in FASTA format')
     parser.add_argument('-i', '--trans_index', type= str,  help = '\t\tFile with transcript information generated with SQANTI-SIM', required=True)
     parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
-    parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
     parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')  
     parser.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
@@ -197,7 +196,6 @@ def sim(input):
 
     random.seed(args.seed)
     numpy.random.seed(args.seed)
-    args.output = os.path.join(args.dir, args.output)
 
     if args.pb:
         pb_ont_sim.pb_simulation(args)
