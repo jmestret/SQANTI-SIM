@@ -170,13 +170,14 @@ def sim(input):
     parser = argparse.ArgumentParser(prog='sqanti_sim.py sim', description='sqanti_sim.py sim parse options')
     parser.add_argument('--gtf', type = str,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('--genome', default = False,  help = '\t\tReference genome FASTA', required=True)
-    parser.add_argument('--rt', default=str(), type=str, help='\t\tReference transcripts in FASTA format')
+    parser.add_argument('--rt', default=str(), type=str, help='\t\tReference transcripts in FASTA format (required for simulating ONT or Illumina reads)')
     parser.add_argument('-i', '--trans_index', type= str,  help = '\t\tFile with transcript information generated with SQANTI-SIM', required=True)
     parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
-    parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')  
-    parser.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
-    parser.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
+    parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
+    group.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
     parser.add_argument('--illumina', action='store_true', help = '\t\tIf used the program will simulate Illumina reads with RSEM')
     parser.add_argument('--read_count', default = None, type=int,  help = '\t\tNumber of reads to simulate (if not given it will use the counts of the given expression file)')
     parser.add_argument('-s', '--seed', help='\t\tRandomizer seed [123]', default=123, type=int)
@@ -185,10 +186,6 @@ def sim(input):
 
     if unknown:
         print('sim mode unrecognized arguments: {}\n'.format(' '.join(unknown)), file=sys.stderr)
-
-    if not args.ont and not args.pb:
-        print('sqanti_sim.py sim: error: one of the following arguments is required: --pb, --ont', file=sys.stderr)
-        sys.exit(1)
 
     if (args.ont or args.illumina) and not args.rt:
         print('sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt', file=sys.stderr)

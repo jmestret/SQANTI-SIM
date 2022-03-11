@@ -97,7 +97,7 @@ data.index$structural_category = factor(data.index$structural_category,
                                       ordered=TRUE)
 data.index$donors <- NULL
 data.index$acceptors <- NULL
-
+data.index$sim_type[which(data.index$sim_counts == 0)] <- 'absent'
 
 # Transcript simulated
 data.novel <- data.index[which(data.index$sim_type == 'novel'),]
@@ -105,18 +105,21 @@ data.known <- data.index[which(data.index$sim_type == 'known'),]
 sim.sc <- unique(data.novel$structural_category)
 
 # Matched for novel and known
-
 known.matches <- inner_join(data.query, data.known, by='junctions') %>%
   mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
   arrange(difftot) %>%
   distinct(isoform, .keep_all = T)
 known.perfect.matches <- known.matches[which(known.matches$diffTSS < 50 & known.matches$diffTTS < 50),]
+cond <- (known.perfect.matches$exons > 1) | (known.perfect.matches$strand.x == '+' & known.perfect.matches$TSS_genomic_coord.x <= known.perfect.matches$TTS_genomic_coord.y & known.perfect.matches$TSS_genomic_coord.y <= known.perfect.matches$TTS_genomic_coord.x) | (known.perfect.matches$strand.x == '-' & known.perfect.matches$TTS_genomic_coord.x <= known.perfect.matches$TSS_genomic_coord.y & known.perfect.matches$TTS_genomic_coord.y <= known.perfect.matches$TSS_genomic_coord.x)
+known.perfect.matches <- known.perfect.matches[cond,]
 
 novel.matches <- inner_join(data.query, data.novel, by='junctions') %>%
   mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
   arrange(difftot) %>%
   distinct(isoform, .keep_all = T)
 novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < 50 & novel.matches$diffTTS < 50),]
+cond <- (novel.perfect.matches$exons > 1) | (novel.perfect.matches$strand.x == '+' & novel.perfect.matches$TSS_genomic_coord.x <= novel.perfect.matches$TTS_genomic_coord.y & novel.perfect.matches$TSS_genomic_coord.y <= novel.perfect.matches$TTS_genomic_coord.x) | (novel.perfect.matches$strand.x == '-' & novel.perfect.matches$TTS_genomic_coord.x <= novel.perfect.matches$TSS_genomic_coord.y & novel.perfect.matches$TTS_genomic_coord.y <= novel.perfect.matches$TSS_genomic_coord.x)
+novel.perfect.matches <- novel.perfect.matches[cond,]
 
 known.metrics <- data.frame(init=c())
 novel.metrics <- data.frame(init=c())
@@ -138,6 +141,8 @@ for (sc in xaxislabelsF1){
     novel.metrics['FN', sc] <- novel.FN
     novel.metrics['Sensitivity', sc] <- novel.TP/ (novel.TP + novel.FN)
     novel.metrics['Precision', sc] <- novel.TP/ (novel.TP + FP)
+    novel.metrics['F-score', sc] <- 2*((novel.metrics['Sensitivity', sc]*novel.metrics['Precision', sc])/(novel.metrics['Sensitivity', sc]+novel.metrics['Precision', sc]))
+    
     
   } else {
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP
@@ -213,8 +218,10 @@ novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), in
 # p1: simulated expression profile
 # p2: structural classification
 # p3: sensitivity by trans per gene
-#    p3.1: discrete
-#    p3.2: factor
+#   p3.1: discrete
+#   p3.2: factor
+# p4: TP vs FN
+#   p4.1: known
 
 print("***Generating plots for the report")
 

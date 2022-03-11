@@ -27,10 +27,10 @@ def pb_simulation(args):
     f_out = open(expr_f, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     with open(args.trans_index, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        i = col_names.index('requested_counts')
-        j = col_names.index('requested_tpm')
+        header_names = idx.readline()
+        header_names = header_names.split()
+        i = header_names.index('requested_counts')
+        j = header_names.index('requested_tpm')
         for line in idx:
             line = line.split()
             if int(line[i]) == 0:
@@ -83,8 +83,7 @@ def pb_simulation(args):
     output_read_info.close()
 
     trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
-    trans_index['pb_sim_counts'] = trans_index.apply(counts_to_index, axis=1)
-    trans_index['sim_type'] = trans_index.apply(lambda row: row['sim_type'] if row['transcript_id'] in id_counts else 'absent', axis=1)
+    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
     trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
     print('***IsoSeqSim simulation done')
@@ -100,10 +99,10 @@ def ont_simulation(args):
     f_out = open(expr_f, 'w')
     f_out.write('target_id\test_counts\ttpm\n')
     with open(args.trans_index, 'r') as idx:
-        col_names = idx.readline
-        col_names = col_names.split()
-        i = col_names.index('requested_counts')
-        j = col_names.index('requested_tpm')
+        header_names = idx.readline()
+        header_names = header_names.split()
+        i = header_names.index('requested_counts')
+        j = header_names.index('requested_tpm')
         for line in idx:
             line = line.split()
             if int(line[i]) == 0:
@@ -221,8 +220,7 @@ def ont_simulation(args):
     f_out.close()
 
     trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
-    trans_index['ont_sim_counts'] = trans_index.apply(counts_to_index, axis=1)
-    trans_index['sim_type'] = trans_index.apply(lambda row: row['sim_type'] if row['transcript_id'] in id_counts else 'absent', axis=1)
+    trans_index['sim_counts'] = trans_index.apply(counts_to_index, axis=1)
     trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
 
     print('***NanoSim simulation done')
@@ -251,10 +249,10 @@ def illumina_simulation(args):
     tpm_d = defaultdict(float)
     n = 0
     with open(args.trans_index, 'r') as idx:
-        col_names = idx.readline()
-        col_names = col_names.split()
-        i = col_names.index('requested_counts')
-        j = col_names.index('requested_tpm')
+        header_names = idx.readline()
+        header_names = header_names.split()
+        i = header_names.index('requested_counts')
+        j = header_names.index('requested_tpm')
         for line in idx:
             line = line.split()
             if int(line[i]) == 0:
@@ -266,14 +264,14 @@ def illumina_simulation(args):
     if not args.read_count:
         args.read_count = n
 
-    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)),'tmp_expression.tsv')
+    expr_f = os.path.join(args.dir,'Illumina_requested_expression.tsv')
     f_out = open(expr_f, 'w')
     f_out.write('transcript_id\tgene_id\tlength\teffective_length\texpected_count\tTPM\tFPKM\tIsoPct\n')
     mean_frag_len = 300
     for trans in SeqIO.parse(args.rt, 'fasta'):
         real_len = len(trans.seq)
         eff_len = float(max(1, real_len - mean_frag_len))
-        tpm = tpm_d[trans.id]
+        tpm = tpm_d[trans.id.split('|')[0]]
         isopct = 100.0 if tpm > 0.0 else 0.0
         f_out.write("%s\t%s\t%d\t%.2f\t0.00\t%.2f\t0.00\t%.2f\n" %
                     (trans.id, trans.id, real_len, eff_len, tpm, isopct))
@@ -281,7 +279,10 @@ def illumina_simulation(args):
 
     print('***Preparing reference data')
     sim_out = os.path.join(args.dir, 'rsem_sim')
-    os.makedirs(sim_out)
+    if os.path.isdir(sim_out):
+        print('WARNING: output direcory already exists. Overwritting!', file=sys.stderr)
+    else:
+        os.makedirs(sim_out)
     cmd = [os.path.join(rsem_dir, 'rsem-prepare-reference'),
            args.rt, os.path.join(sim_out, 'RSEM')]
     cmd = ' '.join(cmd)
@@ -291,7 +292,7 @@ def illumina_simulation(args):
     
     print('***Simulating with RSEM')
     cmd = [os.path.join(rsem_dir, 'rsem-simulate-reads'),
-           os.path.join(sim_out, 'RSEM'), os.path.join(rsem_dir, 'models/illumina.rna.model'),
+           os.path.join(sim_out, 'RSEM'), os.path.join(rsem_dir, 'models/Illumina.HiSeq2500.hsWTC11.model'),
            expr_f, '0', str(args.read_count), os.path.join(args.dir, 'Illumina_simulated'),
            '--seed', str(args.seed)]
     cmd = ' '.join(cmd)
