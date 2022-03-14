@@ -8,18 +8,29 @@
 
 The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a controlled way using as ground-truth real transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
-## Lastest updates
+## Table of Contents
+
+- [Lastest updates](#updates)
+- [Requirements and installation](#requirements)
+- [SQANTI-SIM steps](#steps)
+	- [classification](#classif)
+	- [preparatory](#preparatory)
+	- [simulation](#sim)
+	- [evaluation](#eval)
+- [Output explanation](#output)
+- [Example run](#example)
+- [How to cite SQANTI-SIM](#cite)
+
+## <a name="updates"></a>Lastest updates
 
 Current version (10/03/2020): SQANTI-SIM version alpha
 
 Updates, patches and releases:
 
-**alpha:**
-- In development
+**beta:**
+- Please, try to use the tool and notify any bug or suggestion
 
-## Short guide
-
-### Requirements and Installation
+## <a name="requirements"></a>Requirements and Installation
 
 In order to use the SQANTI-SIM pipeline it is necesarry to install its dependencies. You can install the SQANTI-SIM conda enviroment as follows:
 
@@ -30,11 +41,11 @@ export PYTHONPATH=$PYTHONPATH:<path_to_Cupcake>/sequence/
 conda activate SQANTI-SIM
 ```
 
-### Running SQANTI-SIM
+## <a name="steps"></a>SQANTI-SIM steps
 
 The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline.
 
-#### 1. Simulation step
+### <a name="classif"></a>Classification
 
 First, we must generate our transcript index file with all the transcripts form the reference annotation GTF classified in SQANTI3 structural categories
 
@@ -56,6 +67,8 @@ optional arguments:
   -k CORES, --cores CORES
                         Number of cores to run in parallel
 ```
+
+### <a name="preparatory"></a>Preparatory
 
 Then create your desired expression profile and generate the modified GTF that you must use in your transcript reconstruction pipeline
 
@@ -136,6 +149,8 @@ optional arguments:
   -s SEED, --seed SEED  Randomizer seed [123]
 ```
 
+### <a name="sim"></a>Simulation
+
 Finally, simulate the PacBio and/or ONT data. You can also simulate Illumina data to use it as input in your transcript discovery and reconstruction pipeline
 
 ```
@@ -171,13 +186,9 @@ optional arguments:
   -s SEED, --seed SEED  Randomizer seed [123]
 ```
 
-#### 2. Run transcript reconstruction pipeline
+### <a name="eval"></a>Evaluation
 
-Run your transcript discovery and reconstruction pipeline with the modified GTF generate in the step before as your reference annotation GTF.
-
-#### 3. Generate SQANTI-SIM report
-
-Finally, run SQANTI3 with the modified GTF and generate the SQANTI-SIM report to evaluate the performance of the pipeline.
+Run your transcript discovery and reconstruction pipeline with the modified GTF generate in the step before as your reference annotation GTF. Finally, run SQANTI3 with the modified GTF and generate the SQANTI-SIM report to evaluate the performance of the pipeline.
 
 ```
 usage: sqanti_sim.py eval [-h] --isoforms ISOFORMS --gtf GTF --genome GENOME
@@ -204,17 +215,10 @@ optional arguments:
                         Number of cores to run in parallel
 ```
 
-## Wiki
+## <a name="output"></a>Output explanation
 
-For more information visit our wiki
+## <a name="example"></a>Run example
 
-- [What is SQANTI-SIM?]()
-- [SQANTI-SIM dependencies and installation]() 
-- [Running SQANTI-SIM simulation]() 
-- [Running SQANTI-SIM evaluation]() 
-- [SQANTI-SIM output explanation]()
-- [SQANTI-SIM example]()  
-
-## How to cite SQANTI-SIM
+## <a name="cite"></a>How to cite SQANTI-SIM
 
 There is not SQANTI-SIM paper :disappointed:
