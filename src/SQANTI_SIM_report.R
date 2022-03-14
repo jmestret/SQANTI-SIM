@@ -119,14 +119,16 @@ novel.perfect.matches <- novel.perfect.matches[cond,]
 known.metrics <- data.frame(init=c())
 novel.metrics <- data.frame(init=c())
 for (sc in xaxislabelsF1){
+  known.sim <- nrow(data.known[which(data.known$structural_category == sc), ])
   known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
   known.PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - known.TP
   
   if (sc %in% sim.sc) {
+    novel.sim <- nrow(data.novel[which(data.novel$structural_category == sc), ])
     novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.x == sc),])
     novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - novel.TP
     
-    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - novel.TP
+    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP - novel.TP - novel.PTP
     novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
     
     
@@ -137,16 +139,21 @@ for (sc in xaxislabelsF1){
     novel.metrics['Sensitivity', sc] <- novel.TP/ (novel.TP + novel.FN)
     novel.metrics['Precision', sc] <- novel.TP/ (novel.TP + FP)
     novel.metrics['F-score', sc] <- 2*((novel.metrics['Sensitivity', sc]*novel.metrics['Precision', sc])/(novel.metrics['Sensitivity', sc]+novel.metrics['Precision', sc]))
-    
+    novel.metrics['False_Discovery_Rate', sc] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
+    novel.metrics['Positive_Detection_Rate', sc] <- (novel.TP + novel.PTP) / novel.sim
+    novel.metrics['False_Detection_Rate', sc] <- (FP) / (FP + novel.PTP +  novel.TP)
     
   } else {
-    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP
+    FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP
   }
   
   known.metrics['TP', sc] <- known.TP
   known.metrics['PTP', sc] <- known.PTP
   known.metrics['FP', sc] <- FP
   known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
+  known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
+  known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
+  known.metrics['False_Detection_Rate', sc] <- (FP) / (FP + known.PTP +  known.TP)
   
 }
 
@@ -169,8 +176,7 @@ for (sc in xaxislabelsF1){
   }
 }
 
-
-
+known.metrics['Total', 'global'] <-  nrow(data.known)
 known.metrics['TP', 'global'] <- known.TP
 known.metrics['PTP', 'global'] <- known.PTP
 known.metrics['FP', 'global'] <- known.FP
@@ -178,7 +184,11 @@ known.metrics['FN', 'global'] <- nrow(data.known) - known.TP
 known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.FP)
 known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
 known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
+known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
+known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
+known.metrics['False_Detection_Rate', sc] <- (known.FP) / (known.FP + known.PTP +  known.TP)
 
+novel.metrics['Total', 'global'] <-  nrow(data.novel)
 novel.metrics['TP', 'global'] <- novel.TP
 novel.metrics['PTP', 'global'] <- novel.PTP
 novel.metrics['FP', 'global'] <- novel.FP
@@ -186,14 +196,14 @@ novel.metrics['FN', 'global'] <- nrow(data.novel) - novel.TP
 novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
 novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
 novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
-
+novel.metrics['False_Discovery_Rate', sc] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
+novel.metrics['Positive_Detection_Rate', sc] <- (novel.TP + novel.PTP) / novel.sim
+novel.metrics['False_Detection_Rate', sc] <- (novel.FP) / (novel.FP + novel.PTP +  novel.TP)
 
 col.order <- c("global", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")
 row.order <- c('TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score')
 known.metrics <- known.metrics[intersect(row.order, rownames(known.metrics)), intersect(col.order, colnames(known.metrics))]
 novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), intersect(col.order, colnames(novel.metrics))]
-
-
 
 
 #######################################
@@ -215,8 +225,7 @@ novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), in
 # p3: sensitivity by trans per gene
 #   p3.1: discrete
 #   p3.2: factor
-# p4: TP vs FN
-#   p4.1: known
+# p4: novel TP vs FN
 
 print("***Generating plots for the report")
 
@@ -256,7 +265,7 @@ expr.dist <- data.index[which(data.index$sim_type %in% c('novel', 'known')), c('
 
 p1 <- expr.dist %>%
   ggplot( aes(x=sim_counts, fill=sim_type)) +
-  geom_histogram(color='white', alpha=0.6, position = 'identity') +
+  geom_histogram(color='white', alpha=0.5, position = 'identity') +
   mytheme +
   scale_fill_manual(values = c('orange', 'darkcyan')) +
   xlab('Counts') + 
@@ -321,12 +330,27 @@ trans.per.gene <- trans.per.gene %>%
 
 p3.2 <- trans.per.gene %>%
   ggplot(aes(x=cat, y=sensitivity)) +
-  geom_segment(aes(x=cat, xend=cat, y=0, yend=sensitivity), color='darkcyan') +
-  geom_point(color='orange', size=4) +
+  geom_bar(stat='identity', color='cyan', fill='darkcyan') +
   mytheme +
   ylab('Sensitivity') +
   xlab('Number of annotated transcripts per gene')
 
+# PLOT 4: novel TP vs FN
+
+data.novel$match_type <- 'FN'
+data.novel$match_type[which(data.novel$transcript_id %in% novel.perfect.matches$transcript_id)] <- 'TP'
+p4 <- data.novel %>%
+  mutate(exon_type=ifelse(exons > 1, 'multi-exon', 'mono-exon')) %>%
+  group_by(structural_category, match_type, exon_type) %>%
+  summarise(value=n()) %>%
+  ggplot(aes(x=structural_category)) +
+  geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
+  scale_fill_manual(values=c('#FF0022', '#011627'), name='Stats') +
+  scale_alpha_manual(values=c(0.5,1), name='Exons') +
+  mytheme +
+  ylab('Percentage %') +
+  xlab('')
+  
 
 # -------------------- Output report
 rmarkdown::render(

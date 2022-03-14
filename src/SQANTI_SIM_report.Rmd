@@ -30,7 +30,7 @@ n.class.trans <- nrow(data.query)
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
 cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
 cat('\n\n**Number of novel transcripts**: ', n.novel.trans, '\n\n')
-cat('\n\n**Number of classified transcripts**: ', n.class.trans, '\n\n')
+cat('\n\n**Number of reconstructed transcripts**: ', n.class.trans, '\n\n')
 ```
 
 ## Simulated counts distribution
@@ -45,23 +45,43 @@ p1
 p2
 ```
 
-## Stats for known transcripts
+## Evaluation of simulation {.tabset .tabset-pills}
+
+Simulated transcript were grouped in know simulated transcripts which appear in the reference annotation GTF and novel simulated transcripts that were deleted from the annotation. The following metrics were computed:
+
+- **Number of isoforms simulated**: Total number of simulated isoforms
+- **True Positive isoforms (TP)**: Isoforms that match junctions with a simulated transcript and its TSS and TTS is within the thresholds
+- **Partial True Positive isoforms (PTP)**: Isoforms that match junctions but the TSS and TTS are beyond the threshold
+- **False Negative isoforms (FN) **: Isoforms that were simulated but not detected
+- **False Positive (FP)**: Transcript that were detected but not simulated
+- **Sensitivity**: TP/Number of simulated transcripts
+- **Precision**: TP/Detected isoforms
+- **F-score**: Harmonic mean of precision and sensitivity
+- **False Discovery Rate**: (FP+PTP)/Detected isoforms
+- **Positive Detection Rate**: unique(TP + PTP)/Number of simulated transcripts
+- **False Detection Rate**: FP/Detected isoforms
+
+### Stats for known transcripts
 
 ```{r}
 t1
 ```
 
-## Stats for novel transcripts
+### Stats for novel transcripts
 
 ```{r}
 t2
 ```
 
-### Sensitivity deppending on the number of annotated transcripts per gene
+#### Novel TP vs FN
+
+```{r}
+p4
+```
+
+#### Sensitivity deppending on the number of annotated transcripts per gene
 
 ```{r}
 p3.1
 p3.2
 ```
-
-
