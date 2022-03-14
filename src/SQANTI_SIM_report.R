@@ -47,6 +47,9 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
+class.file <-'sqanti_sim_classification.txt'
+junc.file <-'sqanti_sim_junctions.txt'
+index.file <- 'mix_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
@@ -119,7 +122,7 @@ novel.perfect.matches <- novel.perfect.matches[cond,]
 known.metrics <- data.frame(init=c())
 novel.metrics <- data.frame(init=c())
 for (sc in xaxislabelsF1){
-  known.sim <- nrow(data.known[which(data.known$structural_category == sc), ])
+  #known.sim <- nrow(data.known[which(data.known$structural_category == sc), ])
   known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
   known.PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - known.TP
   
@@ -132,6 +135,7 @@ for (sc in xaxislabelsF1){
     novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
     
     
+    novel.metrics['Total', sc] <- novel.sim
     novel.metrics['TP', sc] <- novel.TP
     novel.metrics['PTP', sc] <- novel.PTP
     novel.metrics['FP', sc] <- FP
@@ -147,6 +151,7 @@ for (sc in xaxislabelsF1){
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP
   }
   
+  #known.metrics['Total', sc] <- known.sim
   known.metrics['TP', sc] <- known.TP
   known.metrics['PTP', sc] <- known.PTP
   known.metrics['FP', sc] <- FP
@@ -184,9 +189,9 @@ known.metrics['FN', 'global'] <- nrow(data.known) - known.TP
 known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.FP)
 known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
 known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
-known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
-known.metrics['False_Detection_Rate', sc] <- (known.FP) / (known.FP + known.PTP +  known.TP)
+known.metrics['False_Discovery_Rate', 'global'] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
+known.metrics['Positive_Detection_Rate', 'global'] <- (known.TP + known.PTP) / known.sim
+known.metrics['False_Detection_Rate', 'global'] <- (known.FP) / (known.FP + known.PTP +  known.TP)
 
 novel.metrics['Total', 'global'] <-  nrow(data.novel)
 novel.metrics['TP', 'global'] <- novel.TP
@@ -196,12 +201,12 @@ novel.metrics['FN', 'global'] <- nrow(data.novel) - novel.TP
 novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
 novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
 novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
-novel.metrics['False_Discovery_Rate', sc] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
-novel.metrics['Positive_Detection_Rate', sc] <- (novel.TP + novel.PTP) / novel.sim
-novel.metrics['False_Detection_Rate', sc] <- (novel.FP) / (novel.FP + novel.PTP +  novel.TP)
+novel.metrics['False_Discovery_Rate', 'global'] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
+novel.metrics['Positive_Detection_Rate', 'global'] <- (novel.TP + novel.PTP) / novel.sim
+novel.metrics['False_Detection_Rate', 'global'] <- (novel.FP) / (novel.FP + novel.PTP +  novel.TP)
 
 col.order <- c("global", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")
-row.order <- c('TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score')
+row.order <- c('Total', 'TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score', 'False_Discovery_Rate', 'Positive_Detection_Rate', 'False_Detection_Rate')
 known.metrics <- known.metrics[intersect(row.order, rownames(known.metrics)), intersect(col.order, colnames(known.metrics))]
 novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), intersect(col.order, colnames(novel.metrics))]
 
