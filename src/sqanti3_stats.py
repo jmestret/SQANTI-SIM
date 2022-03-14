@@ -22,10 +22,10 @@ def sqanti3_stats(args):
                           '--min_ref_len', str(args.min_ref_len),
                           '--force_id_ignore']
     
-    
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR running SQANTI3: {0}'.format(cmd), file=sys.stderr)
-        sys.exit(1)
+        #sys.exit(1)
 
     print('***Generating SQANTI-SIM report')
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -35,8 +35,7 @@ def sqanti3_stats(args):
     cmd=['Rscript', os.path.join(src_dir,'SQANTI_SIM_report.R'),
          classification_file, junctions_file, args.trans_index, src_dir]
 
-    res = subprocess.run()
-
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR running SQANTI-SIM report generation: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)

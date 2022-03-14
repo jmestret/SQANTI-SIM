@@ -47,11 +47,6 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-class.file <- 'sqanti_sim_classification.txt'
-junc.file <- 'sqanti_sim_junctions.txt'
-index.file <- 'mix_index.tsv'
-
-
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
