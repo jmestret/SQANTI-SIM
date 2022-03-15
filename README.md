@@ -4,7 +4,7 @@
 
 # SQANTI-SIM
 
-**SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. SQANTI-SIM is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim)(formerly Trans-NanoSim) to simulate novel and degraded transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
+**SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. SQANTI-SIM is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
 
 The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a controlled way using as ground-truth real transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
@@ -23,7 +23,7 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 
 ## <a name="updates"></a>Lastest updates
 
-Current version (10/03/2020): SQANTI-SIM version alpha
+Current version (10/03/2020): SQANTI-SIM version beta
 
 Updates, patches and releases:
 
@@ -43,11 +43,13 @@ conda activate SQANTI-SIM
 
 ## <a name="steps"></a>SQANTI-SIM steps
 
-The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline.
+The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline. `sqanti_sim.py` is a wrapper script with modules that are assumed to be run in the following order: classif, preparatory, sim and eval. The 3 first modules will simulate the data and the last module would generate the evalution report.
 
 ### <a name="classif"></a>Classification
 
-First, we must generate our transcript index file with all the transcripts form the reference annotation GTF classified in SQANTI3 structural categories
+**sqanti-sim classif** classifies all the transcripts from the reference annotation GTF in its potential SQANTI3 structural categories. It outputs a transcript index file with the structural annotation of each transcript and its SQANTI3 structural category. The transcript index file prefix is `_index.tsv`.
+
+The user must 
 
 ```
 usage: sqanti_sim.py classif [-h] --gtf GTF [-o OUTPUT] [-d DIR]
