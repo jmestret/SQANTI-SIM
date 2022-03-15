@@ -47,9 +47,9 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-class.file <-'sqanti_sim_classification.txt'
-junc.file <-'sqanti_sim_junctions.txt'
-index.file <- 'mix_index.tsv'
+#class.file <-'sqanti_sim_classification.txt'
+#junc.file <-'sqanti_sim_junctions.txt'
+#index.file <- 'mix_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
@@ -157,7 +157,7 @@ for (sc in xaxislabelsF1){
   known.metrics['FP', sc] <- FP
   known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
   known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-  known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
+  #known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
   known.metrics['False_Detection_Rate', sc] <- (FP) / (FP + known.PTP +  known.TP)
   
 }
@@ -190,7 +190,7 @@ known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.FP)
 known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
 known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
 known.metrics['False_Discovery_Rate', 'global'] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-known.metrics['Positive_Detection_Rate', 'global'] <- (known.TP + known.PTP) / known.sim
+known.metrics['Positive_Detection_Rate', 'global'] <- (known.TP + known.PTP) / nrow(data.known)
 known.metrics['False_Detection_Rate', 'global'] <- (known.FP) / (known.FP + known.PTP +  known.TP)
 
 novel.metrics['Total', 'global'] <-  nrow(data.novel)
@@ -202,7 +202,7 @@ novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
 novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
 novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
 novel.metrics['False_Discovery_Rate', 'global'] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
-novel.metrics['Positive_Detection_Rate', 'global'] <- (novel.TP + novel.PTP) / novel.sim
+novel.metrics['Positive_Detection_Rate', 'global'] <- (novel.TP + novel.PTP) / nrow(data.novel)
 novel.metrics['False_Detection_Rate', 'global'] <- (novel.FP) / (novel.FP + novel.PTP +  novel.TP)
 
 col.order <- c("global", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")

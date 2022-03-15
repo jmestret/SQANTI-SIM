@@ -152,7 +152,7 @@ def generate_simulated_reads(inputs):
 			read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
 			if read_seq_muta_end == "":
 				tries = 0
-				while read_seq_muta_end == "" and tries < 10:
+				while read_seq_muta_end == "" and tries < 50:
 					read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
 					read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
 					read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
