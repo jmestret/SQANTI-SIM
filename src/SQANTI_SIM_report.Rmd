@@ -67,10 +67,60 @@ Simulated transcript were grouped in know simulated transcripts which appear in 
 t1
 ```
 
+```{r, results = 'hide'}
+radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
+                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+known.metrics.t <- as.data.frame(t(as.matrix(known.metrics)))
+known.metrics.t[is.na(known.metrics.t)] <- NA
+known.metrics.t <-known.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
+known.metrics.t <- rbind(1, 0, known.metrics.t)
+
+par(mar=c(1,1,1,1), mfrow=c(2,ceiling((nrow(known.metrics.t)-2)/2)))
+for (i in 1:(nrow(known.metrics.t)-2)){
+  radarchart(
+  known.metrics.t[c(1, 2, i+2),], axistype = 1,
+  pcol = radar.palette[[rownames(known.metrics.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(known.metrics.t)[i+2]]], 0.5), plwd = 2, plty = 1,
+  # Customize the grid
+  cglcol = "grey", cglty = 1, cglwd = 0.8,
+  # Customize the axis
+  axislabcol = "grey", 
+  # Variable labels
+  vlcex = 0.7, vlabels = colnames(known.metrics.t[c(1, 2, i+2),]),
+  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(known.metrics.t)[i+2]
+)
+}
+```
+
 ### Stats for novel transcripts
 
 ```{r}
 t2
+```
+
+```{r, results = 'hide'}
+radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
+                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+novel.metrics.t <- as.data.frame(t(as.matrix(novel.metrics)))
+novel.metrics.t[is.na(novel.metrics.t)] <- NA
+novel.metrics.t <-novel.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
+novel.metrics.t <- rbind(1, 0, novel.metrics.t)
+
+par(mar=c(1,1,1,1), mfrow=c(2,ceiling((nrow(novel.metrics.t)-2)/2)))
+for (i in 1:(nrow(novel.metrics.t)-2)){
+  radarchart(
+  novel.metrics.t[c(1, 2, i+2),], axistype = 1,
+  pcol = radar.palette[[rownames(novel.metrics.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(novel.metrics.t)[i+2]]], 0.5), plwd = 2, plty = 1,
+  # Customize the grid
+  cglcol = "grey", cglty = 1, cglwd = 0.8,
+  # Customize the axis
+  axislabcol = "grey", 
+  # Variable labels
+  vlcex = 0.7, vlabels = colnames(novel.metrics.t[c(1, 2, i+2),]),
+  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(novel.metrics.t)[i+2]
+)
+}
 ```
 
 #### Novel TP vs FN

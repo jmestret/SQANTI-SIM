@@ -16,6 +16,7 @@
 
 suppressMessages(library(dplyr))
 suppressMessages(library(DT))
+suppressMessages(library(fmsb))
 suppressMessages(library(ggplot2))
 suppressMessages(library(gridExtra))
 suppressMessages(library(knitr))
@@ -47,9 +48,9 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-class.file <-'sqanti_sim_classification.txt'
-junc.file <-'sqanti_sim_junctions.txt'
-index.file <- 'mix_index.tsv'
+#class.file <-'sqanti_sim_classification.txt'
+#junc.file <-'sqanti_sim_junctions.txt'
+#index.file <- 'mix_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
@@ -136,10 +137,10 @@ for (sc in xaxislabelsF1){
   if (sc %in% sim.sc) {
     novel.sim <- nrow(data.novel[which(data.novel$structural_category == sc),])
     novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.x == sc),])
-    novel.PTP <- novel.sim - novel.TP
+    novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - novel.TP
     
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP - novel.TP - novel.PTP
-    novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
+    novel.FN <- novel.sim - novel.TP
     
     
     novel.metrics['Total', sc] <- novel.sim
@@ -165,6 +166,7 @@ for (sc in xaxislabelsF1){
   known.metrics['FN', sc] <- known.FN
   known.metrics['Sensitivity', sc] <- known.TP/ (known.TP + known.FN)
   known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
+  known.metrics['F-score', sc] <- 2*((known.metrics['Sensitivity', sc]*known.metrics['Precision', sc])/(known.metrics['Sensitivity', sc]+known.metrics['Precision', sc]))
   known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
   known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
   known.metrics['False_Detection_Rate', sc] <- (FP) / (FP + known.PTP +  known.TP)
@@ -240,6 +242,7 @@ novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), in
 #   p3.1: discrete
 #   p3.2: factor
 # p4: novel TP vs FN
+# p5: radar chart
 
 print("***Generating plots for the report")
 
@@ -266,11 +269,11 @@ mytheme <- theme_classic(base_family = "Helvetica") +
 # -------------------- 
 # TABLE 1: known metrics
 t1 <- DT::datatable(known.metrics, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(known.metrics), digits = 3, rows=c(6:10), zero.print = 0)
+  formatRound(colnames(known.metrics), digits = 3, rows=c(6:11), zero.print = 0)
 
 # TABLE 2: novel metrics
 t2 <- DT::datatable(novel.metrics, class = 'compact',  options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(novel.metrics), digits = 3, rows=c(6:10), zero.print = 0)
+  formatRound(colnames(novel.metrics), digits = 3, rows=c(6:11), zero.print = 0)
 
 
 # -------------------- 
@@ -364,7 +367,9 @@ p4 <- data.novel %>%
   mytheme +
   ylab('Percentage %') +
   xlab('')
-  
+
+# PLOT 5: Radar chart
+# In RMD file
 
 # -------------------- Output report
 rmarkdown::render(
