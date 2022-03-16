@@ -10,8 +10,9 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 
 ## Table of Contents
 
-- [Lastest updates](#updates)
-- [Requirements and installation](#requirements)
+- [Overview](#overview)
+- [Requirements](#requirements)
+- [Conda enviroment](#conda)
 - [SQANTI-SIM steps](#steps)
 	- [classification](#classif)
 	- [preparatory](#preparatory)
@@ -19,18 +20,30 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 	- [evaluation](#eval)
 - [Output explanation](#output)
 - [Example run](#example)
+- [Lastest updates](#updates)
 - [How to cite SQANTI-SIM](#cite)
 
-## <a name="updates"></a>Lastest updates
+## <a name="overview"></a>Overview
 
-Current version (10/03/2020): SQANTI-SIM version beta
+The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline. `sqanti_sim.py` is a wrapper script with modules that are assumed to be run in the following order: classif, preparatory, sim and eval. The 3 first modules will simulate the data and the last module would generate the evalution report.
 
-Updates, patches and releases:
+![workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_workflow.png)
 
-**beta:**
-- Please, try to use the tool and notify any bug or suggestion
+## <a name="requirements"></a>Requirements
 
-## <a name="requirements"></a>Requirements and Installation
+- Perl
+- minimap2
+- Python (3.7)
+- R (3.6)
+- kallisto
+- STAR
+- samtools
+- bedtools
+- GMAP
+- Python modules: bcbiogff, bedtools, biopython
+[...]
+
+## <a name="conda"></a>Conda enviroment
 
 In order to use the SQANTI-SIM pipeline it is necesarry to install its dependencies. You can install the SQANTI-SIM conda enviroment as follows:
 
@@ -38,7 +51,7 @@ In order to use the SQANTI-SIM pipeline it is necesarry to install its dependenc
 conda env create -f SQANTI_SIM.conda_env.yml
 export PYTHONPATH=$PYTHONPATH:<path_to_Cupcake>
 export PYTHONPATH=$PYTHONPATH:<path_to_Cupcake>/sequence/
-conda activate SQANTI-SIM
+conda activate SQANTI-SIM.env
 ```
 
 ## <a name="steps"></a>SQANTI-SIM steps
@@ -47,9 +60,11 @@ The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data
 
 ### <a name="classif"></a>Classification
 
-**sqanti-sim classif** classifies all the transcripts from the reference annotation GTF in its potential SQANTI3 structural categories. It outputs a transcript index file with the structural annotation of each transcript and its SQANTI3 structural category. The transcript index file prefix is `_index.tsv`.
+**sqanti-sim classif** classifies all the transcripts from the reference annotation GTF in its potential SQANTI3 structural categories. It outputs a transcript index file with the structural annotation of each transcript and its SQANTI3 structural category. The transcript index file prefix is `_index.tsv`. The script will classify the transcripts according to the SQANTI3 structural category classification workflow.
 
-The user must 
+![classif](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_class_decision_tree.png.png)
+
+The user must give the reference annotation GTF as input. Run with `--help` for a description of the other optional arguments.
 
 ```
 usage: sqanti_sim.py classif [-h] --gtf GTF [-o OUTPUT] [-d DIR]
@@ -70,9 +85,19 @@ optional arguments:
                         Number of cores to run in parallel
 ```
 
+##### Usage:
+
+```
+python sqanti_sim.py classif --gtf annotation.gtf [options]
+```
+
 ### <a name="preparatory"></a>Preparatory
 
-Then create your desired expression profile and generate the modified GTF that you must use in your transcript reconstruction pipeline
+**sqanti-sim preparatory** aims to prepare your experimental design and the data you want to simulate. The user must select how many of each structural category want to simulate as novel and the expression profiles. The transcripts counts can be simulated in 3 different ways using SQANTI-SIM: (i) `equal` where every simulated transcript has the same counts, (ii) in `custom` mode in which 2 different negative binomial distributions are used, one for the novel and degraded transcript and the other for the known transcripts; and (iii) `sample` where it quantifies real long-read RNA-seq data and generates an empirical counts distribution assigning lower values to novel transcripts and higher values to known.
+
+In this step, also the modified reference annotation GTF is generated. **WARNING**: this file must be the one used by the reconstruction pipeline as the reference annotation. It has the prefix `_modified.gtf`.
+
+The required arguments for this step are the trnascript index file from the `classif` step, the reference annotation GTF and the counts-generation mode you want to use. Options arguments can be seen using the `--help` argument.
 
 ```
 usage: sqanti_sim.py preparatory [-h] -i TRANS_INDEX --gtf GTF [-o OUTPUT]
@@ -151,6 +176,12 @@ optional arguments:
   -s SEED, --seed SEED  Randomizer seed [123]
 ```
 
+##### Usage:
+
+```
+python sqanti_sim.py preparatory {equal,custom,sample} -i trans_index.tsv --gtf annotation.gtf [options]
+```
+
 ### <a name="sim"></a>Simulation
 
 Finally, simulate the PacBio and/or ONT data. You can also simulate Illumina data to use it as input in your transcript discovery and reconstruction pipeline
@@ -220,6 +251,15 @@ optional arguments:
 ## <a name="output"></a>Output explanation
 
 ## <a name="example"></a>Run example
+
+## <a name="updates"></a>Lastest updates
+
+Current version (10/03/2020): SQANTI-SIM version beta
+
+Updates, patches and releases:
+
+**beta:**
+- Please, try to use the tool and notify any bug or suggestion
 
 ## <a name="cite"></a>How to cite SQANTI-SIM
 

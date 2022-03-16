@@ -76,7 +76,8 @@ def pb_simulation(args):
         for line in sim_fasta:
             if line.startswith('>'):
                 line = line.lstrip('>')
-                trans_id = line.split('_')[0]
+                line_split = line.split('_')
+                trans_id = '_'.join(line_split[:-4])
                 output_read_info.write(line + "\t" + trans_id + "\n")
                 id_counts[trans_id] += 1
     sim_fasta.close()
