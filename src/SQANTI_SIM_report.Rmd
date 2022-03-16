@@ -1,5 +1,5 @@
 ---
-title: "SQANTI3 OUTPUT COMPARISON REPORT"
+title: "SQANTI-SIM OUTPUT COMPARISON REPORT"
 author: "`r paste0('  ','Author', ': ',Sys.getenv('USERNAME'))`"
 date: "`r paste0('  ','Date', ': ', format(Sys.time(), '%d %B %Y'))`"
 output:
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 
 <!-- Report generation -->
 
-# SQANTI-SIM REPORT
+## Summary
 
 ```{r, results='asis'}
 n.sim.trans <- nrow(data.known) +  nrow(data.novel)
@@ -39,13 +39,13 @@ cat('\n\n**Number of reconstructed transcripts**: ', n.class.trans, '\n\n')
 p1
 ```
 
-## Isoform classification distribution
+## Isoform classification distribution of reconstructed transcripts
 
 ```{r}
 p2
 ```
 
-## Evaluation of simulation {.tabset .tabset-pills}
+## Evaluation of simulation {.tabset}
 
 Simulated transcript were grouped in know simulated transcripts which appear in the reference annotation GTF and novel simulated transcripts that were deleted from the annotation. The following metrics were computed:
 
@@ -58,7 +58,7 @@ Simulated transcript were grouped in know simulated transcripts which appear in 
 - **Precision**: TP/Detected isoforms
 - **F-score**: Harmonic mean of precision and sensitivity
 - **False Discovery Rate**: (FP+PTP)/Detected isoforms
-- **Positive Detection Rate**: unique(TP + PTP)/Number of simulated transcripts
+- **Positive Detection Rate**: (TP + PTP)/Number of simulated transcripts
 - **False Detection Rate**: FP/Detected isoforms
 
 ### Stats for known transcripts

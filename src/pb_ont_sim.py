@@ -257,7 +257,7 @@ def illumina_simulation(args):
             line = line.split()
             if int(line[i]) == 0:
                 continue
-            tpm_d[line[0]] = float(line[i])
+            tpm_d[line[0]] = float(line[j])
             n += int(line[i])
     idx.close()
 
@@ -267,7 +267,7 @@ def illumina_simulation(args):
     expr_f = os.path.join(args.dir,'Illumina_requested_expression.tsv')
     f_out = open(expr_f, 'w')
     f_out.write('transcript_id\tgene_id\tlength\teffective_length\texpected_count\tTPM\tFPKM\tIsoPct\n')
-    mean_frag_len = 300
+    mean_frag_len = 220
     for trans in SeqIO.parse(args.rt, 'fasta'):
         real_len = len(trans.seq)
         eff_len = float(max(1, real_len - mean_frag_len))

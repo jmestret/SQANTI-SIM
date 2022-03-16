@@ -47,9 +47,9 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-#class.file <-'sqanti_sim_classification.txt'
-#junc.file <-'sqanti_sim_junctions.txt'
-#index.file <- 'mix_index.tsv'
+class.file <-'sqanti_sim_classification.txt'
+junc.file <-'sqanti_sim_junctions.txt'
+index.file <- 'mix_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
@@ -122,14 +122,21 @@ novel.perfect.matches <- novel.perfect.matches[cond,]
 known.metrics <- data.frame(init=c())
 novel.metrics <- data.frame(init=c())
 for (sc in xaxislabelsF1){
-  #known.sim <- nrow(data.known[which(data.known$structural_category == sc), ])
+  
+  if (sc == 'FSM') {
+    known.sim <- nrow(data.known)
+  } else {
+    known.sim <- 0
+  }
+  
   known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
   known.PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - known.TP
+  known.FN <- known.sim - known.TP
   
   if (sc %in% sim.sc) {
-    novel.sim <- nrow(data.novel[which(data.novel$structural_category == sc), ])
+    novel.sim <- nrow(data.novel[which(data.novel$structural_category == sc),])
     novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.x == sc),])
-    novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - novel.TP
+    novel.PTP <- novel.sim - novel.TP
     
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP - novel.TP - novel.PTP
     novel.FN <- nrow(data.novel[which(data.novel$structural_category == sc),]) - novel.TP
@@ -151,13 +158,15 @@ for (sc in xaxislabelsF1){
     FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP
   }
   
-  #known.metrics['Total', sc] <- known.sim
+  known.metrics['Total', sc] <- known.sim
   known.metrics['TP', sc] <- known.TP
   known.metrics['PTP', sc] <- known.PTP
   known.metrics['FP', sc] <- FP
+  known.metrics['FN', sc] <- known.FN
+  known.metrics['Sensitivity', sc] <- known.TP/ (known.TP + known.FN)
   known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
   known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-  #known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
+  known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
   known.metrics['False_Detection_Rate', sc] <- (FP) / (FP + known.PTP +  known.TP)
   
 }
@@ -256,12 +265,12 @@ mytheme <- theme_classic(base_family = "Helvetica") +
 
 # -------------------- 
 # TABLE 1: known metrics
-t1 <- DT::datatable(known.metrics) %>%
-  formatRound(colnames(known.metrics), digits = 3, rows=c(5,6,7), zero.print = 0)
+t1 <- DT::datatable(known.metrics, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
+  formatRound(colnames(known.metrics), digits = 3, rows=c(6:10), zero.print = 0)
 
 # TABLE 2: novel metrics
-t2 <- DT::datatable(novel.metrics) %>%
-  formatRound(colnames(novel.metrics), digits = 3, rows=c(5,6,7), zero.print = 0)
+t2 <- DT::datatable(novel.metrics, class = 'compact',  options = list(pageLength = 15, dom = 'tip')) %>%
+  formatRound(colnames(novel.metrics), digits = 3, rows=c(6:10), zero.print = 0)
 
 
 # -------------------- 
@@ -272,7 +281,7 @@ p1 <- expr.dist %>%
   ggplot( aes(x=sim_counts, fill=sim_type)) +
   geom_histogram(color='white', alpha=0.5, position = 'identity') +
   mytheme +
-  scale_fill_manual(values = c('orange', 'darkcyan')) +
+  scale_fill_manual(values = c('orange', 'darkcyan'), name='Simulation type') +
   xlab('Counts') + 
   ylab('Number of transcripts') +
   ggtitle('Simulated counts distribution')
@@ -350,7 +359,7 @@ p4 <- data.novel %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
-  scale_fill_manual(values=c('#FF0022', '#011627'), name='Stats') +
+  scale_fill_manual(values=c('orange', 'darkcyan'), name='Stats') +
   scale_alpha_manual(values=c(0.5,1), name='Exons') +
   mytheme +
   ylab('Percentage %') +
