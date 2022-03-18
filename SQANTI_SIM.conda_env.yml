@@ -22,6 +22,7 @@ dependencies:
   - last
   - minimap2
   - numpy
+  - openblas
   - openssl
   - pandoc
   - perl
@@ -50,7 +51,6 @@ dependencies:
   - scipy
   - six
   - star
-  - statistics
   - slamem
   - tqdm
   - pip:

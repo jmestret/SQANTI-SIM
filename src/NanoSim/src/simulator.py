@@ -3,6 +3,7 @@
 @author: Chen Yang & Saber HafezQorani
 This script generates simulated Oxford Nanopore 2D reads (genomic and transcriptomic - cDNA/directRNA).
 Last modified: 01/03/2022 by Jorge Mestre (fix line 1387 str.translate method)
+               18/03/2022 by Jorge Mestre (only sim aligned reads)
 """
 
 from __future__ import print_function
@@ -505,7 +506,8 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
             if rate == "100%":
                 number_aligned_l = number_list
             else:
-                number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
+                #number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
+                number_aligned_l = number_list # All aligned reads (Modified for SQANTI-SIM)
             number_unaligned_l = [x - y for x, y in zip(number_list, number_aligned_l)]
 
         if min(number_unaligned_l) > 0:

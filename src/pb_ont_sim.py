@@ -261,13 +261,10 @@ def illumina_simulation(args):
         for line in rt:
             if line.startswith('>'):
                 line = line[1:].strip()
-                matches = [trans for trans in count_d if trans in line]
-                if len(matches) > 1:
-                    print('%s matched more than one reference annotation transcript id' %(line))
-                if matches:
-                    f_out.write(str(count_d[matches[0]]) + '\n')
-                else:
-                    f_out.write('0' + '\n')
+                line = line.split('|') # TODO: this is a quick patch for encode ref
+                line = line[0] # TODO: this is a quick patch for encode ref
+                f_out.write(str(count_d[line]) + '\n')
+
     rt.close()
     f_out.close()
 
@@ -292,9 +289,11 @@ def illumina_simulation(args):
         for line in illumina_sim:
             if line.startswith('>'):
                 line = line[1:].strip()
-                matches = [trans for trans in count_d if trans in line]
-                if matches:
-                    id_counts[matches[0]] += 1   
+                line = line.split('/')
+                line = line[1]
+                line = line.split('|') # TODO: this is a quick patch for encode ref
+                line = line[0] # TODO: this is a quick patch for encode ref
+                id_counts[line] += 1   
     illumina_sim.close()
 
     trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
