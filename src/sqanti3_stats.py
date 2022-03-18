@@ -17,9 +17,10 @@ def sqanti3_stats(args):
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, 'SQANTI3/sqanti3_qc.py')
 
+    min_ref_len = 0
     cmd =[sqanti3, args.isoforms, args.gtf, args.genome,
                           '-o', args.output, '-d', args.dir, '--cpus', str(args.cores),
-                          '--min_ref_len', str(args.min_ref_len),
+                          '--min_ref_len', str(min_ref_len),
                           '--force_id_ignore']
     
     cmd = ' '.join(cmd)

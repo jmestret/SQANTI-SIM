@@ -38,7 +38,7 @@ def classif(input):
     parser.add_argument('--gtf', type = str,  help = '\t\tReference annotation in GTF format', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
-    parser.add_argument('--min_ref_len', default=0, type=int, help='\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)')
+    #parser.add_argument('--min_ref_len', default=0, type=int, help='\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)')
     parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')
 
     args, unknown = parser.parse_known_args(input)
@@ -219,7 +219,7 @@ def eval(input):
     parser.add_argument('-i', '--trans_index', type= str,  help = '\t\tFile with transcript information generated with SQANTI-SIM', required=True)
     parser.add_argument('-o', '--output', default='sqanti_sim', help = '\t\tPrefix for output files')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
-    parser.add_argument('--min_ref_len', default=0, type=int, help='\t\tMinimum reference transcript length (use the same as in the classif step)')
+    #parser.add_argument('--min_ref_len', default=0, type=int, help='\t\tMinimum reference transcript length (use the same as in the classif step)')
     parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')
     
     args, unknown = parser.parse_known_args(input)

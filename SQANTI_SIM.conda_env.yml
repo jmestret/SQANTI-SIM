@@ -49,6 +49,7 @@ dependencies:
   - scipy
   - six
   - star
+  - statistics
   - slamem
   - tqdm
   - pip:

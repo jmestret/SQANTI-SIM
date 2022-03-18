@@ -926,7 +926,8 @@ def classify_gtf(args):
 
     def initializer():
         global min_ref_len
-        min_ref_len = args.min_ref_len
+        #min_ref_len = args.min_ref_len
+        min_ref_len = 0
         
     # parsing transcripts from GTF
     print('***Parsing transcripts from GTF reference annotation file\n')

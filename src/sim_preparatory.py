@@ -8,10 +8,10 @@ Modifies index file and add expression values for the simulation step
 @date 03/03/2022
 '''
 
-from glob import glob
 import os
 import sys
 import subprocess
+import statistics
 import random
 import numpy
 import pysam
@@ -318,7 +318,7 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
             coverage = 0
         return coverage
 
-    sam_file = ''.join(f_idx.split('_')[:-1]) + '_align_' + tech + '.sam'
+    sam_file = '_'.join(f_idx.split('_')[:-1]) + '_align_' + tech + '.sam'
 
     if tech == 'pb':
         cmd = ['minimap2', ref_trans, reads, '-x', 'map-pb',
@@ -327,6 +327,7 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
         cmd=['minimap2', ref_trans, reads, '-x', 'map-ont',
              '-a', '--secondary=no', '-o', sam_file]
 
+    cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
         print('ERROR running minimap2: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)
@@ -344,11 +345,15 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
 
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
-    n_trans = len(expr_distr)
+    median_poss = round(len(expr_distr)/2)
+    median_half1 = statistics.median(expr_distr[0:median_poss])
+    median_half2 = statistics.median(expr_distr[median_poss:len(expr_distr)])
+    prob = numpy.linspace(start=0.1, stop=0.9, num=int(median_half2 - median_half1))
+    prob = ([0.1]*int(median_half1-min(expr_distr))) + list(prob) + ([0.9]*int(max(expr_distr)-median_half2))
 
+    n_trans = len(expr_distr)
     novel_trans = []
     known_trans = []
-
     with open(f_idx, 'r') as f_in:
         skip = f_in.readline()
         for line in f_in:
@@ -362,22 +367,30 @@ def create_expr_file_sample(f_idx: str, ref_trans,reads, tech):
 
     random.shuffle(known_trans)
     known_trans = known_trans[:(n_trans-len(novel_trans))]
-
-    if (len(novel_trans) + len(known_expr)) < n_trans:
-        n_trans = len(novel_trans) + len(known_expr)
+    if (len(novel_trans) + len(known_trans)) < n_trans:
+        n_trans = len(novel_trans) + len(known_trans)
         expr_distr = expr_distr[-n_trans,]
 
-    lim_novel = (len(novel_trans)//3)*2
-    lim_known = (len(known_trans)//3)*2
 
-    novel_expr = expr_distr[:lim_novel]
-    known_expr =  expr_distr[-lim_known:]
+    min_expr = min(expr_distr) + 1
+    novel_expr = []
+    n_novel = 0
+    while n_novel < len(novel_trans):
+        s = random.choice(expr_distr)
+        r = random.uniform(0, 1)
+        if r > prob[(s-min_expr)]:
+            novel_expr.append(s)
+            n_novel += 1
+    
+    known_expr = []
+    n_known = 0
+    while n_known < len(known_trans):
+        s = random.choice(expr_distr)
+        r = random.uniform(0, 1)
+        if r < prob[(s-min_expr)]:
+            known_expr.append(s)
+            n_known += 1
 
-    expr_distr = expr_distr[lim_novel:lim_known]
-    random.shuffle(expr_distr)
-
-    novel_expr.extend(expr_distr[:len(novel_trans)-lim_novel])
-    known_expr.extend(expr_distr[-(len(known_trans)-lim_known):])
     n_reads =sum(novel_expr) + sum(known_expr)
 
     trans_index = pandas.read_csv(f_idx, sep='\t', header=0)

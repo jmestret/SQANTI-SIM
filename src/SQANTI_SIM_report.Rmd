@@ -123,13 +123,19 @@ for (i in 1:(nrow(novel.metrics.t)-2)){
 }
 ```
 
-#### Novel TP vs FN
+## TP vs FN
 
 ```{r}
 p4
 ```
 
-#### Sensitivity deppending on the number of annotated transcripts per gene
+## TP vs FP
+
+```{r}
+p5
+```
+
+## Sensitivity deppending on the number of annotated transcripts per gene
 
 ```{r}
 p3.1

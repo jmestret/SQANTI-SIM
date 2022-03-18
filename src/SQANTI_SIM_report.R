@@ -77,7 +77,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
+data.query <- data.query[,c('isoform', 'strand', 'structural_category','all_canonical', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
 
 # Read deleted file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -242,7 +242,7 @@ novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), in
 #   p3.1: discrete
 #   p3.2: factor
 # p4: novel TP vs FN
-# p5: radar chart
+# p6: radar chart
 
 print("***Generating plots for the report")
 
@@ -353,10 +353,12 @@ p3.2 <- trans.per.gene %>%
   xlab('Number of annotated transcripts per gene')
 
 # PLOT 4: novel TP vs FN
-
+data.known$match_type <- 'FN'
+data.known$match_type[which(data.known$transcript_id %in% known.perfect.matches$transcript_id)] <- 'TP'
+data.known$structural_category <- 'known'
 data.novel$match_type <- 'FN'
 data.novel$match_type[which(data.novel$transcript_id %in% novel.perfect.matches$transcript_id)] <- 'TP'
-p4 <- data.novel %>%
+p4 <- rbind(data.novel, data.known) %>%
   mutate(exon_type=ifelse(exons > 1, 'multi-exon', 'mono-exon')) %>%
   group_by(structural_category, match_type, exon_type) %>%
   summarise(value=n()) %>%
@@ -366,9 +368,28 @@ p4 <- data.novel %>%
   scale_alpha_manual(values=c(0.5,1), name='Exons') +
   mytheme +
   ylab('Percentage %') +
-  xlab('')
+  xlab('')+
+  ggtitle('TP vs FN - monoexon vs multiexon')
 
-# PLOT 5: Radar chart
+# PLOT 5: canonical juncs
+
+data.query$match_type <- 'FP'
+data.query$match_type[which(data.query$isoform %in% novel.perfect.matches$isoform)] <- 'TP'
+data.query$match_type[which(data.query$isoform %in% known.perfect.matches$isoform)] <- 'TP'
+p5 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
+  group_by(structural_category, match_type, all_canonical) %>%
+  summarise(value=n()) %>%
+  ggplot(aes(x=structural_category)) +
+  geom_bar(aes(fill=match_type, y=value, alpha=all_canonical), position="fill", stat="identity") +
+  scale_fill_manual(values=c('orange', 'darkcyan'), name='Stats') +
+  scale_alpha_manual(values=c(1, 0.5), name='Junctions') +
+  mytheme +
+  ylab('Percentage %') +
+  xlab('') +
+  ggtitle('TP vs FP - canonical junctions') +
+  theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+
+# PLOT 6: Radar chart
 # In RMD file
 
 # -------------------- Output report
@@ -377,4 +398,3 @@ rmarkdown::render(
   output_dir = output_directory,
   output_file = paste0(output_name, "_SQANTI_SIM_report.html")
 )
-
