@@ -15,8 +15,6 @@ import random
 import numpy
 import pysam
 from collections import defaultdict
-from Bio import SeqIO
-
     
 def pb_simulation(args):
     def counts_to_index(row):
@@ -176,7 +174,7 @@ def ont_simulation(args):
                     trans_id = line_split[line_split.index('transcript_id') + 1]
                     trans_id = trans_id.replace(';', '').replace('"', '')
                     short_id = trans_id.split('.')[0]
-                    ref_trans.add(short_id)  # TODO: dont loose the whole transcript id
+                    ref_trans.add(short_id)
                     ref_dict[short_id] = trans_id
     f_in.close()
 
@@ -229,25 +227,13 @@ def ont_simulation(args):
 
 
 def illumina_simulation(args):
+    def counts_to_index(row):
+        return id_counts[row['transcript_id']]
+
     print('***Simulating Illumina reads')
-    src_dir = os.path.dirname(os.path.realpath(__file__))
-    rsem_dir = os.path.join(src_dir, "RSEM")
-
-    if not os.path.exists(os.path.join(rsem_dir, 'rsem-simulate-reads')):
-        print('***Compiling RSEM')
-        cwd = os.getcwd()
-        os.chdir(rsem_dir)
-        if subprocess.check_call('make', shell=True)!=0:
-            print('ERROR compiling RSEM: {0}'.format(['make']), file=sys.stderr)
-            sys.exit(1)
-        os.chdir(cwd)
-
-    if not os.path.exists(os.path.join(rsem_dir, 'rsem-simulate-reads')):
-        print('ERROR compiling RSEM: {0}'.format(['make']), file=sys.stderr)
-        sys.exit(1)
-    
     print('***Preparing expression matrix')
-    tpm_d = defaultdict(float)
+
+    count_d = defaultdict(float)
     n = 0
     with open(args.trans_index, 'r') as idx:
         header_names = idx.readline()
@@ -258,48 +244,62 @@ def illumina_simulation(args):
             line = line.split()
             if int(line[i]) == 0:
                 continue
-            tpm_d[line[0]] = float(line[j])
+            count_d[line[0]] = float(line[j])
             n += int(line[i])
     idx.close()
 
     if not args.read_count:
         args.read_count = n
 
-    expr_f = os.path.join(args.dir,'Illumina_requested_expression.tsv')
+    for k in count_d:
+        count_d[k] = round((count_d[k]*args.read_count)/1000000)
+
+
+    expr_f = os.path.join(args.dir,'tmp_expression.tsv')
     f_out = open(expr_f, 'w')
-    f_out.write('transcript_id\tgene_id\tlength\teffective_length\texpected_count\tTPM\tFPKM\tIsoPct\n')
-    mean_frag_len = 220
-    for trans in SeqIO.parse(args.rt, 'fasta'):
-        real_len = len(trans.seq)
-        eff_len = float(max(1, real_len - mean_frag_len))
-        tpm = tpm_d[trans.id.split('|')[0]]
-        isopct = 100.0 if tpm > 0.0 else 0.0
-        f_out.write("%s\t%s\t%d\t%.2f\t0.00\t%.2f\t0.00\t%.2f\n" %
-                    (trans.id, trans.id, real_len, eff_len, tpm, isopct))
+    with open(args.rt, 'r') as rt:
+        for line in rt:
+            if line.startswith('>'):
+                line = line[1:].strip()
+                matches = [trans for trans in count_d if trans in line]
+                if len(matches) > 1:
+                    print('%s matched more than one reference annotation transcript id' %(line))
+                if matches:
+                    f_out.write(str(count_d[matches[0]]) + '\n')
+                else:
+                    f_out.write('0' + '\n')
+    rt.close()
     f_out.close()
 
-    print('***Preparing reference data')
-    sim_out = os.path.join(args.dir, 'rsem_sim')
-    if os.path.isdir(sim_out):
-        print('WARNING: output direcory already exists. Overwritting!', file=sys.stderr)
-    else:
-        os.makedirs(sim_out)
-    cmd = [os.path.join(rsem_dir, 'rsem-prepare-reference'),
-           args.rt, os.path.join(sim_out, 'RSEM')]
+    print('***Simulating with Polyester')
+    src_dir = os.path.dirname(os.path.realpath(__file__))
+
+    cmd=['Rscript', os.path.join(src_dir,'polyester_sim.R'),
+         args.rt, expr_f, args.dir, str(args.seed)]
+
     cmd = ' '.join(cmd)
     if subprocess.check_call(cmd, shell=True)!=0:
-        print('ERROR preparing RSEM reference data: {0}'.format(cmd), file=sys.stderr)
+        print('ERROR simulatin with Polyester: {0}'.format(cmd), file=sys.stderr)
         sys.exit(1)
+    os.remove(expr_f)
     
-    print('***Simulating with RSEM')
-    cmd = [os.path.join(rsem_dir, 'rsem-simulate-reads'),
-           os.path.join(sim_out, 'RSEM'), os.path.join(rsem_dir, 'models/Illumina.HiSeq2500.hsWTC11.model'),
-           expr_f, '0', str(args.read_count), os.path.join(args.dir, 'Illumina_simulated'),
-           '--seed', str(args.seed)]
-    cmd = ' '.join(cmd)
-    if subprocess.check_call(cmd, shell=True)!=0:
-        print('ERROR simulatin with RSEM: {0}'.format(cmd), file=sys.stderr)
-        sys.exit(1)
+    print('***Counting Illumina reads')
+    os.rename(os.path.join(args.dir, 'sample_01_1.fasta'), os.path.join(args.dir, 'Illumina_simulated_1.fasta'))
+    os.rename(os.path.join(args.dir, 'sample_01_2.fasta'), os.path.join(args.dir, 'Illumina_simulated_2.fasta'))
     
-    print('***RSEM simulation done')
+    id_counts = defaultdict(lambda: 0)
+    with open(os.path.join(args.dir, 'Illumina_simulated_1.fasta'), 'r') as illumina_sim:
+        for line in illumina_sim:
+            if line.startswith('>'):
+                line = line[1:].strip()
+                matches = [trans for trans in count_d if trans in line]
+                if matches:
+                    id_counts[matches[0]] += 1   
+    illumina_sim.close()
+
+    trans_index = pandas.read_csv(args.trans_index, sep='\t', header=0)
+    trans_index['illumina_counts'] = trans_index.apply(counts_to_index, axis=1)
+    trans_index.to_csv(args.trans_index, sep='\t', na_rep='NA', header=True, index=False)
+
+    print('***Polyester simulation done')
     return

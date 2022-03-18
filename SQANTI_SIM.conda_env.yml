@@ -10,6 +10,7 @@ dependencies:
   - bedtools
   - biopython
   - bioconductor-noiseq
+  - bioconductor-polyester
   - bx-python
   - desalt
   - genometools-genometools

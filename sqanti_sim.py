@@ -175,7 +175,7 @@ def sim(input):
     parser.add_argument('--read_type', default = 'dRNA', type=str,  help = '\t\tRead type for NanoSim simulation')
     parser.add_argument('-d', '--dir', default='.', help = '\t\tDirectory for output files (default: .)')
     parser.add_argument('-k', '--cores', default=1, type=int, help = '\t\tNumber of cores to run in parallel')
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument('--pb', action='store_true', help = '\t\tIf used the program will simulate PacBio reads with IsoSeqSim')
     group.add_argument('--ont', action='store_true', help = '\t\tIf used the program will simulate ONT reads with NanoSim')
     parser.add_argument('--illumina', action='store_true', help = '\t\tIf used the program will simulate Illumina reads with RSEM')
