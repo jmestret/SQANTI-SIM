@@ -48,9 +48,9 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-#class.file <-'sqanti_sim_classification.txt'
-#junc.file <-'sqanti_sim_junctions.txt'
-#index.file <- 'mix_index.tsv'
+class.file <-'talon_cage_classification.txt'
+junc.file <-'talon_cage_junctions.txt'
+index.file <- 'mix_equal_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
@@ -77,7 +77,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'strand', 'structural_category','all_canonical', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
+data.query <- data.query[,c('isoform', 'strand', 'structural_category','all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
 
 # Read deleted file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -388,6 +388,49 @@ p5 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   xlab('') +
   ggtitle('TP vs FP - canonical junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+
+if (any(!is.na(data.class$within_cage_peak))){
+  # PLOT 6: within cage peak
+  p6 <- data.query[which(!is.na(data.query$within_cage_peak)),] %>%
+    group_by(structural_category, match_type, within_cage_peak) %>%
+    summarise(value=n()) %>%
+    ggplot(aes(x=structural_category)) +
+    geom_bar(aes(fill=match_type, y=value, alpha=within_cage_peak), position="fill", stat="identity") +
+    scale_fill_manual(values=c('orange', 'darkcyan'), name='Stats') +
+    scale_alpha_manual(values=c(0.5, 1), name='Cage Peak') +
+    mytheme +
+    ylab('Percentage %') +
+    xlab('') +
+    ggtitle('TP vs FP - within cage peak') +
+    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+  
+  data.query$match_type <- 'FP'
+  data.query$match_type[which(data.query$isoform %in% novel.perfect.matches$isoform)] <- 'novel_TP'
+  data.query$match_type[which(data.query$isoform %in% known.perfect.matches$isoform)] <- 'known_TP'
+  p7 <- data.query[which(!is.na(data.query$within_cage_peak)),] %>%
+    group_by(match_type, within_cage_peak) %>%
+    summarise(value=n()) %>%
+    ggplot(aes(x=match_type)) +
+    geom_bar(aes(y=value, fill=within_cage_peak), position="fill", stat="identity") +
+    scale_fill_manual(values=c('orange', 'darkcyan'), name='CagePeak') +
+    mytheme +
+    ylab('Percentage %') +
+    xlab('') +
+    ggtitle('TP vs FP - within cage peak') +
+    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+  
+  # PLOT 8: distance to cage peak
+  p8 <- data.query[which(!is.na(data.query$dist_to_cage_peak)),] %>%
+    ggplot(aes(x=dist_to_cage_peak, color=match_type, fill=match_type)) +
+    geom_density(alpha=.6) +
+    mytheme +
+    ylab('Distance to Cage Peak') +
+    xlab('') +
+    ggtitle('TP vs FP - distance to cage peak') +
+    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+}
+
+
 
 # PLOT 6: Radar chart
 # In RMD file
