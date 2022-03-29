@@ -197,8 +197,8 @@ known.metrics['TP', 'global'] <- known.TP
 known.metrics['PTP', 'global'] <- known.PTP
 known.metrics['FP', 'global'] <- known.FP
 known.metrics['FN', 'global'] <- nrow(data.known) - known.TP
-known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.FP)
-known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
+known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.FP)
+known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
 known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
 known.metrics['False_Discovery_Rate', 'global'] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
 known.metrics['Positive_Detection_Rate', 'global'] <- (known.TP + known.PTP) / nrow(data.known)
@@ -209,8 +209,8 @@ novel.metrics['TP', 'global'] <- novel.TP
 novel.metrics['PTP', 'global'] <- novel.PTP
 novel.metrics['FP', 'global'] <- novel.FP
 novel.metrics['FN', 'global'] <- nrow(data.novel) - novel.TP
-novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.FP)
-novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
+novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.FP)
+novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
 novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
 novel.metrics['False_Discovery_Rate', 'global'] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
 novel.metrics['Positive_Detection_Rate', 'global'] <- (novel.TP + novel.PTP) / nrow(data.novel)
