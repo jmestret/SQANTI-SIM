@@ -494,6 +494,8 @@ def eval(input: list):
         default=".",
         help="\t\tDirectory for output files (default: .)",
     )
+    parser.add_argument('--short_reads', help='\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.', required=False)
+    parser.add_argument('--cage_peak', help='\t\tFANTOM5 Cage Peak (BED format, optional)')
     # parser.add_argument("--min_ref_len", default=0, type=int, help="\t\tMinimum reference transcript length (use the same as in the classif step)")
     parser.add_argument(
         "-k",

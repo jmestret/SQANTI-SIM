@@ -115,8 +115,9 @@ def pb_simulation(args):
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
+    trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
-        args.trans_index, sep="\t", na_rep="NA", header=True, index=False
+        args.trans_index, sep="\t", header=True, index=False
     )
 
     print("***IsoSeqSim simulation done")
@@ -285,8 +286,9 @@ def ont_simulation(args):
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
+    trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
-        args.trans_index, sep="\t", na_rep="NA", header=True, index=False
+        args.trans_index, sep="\t", header=True, index=False
     )
 
     print("***NanoSim simulation done")
@@ -384,9 +386,8 @@ def illumina_simulation(args):
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     trans_index["illumina_counts"] = trans_index.apply(counts_to_index, axis=1)
-    trans_index.to_csv(
-        args.trans_index, sep="\t", na_rep="NA", header=True, index=False
-    )
+    trans_index["illumina_counts"] = trans_index["illumina_counts"].fillna(0)
+    trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False)
 
     print("***Polyester simulation done")
     return

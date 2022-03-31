@@ -123,16 +123,29 @@ for (i in 1:(nrow(novel.metrics.t)-2)){
 }
 ```
 
-## TP vs FN
+## Number of exons
 
 ```{r}
 p4
 ```
 
-## TP vs FP
+## Canonical Junctions
 
 ```{r}
 p5
+```
+
+```{r, results='asis'}
+if ('within_cage_peak' %in% colnames(data.index)){
+  cat('\n\n##CAGE Peak Support')
+  p6
+  p7
+}
+
+if ('sim_cov' %in% colnames(data.index)){
+  cat('\n\n##Short Reads Support')
+  p8
+}
 ```
 
 ## Sensitivity deppending on the number of annotated transcripts per gene

@@ -149,8 +149,9 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
     trans_index["sim_type"] = trans_index.apply(pick_sim_type, axis=1)
+    trans_index["sim_type"] = trans_index["sim_type"].fillna("NA")
     trans_index.to_csv(
-        f_idx_out, sep="\t", na_rep="NA", header=True, index=False
+        f_idx_out, sep="\t", header=True, index=False
     )
 
     return final_target
@@ -310,7 +311,9 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
         ),
         2,
     )
-    trans_index.to_csv(f_idx, sep="\t", na_rep=0, header=True, index=False)
+    trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
+    trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)
 
 
 def create_expr_file_nbinom(
@@ -362,7 +365,9 @@ def create_expr_file_nbinom(
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
     )
-    trans_index.to_csv(f_idx, sep="\t", na_rep=0, header=True, index=False)
+    trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
+    trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)
 
 
 def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
@@ -486,4 +491,6 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
     )
-    trans_index.to_csv(f_idx, sep="\t", na_rep=0, header=True, index=False)
+    trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
+    trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)

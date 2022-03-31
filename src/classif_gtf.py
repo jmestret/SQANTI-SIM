@@ -172,17 +172,11 @@ class myQueryTranscripts:
     ):
 
         self.id = id
-        self.gene_id = (
-            gene_id  # gene where this transcript originally cames from
-        )
+        self.gene_id = gene_id  # gene where this transcript cames from
         self.tss_diff = tss_diff  # distance to TSS of best matching ref
         self.tts_diff = tts_diff  # distance to TTS of best matching ref
-        self.tss_gene_diff = (
-            "NA"  # min distance to TSS of all genes matching the ref
-        )
-        self.tts_gene_diff = (
-            "NA"  # min distance to TTS of all genes matching the ref
-        )
+        self.tss_gene_diff = "NA"  # min distance to TSS of genes matching ref
+        self.tts_gene_diff = "NA"  # min distance to TTS of genes matching ref
         self.genes = genes if genes is not None else []
         self.AS_genes = set()  # ref genes that are hit on the opposite strand
         self.transcripts = transcripts if transcripts is not None else []
@@ -1289,13 +1283,11 @@ def write_category_file(data: dict, out_name: str):
                 acceptors = ["NA"]
             else:
                 donors = [str(d) for d in donors]
-                acceptors = [
-                    str(a + 1) for a in acceptors
-                ]  # Change to 1-based exon start
+                acceptors = [str(a + 1) for a in acceptors]  # Change to 1-based exon start
             trans.tss += 1  # Change to 1-based exon start
             if trans.str_class == "intergenic":
                 f_out.write(
-                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
                     % (
                         trans.id,
                         trans.gene_id,
@@ -1313,7 +1305,7 @@ def write_category_file(data: dict, out_name: str):
                 )
             else:
                 f_out.write(
-                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
                     % (
                         trans.id,
                         trans.gene_id,

@@ -94,9 +94,7 @@ def sqanti3_stats(args):
             id_pos = header_names.index("transcript_id")
             chrom_pos = header_names.index("chrom")
             strand_pos = header_names.index("strand")
-            start_pos = header_names.index(
-                "TSS_genomic_coord"
-            )  # start and end coordinates already swapped for negative strand
+            start_pos = header_names.index("TSS_genomic_coord")  # start and end coordinates already swapped for negative strand
             for line in index_file:
                 line = line.split()
                 within_cage, dist_cage = cage_peak_data.find(

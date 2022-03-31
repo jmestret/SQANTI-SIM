@@ -77,7 +77,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'strand', 'structural_category','all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
+data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category','all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
 
 # Read deleted file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -104,7 +104,7 @@ data.known <- data.index[which(data.index$sim_type == 'known'),]
 sim.sc <- unique(data.novel$structural_category)
 
 # Matched for novel and known
-known.matches <- inner_join(data.query, data.known, by='junctions') %>%
+known.matches <- inner_join(data.query, data.known, by=c('junctions', 'chrom')) %>%
   mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
   arrange(difftot) %>%
   distinct(isoform, .keep_all = T)
@@ -112,7 +112,7 @@ known.perfect.matches <- known.matches[which(known.matches$diffTSS < 50 & known.
 cond <- (known.perfect.matches$exons > 1) | (known.perfect.matches$strand.x == '+' & known.perfect.matches$TSS_genomic_coord.x <= known.perfect.matches$TTS_genomic_coord.y & known.perfect.matches$TSS_genomic_coord.y <= known.perfect.matches$TTS_genomic_coord.x) | (known.perfect.matches$strand.x == '-' & known.perfect.matches$TTS_genomic_coord.x <= known.perfect.matches$TSS_genomic_coord.y & known.perfect.matches$TTS_genomic_coord.y <= known.perfect.matches$TSS_genomic_coord.x)
 known.perfect.matches <- known.perfect.matches[cond,]
 
-novel.matches <- inner_join(data.query, data.novel, by='junctions') %>%
+novel.matches <- inner_join(data.query, data.novel, by=c('junctions', 'chrom')) %>%
   mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
   arrange(difftot) %>%
   distinct(isoform, .keep_all = T)
@@ -369,7 +369,7 @@ p4 <- rbind(data.novel, data.known) %>%
   mytheme +
   ylab('Percentage %') +
   xlab('')+
-  ggtitle('TP vs FN - monoexon vs multiexon')
+  ggtitle('Monoexon vs Multiexon')
 
 # PLOT 5: canonical juncs
 
@@ -386,28 +386,23 @@ p5 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   mytheme +
   ylab('Percentage %') +
   xlab('') +
-  ggtitle('TP vs FP - canonical junctions') +
+  ggtitle('Canonical Junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
-if (any(!is.na(data.class$within_cage_peak))){
+if ('within_cage_peak' %in% colnames(data.index)){
   # PLOT 6: within cage peak
-  p6 <- data.query[which(!is.na(data.query$within_cage_peak)),] %>%
-    group_by(structural_category, match_type, within_cage_peak) %>%
-    summarise(value=n()) %>%
-    ggplot(aes(x=structural_category)) +
-    geom_bar(aes(fill=match_type, y=value, alpha=within_cage_peak), position="fill", stat="identity") +
-    scale_fill_manual(values=c('orange', 'darkcyan'), name='Stats') +
-    scale_alpha_manual(values=c(0.5, 1), name='Cage Peak') +
-    mytheme +
-    ylab('Percentage %') +
-    xlab('') +
-    ggtitle('TP vs FP - within cage peak') +
-    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-  
   data.query$match_type <- 'FP'
   data.query$match_type[which(data.query$isoform %in% novel.perfect.matches$isoform)] <- 'novel_TP'
   data.query$match_type[which(data.query$isoform %in% known.perfect.matches$isoform)] <- 'known_TP'
-  p7 <- data.query[which(!is.na(data.query$within_cage_peak)),] %>%
+  p6.known_FN <- data.index[which(data.index$transcript_id %in% data.known$transcript_id & !(data.index$transcript_id %in% known.perfect.matches$transcript_id)),]
+  p6.known_FN$match_type <- 'known_FN'
+  p6.novel_FN <- data.index[which(data.index$transcript_id %in% data.novel$transcript_id & !(data.index$transcript_id %in% novel.perfect.matches$transcript_id)),]
+  p6.novel_FN$match_type <- 'novel_FN'
+  p6.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
+                  p6.known_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
+                  p6.novel_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')])
+  
+  p6 <- p6.all[which(!is.na(p6.all$within_cage_peak)),] %>%
     group_by(match_type, within_cage_peak) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
@@ -416,24 +411,46 @@ if (any(!is.na(data.class$within_cage_peak))){
     mytheme +
     ylab('Percentage %') +
     xlab('') +
-    ggtitle('TP vs FP - within cage peak') +
+    ggtitle('Within cage peak') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
-  # PLOT 8: distance to cage peak
-  p8 <- data.query[which(!is.na(data.query$dist_to_cage_peak)),] %>%
+  # PLOT 7: distance to cage peak
+  p7 <- p6.all[which(!is.na(p6.all$dist_to_cage_peak)),] %>%
     ggplot(aes(x=dist_to_cage_peak, color=match_type, fill=match_type)) +
     geom_density(alpha=.6) +
     mytheme +
-    ylab('Distance to Cage Peak') +
+    ylab('Distance to CAGE peak') +
     xlab('') +
-    ggtitle('TP vs FP - distance to cage peak') +
+    ggtitle('Distance To Cage Peak') +
+    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+}
+
+# TODO: add plots of short read coverage
+if ('min_cov' %in% colnames(data.index)) {
+  # PLOT 8: min SJ cov by short reads
+  p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
+                  p6.known_FN[,c('structural_category', 'match_type', 'min_cov')],
+                  p6.novel_FN[,c('structural_category', 'match_type', 'min_cov')])
+  p8.all$Coverage_SJ <- 'False'
+  p8.all[which(p8.all$min_cov>0), 'Coverage_SJ'] <- 'True'
+  
+  p8 <- p8.all[which(!is.na(p9.all$Coverage_SJ)),] %>%
+    group_by(match_type, Coverage_SJ) %>%
+    summarise(value=n()) %>%
+    ggplot(aes(x=match_type)) +
+    geom_bar(aes(y=value, fill=Coverage_SJ), position="fill", stat="identity") +
+    scale_fill_manual(values=c('orange', 'darkcyan'), name='Coverage SJ') +
+    mytheme +
+    ylab('Percentage %') +
+    xlab('') +
+    ggtitle('Splice Junctions Short Reads Coverage') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
 
 
 
-# PLOT 6: Radar chart
-# In RMD file
+# PLOT X: Radar chart
+# Generated in RMD file
 
 # -------------------- Output report
 rmarkdown::render(
