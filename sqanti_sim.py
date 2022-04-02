@@ -408,10 +408,16 @@ def sim(input: list):
         help="\t\tIf used the program will simulate Illumina reads with RSEM",
     )
     parser.add_argument(
-        "--read_count",
+        "--long_count",
         default=None,
         type=int,
-        help="\t\tNumber of reads to simulate (if not given it will use the counts of the given expression file)",
+        help="\t\tNumber of long reads to simulate (if not given it will use the counts of the given expression file)",
+    )
+    parser.add_argument(
+        "--short_count",
+        default=None,
+        type=int,
+        help="\t\tNumber of short reads to simulate (if not given it will use the counts of the given expression file)",
     )
     parser.add_argument(
         "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int

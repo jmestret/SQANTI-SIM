@@ -425,7 +425,6 @@ if ('within_cage_peak' %in% colnames(data.index)){
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
 
-# TODO: add plots of short read coverage
 if ('min_cov' %in% colnames(data.index)) {
   # PLOT 8: min SJ cov by short reads
   p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
@@ -446,8 +445,6 @@ if ('min_cov' %in% colnames(data.index)) {
     ggtitle('Splice Junctions Short Reads Coverage') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
-
-
 
 # PLOT X: Radar chart
 # Generated in RMD file

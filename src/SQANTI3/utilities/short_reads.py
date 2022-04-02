@@ -1,3 +1,4 @@
+# This file was modified by Jorge Martinez to adapt it to the SQANTI-SIM pipeline
 import os, subprocess, sys
 import pandas
 import pybedtools
@@ -40,9 +41,12 @@ def star_mapping(index_dir, SR_fofn, output_dir, cpus): #added cpus argument for
                         subprocess.call(['STAR', '--runThreadN', str(cpus), '--genomeDir', index_dir, '--readFilesIn', files[0], files[1], '--outFileNamePrefix', sample_prefix,'--alignSJoverhangMin', '8', '--alignSJDBoverhangMin', '1', '--outFilterType', 'BySJout', '--outSAMunmapped', 'Within', '--outFilterMultimapNmax', '20', '--outFilterMismatchNoverLmax', '0.04', '--outFilterMismatchNmax', '999', '--alignIntronMin', '20', '--alignIntronMax', '1000000', '--alignMatesGapMax', '1000000', '--sjdbScore', '1', '--genomeLoad', 'NoSharedMemory', '--outSAMtype', 'BAM', 'SortedByCoordinate', '--readFilesCommand', 'zcat', '--twopassMode', 'Basic'])
 
 
-def star(genome, SR_fofn, output_dir, cpus):
+def star(genome, SR_fofn, output_dir, cpus, star_index=None):
     fasta_genome = genome #Fasta Format already checked
-    index_dir = output_dir + '/STAR_index/'
+    if star_index is not None: # Added by Jorge Martinez (SQANTI-SIM modified)
+        index_dir = star_index
+    else:
+        index_dir = output_dir + '/STAR_index/'
     index_dir_tmp = index_dir + '/_STARtmp/'
     index_dir_o = index_dir + 'SAindex' 
     mapping_dir = output_dir + '/STAR_mapping/'

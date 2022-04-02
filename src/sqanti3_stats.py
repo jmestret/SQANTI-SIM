@@ -32,10 +32,12 @@ def sqanti3_stats(args):
 
     def write_SJ_cov(row):
         min_cov = "NA"
+        if row["exons"] == 1:
+            return min_cov
         d = row["donors"].split(",")
         a = row["acceptors"].split(",")
         for i in range(int(row["exons"]) - 1):
-            sample_cov = SJcovInfo[row["chrom"], row["strand"]][(d[i], a[i])]
+            sample_cov = SJcovInfo[row["chrom"], row["strand"]][(int(d[i]), (int(a[i])-1))] # make exon starts (SJ acceptors 0 based)
             total_coverage_unique = (
                 sum(
                     [cov_uniq for (cov_uniq, cov_multi) in sample_cov.values()]
@@ -98,7 +100,7 @@ def sqanti3_stats(args):
             for line in index_file:
                 line = line.split()
                 within_cage, dist_cage = cage_peak_data.find(
-                    line[chrom_pos], line[strand_pos], line[start_pos]
+                    line[chrom_pos], line[strand_pos], int(line[start_pos])
                 )
                 within_cage_dict[line[id_pos]] = within_cage
                 dist_cage_dict[line[id_pos]] = dist_cage
@@ -112,15 +114,15 @@ def sqanti3_stats(args):
         )
 
     if args.short_reads:
-        star_out = os.path.join(args.dir, "/STAR_mapping/")
-        star_index = os.path.join(args.dir, "/STAR_index/")
+        star_out = os.path.join(args.dir, "STAR_mapping/")
+        star_index = os.path.join(args.dir, "STAR_index/")
 
         # Short Read Coverage
         SJcovNames, SJcovInfo = STARcov_parser(star_out)
         trans_index["min_cov"] = trans_index.apply(write_SJ_cov, axis=1)
 
         # Short reads ratio TSS
-        chr_order = star_index + "/chrNameLength.txt"
+        chr_order = os.path.join(star_index, "chrNameLength.txt")
         inside_bed, outside_bed = get_TSS_bed(args.gtf, chr_order)
         bams = []
         for filename in os.listdir(star_out):

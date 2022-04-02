@@ -1514,7 +1514,10 @@ def isoformClassification(args, isoforms_by_chr, refs_1exon_by_chr, refs_exons_b
     else:
         if args.short_reads is not None:
             print("**** Running STAR for calculating Short-Read Coverage.", file=sys.stdout)
-            star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus)
+            if args.STAR_index is not None: # Added by Jorge Martinez (SQANTI-SIM modified)
+                star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus, args.STAR_index)
+            else:
+                star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus)
             SJcovNames, SJcovInfo = STARcov_parser(star_out)
             fields_junc_cur = FIELDS_JUNC
             for name in SJcovNames:
@@ -1545,7 +1548,10 @@ def isoformClassification(args, isoforms_by_chr, refs_1exon_by_chr, refs_exons_b
             print("Running calculation of TSS ratio", file=sys.stdout)
             if star_out is None:
                 print("Starting STAR mapping. We need this for calculating TSS ratio. It may take some time...")
-                star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus)
+                if args.STAR_index is not None: # Added by Jorge Martinez (SQANTI-SIM modified)
+                    star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus, args.STAR_index)
+                else:
+                    star_out, star_index = star(args.genome, args.short_reads, args.dir, args.cpus)
             chr_order = star_index + "/chrNameLength.txt"
             inside_bed, outside_bed = get_TSS_bed(corrGTF, chr_order)
             bams=[]
@@ -2362,7 +2368,7 @@ def main():
     parser.add_argument('--gff3' , help='\t\tPrecomputed tappAS species specific GFF3 file. It will serve as reference to transfer functional attributes',required=False)
     parser.add_argument('--short_reads', help='\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.', required=False)
     parser.add_argument('--SR_bam' , help='\t\t Directory or fofn file with the sorted bam files of Short Reads RNA-Seq mapped against the genome', required=False)
-
+    parser.add_argument('--STAR_index' , help='\t\t Directory of indexed genome by STAR', required=False) # Added by Jorge Martinez (SQANTI-SIM modification)
 
 
     args = parser.parse_args()

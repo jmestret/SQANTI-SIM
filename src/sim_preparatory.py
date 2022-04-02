@@ -151,7 +151,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
     trans_index["sim_type"] = trans_index.apply(pick_sim_type, axis=1)
     trans_index["sim_type"] = trans_index["sim_type"].fillna("NA")
     trans_index.to_csv(
-        f_idx_out, sep="\t", header=True, index=False
+        f_idx_out, sep="\t", header=True, index=False, na_rep="NA"
     )
 
     return final_target
@@ -277,13 +277,16 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
 
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
+        skip = skip.split()
+        i = skip.index('sim_type')
+        j = skip.index('transcript_id')
         for line in f_in:
             line = line.split()
-            sim_type = line[11]
+            sim_type = line[i]
             if sim_type == "novel":
-                novel_trans.append(line[0])
+                novel_trans.append(line[j])
             else:
-                known_trans.append(line[0])
+                known_trans.append(line[j])
     f_in.close()
 
     random.shuffle(known_trans)
@@ -313,7 +316,7 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     )
     trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
-    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
 
 def create_expr_file_nbinom(
@@ -332,13 +335,16 @@ def create_expr_file_nbinom(
     known_trans = []
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
+        skip = skip.split()
+        i = skip.index('sim_type')
+        j = skip.index('transcript_id')
         for line in f_in:
             line = line.split()
-            sim_type = line[11]
+            sim_type = line[i]
             if sim_type == "novel":
-                novel_trans.append(line[0])
+                novel_trans.append(line[j])
             else:
-                known_trans.append(line[0])
+                known_trans.append(line[j])
     f_in.close()
 
     random.shuffle(known_trans)
@@ -367,7 +373,7 @@ def create_expr_file_nbinom(
     )
     trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
-    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
 
 def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
@@ -446,13 +452,16 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
     known_trans = []
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
+        skip = skip.split()
+        i = skip.index('sim_type')
+        j = skip.index('transcript_id')
         for line in f_in:
             line = line.split()
-            sim_type = line[11]
+            sim_type = line[i]
             if sim_type == "novel":
-                novel_trans.append(line[0])
+                novel_trans.append(line[j])
             else:
-                known_trans.append(line[0])
+                known_trans.append(line[j])
     f_in.close()
 
     random.shuffle(known_trans)
@@ -493,4 +502,4 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
     )
     trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
-    trans_index.to_csv(f_idx, sep="\t", header=True, index=False)
+    trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")

@@ -42,8 +42,8 @@ def pb_simulation(args):
     idx.close()
     f_out.close()
 
-    if not args.read_count:
-        args.read_count = n
+    if not args.long_count:
+        args.long_count = n
 
     if os.path.isdir(args.dir):
         print(
@@ -80,7 +80,7 @@ def pb_simulation(args):
         "--ei",
         "0.02204",
         "-n",
-        str(args.read_count),
+        str(args.long_count),
         "-m",
         "normal",
         "--cpu",
@@ -117,7 +117,7 @@ def pb_simulation(args):
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
-        args.trans_index, sep="\t", header=True, index=False
+        args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
     )
 
     print("***IsoSeqSim simulation done")
@@ -149,8 +149,8 @@ def ont_simulation(args):
     idx.close()
     f_out.close()
 
-    if not args.read_count:
-        args.read_count = n
+    if not args.long_count:
+        args.long_count = n
 
     if os.path.isdir(args.dir):
         print("WARNING: output direcory already exists. Overwritting!")
@@ -202,7 +202,7 @@ def ont_simulation(args):
         "-o",
         os.path.join(args.dir, "ONT_simulated"),
         "-n",
-        str(args.read_count),
+        str(args.long_count),
         "-r",
         r_type,
         "-b",
@@ -288,7 +288,7 @@ def ont_simulation(args):
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
-        args.trans_index, sep="\t", header=True, index=False
+        args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
     )
 
     print("***NanoSim simulation done")
@@ -317,11 +317,11 @@ def illumina_simulation(args):
             n += int(line[i])
     idx.close()
 
-    if not args.read_count:
-        args.read_count = n
+    if not args.short_count:
+        args.short_count = n
 
     for k in count_d:
-        count_d[k] = round((count_d[k] * args.read_count) / 1000000)
+        count_d[k] = round((count_d[k] * args.short_count) / 1000000)
 
     expr_f = os.path.join(args.dir, "tmp_expression.tsv")
     f_out = open(expr_f, "w")
@@ -387,7 +387,7 @@ def illumina_simulation(args):
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     trans_index["illumina_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["illumina_counts"] = trans_index["illumina_counts"].fillna(0)
-    trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False)
+    trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")
 
     print("***Polyester simulation done")
     return
