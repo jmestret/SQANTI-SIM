@@ -145,6 +145,7 @@ if ('within_cage_peak' %in% colnames(data.index)){
 if ('sim_cov' %in% colnames(data.index)){
   cat('\n\n##Short Reads Support')
   p8
+  p9
 }
 ```
 

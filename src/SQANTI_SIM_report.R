@@ -77,7 +77,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category','all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord')]
+data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord', 'all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'min_cov', 'ratio_TSS')]
 
 # Read deleted file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -417,7 +417,9 @@ if ('within_cage_peak' %in% colnames(data.index)){
   # PLOT 7: distance to cage peak
   p7 <- p6.all[which(!is.na(p6.all$dist_to_cage_peak)),] %>%
     ggplot(aes(x=dist_to_cage_peak, color=match_type, fill=match_type)) +
-    geom_density(alpha=.6) +
+    geom_density(alpha=.3) +
+    scale_color_manual(values = myPalette) +
+    scale_fill_manual(values = myPalette) +
     mytheme +
     ylab('Distance to CAGE peak') +
     xlab('') +
@@ -433,7 +435,7 @@ if ('min_cov' %in% colnames(data.index)) {
   p8.all$Coverage_SJ <- 'False'
   p8.all[which(p8.all$min_cov>0), 'Coverage_SJ'] <- 'True'
   
-  p8 <- p8.all[which(!is.na(p9.all$Coverage_SJ)),] %>%
+  p8 <- p8.all[which(!is.na(p8.all$Coverage_SJ)),] %>%
     group_by(match_type, Coverage_SJ) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
@@ -443,6 +445,21 @@ if ('min_cov' %in% colnames(data.index)) {
     ylab('Percentage %') +
     xlab('') +
     ggtitle('Splice Junctions Short Reads Coverage') +
+    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+  
+  p9.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
+                  p6.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
+                  p6.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
+  
+  p9 <- p9.all[which(!is.na(p9.all$ratio_TSS)),] %>%
+    ggplot(aes(x=log(ratio_TSS), color=match_type, fill=match_type)) +
+    geom_density(alpha=.3) +
+    scale_color_manual(values = myPalette) +
+    scale_fill_manual(values = myPalette) +
+    mytheme +
+    ylab('log TSS ratio') +
+    xlab('') +
+    ggtitle('Ratio TSS') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
 

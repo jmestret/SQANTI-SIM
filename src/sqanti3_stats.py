@@ -13,8 +13,8 @@ import os
 import sys
 import pandas
 from collections import defaultdict
-from SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS
-from SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
+from src.SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS
+from src.SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
 
 
 def sqanti3_stats(args):
@@ -100,8 +100,8 @@ def sqanti3_stats(args):
             for line in index_file:
                 line = line.split()
                 within_cage, dist_cage = cage_peak_data.find(
-                    line[chrom_pos], line[strand_pos], int(line[start_pos])
-                )
+                    line[chrom_pos], line[strand_pos], (int(line[start_pos])-1)
+                ) # 0 based TSS
                 within_cage_dict[line[id_pos]] = within_cage
                 dist_cage_dict[line[id_pos]] = dist_cage
         index_file.close()
