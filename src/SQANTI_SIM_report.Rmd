@@ -137,15 +137,15 @@ p5
 
 ```{r, results='asis'}
 if ('within_cage_peak' %in% colnames(data.index)){
-  cat('\n\n##CAGE Peak Support')
-  p6
-  p7
+  cat('\n\n## CAGE Peak Support\n\n')
+  print(p6)
+  print(p7)
 }
 
-if ('sim_cov' %in% colnames(data.index)){
-  cat('\n\n##Short Reads Support')
-  p8
-  p9
+if ('min_cov' %in% colnames(data.index)){
+  cat('\n\n## Short Reads Support\n\n')
+  print(p8)
+  print(p9)
 }
 ```
 
