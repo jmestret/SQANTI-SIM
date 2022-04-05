@@ -38,13 +38,11 @@ def classif(input: list):
     parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
     parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output files", )
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
-    # parser.add_argument("--min_ref_len", default=0, type=int, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
     parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
-        x = " ".join(unknown)
         print(
             "[SQANTI-SIM] classif mode unrecognized arguments: {}\n".format(
                 " ".join(unknown)
@@ -54,13 +52,11 @@ def classif(input: list):
 
     # Classify GTF transcripts in SQANTI3 structural categories
     trans_info = classif_gtf.classify_gtf(args)
-
-    # Print summary table
+    
     print("[SQANTI-SIM] Summary table from categorization\n")
     classif_gtf.summary_table_cat(trans_info)
 
     print("[SQANTI-SIM] Finished succesfully")
-    return
 
 
 def preparatory(input: list):
@@ -268,7 +264,7 @@ def eval(input: list):
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument( "--short_reads", help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
     parser.add_argument( "--cage_peak", help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
-    # parser.add_argument("--min_ref_len", default=0, type=int, help="\t\tMinimum reference transcript length (use the same as in the classif step)")
+    parser.add_argument('--STAR_index' , help='\t\t Directory of indexed genome by STAR', required=False)
     parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
     args, unknown = parser.parse_known_args(input)

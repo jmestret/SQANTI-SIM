@@ -77,6 +77,10 @@ def sqanti3_stats(args):
     if args.short_reads:
         cmd.append("--short_reads")
         cmd.append(args.short_reads)
+    
+    if args.STAR_index:
+        cmd.append("--STAR_index")
+        cmd.append(args.STAR_index)
 
     cmd = " ".join(cmd)
     sys.stdout.flush()

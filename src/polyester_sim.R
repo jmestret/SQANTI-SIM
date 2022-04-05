@@ -20,4 +20,4 @@ count.mat <- read.table(count.mat, header=F)
 count.mat <- as.matrix(count.mat)
 
 simulate_experiment_countmat(ref.trans, readmat=count.mat, outdir=out.dir,
-                             paired = TRUE, readlen=220, seed=in.seed) 
+                             paired = TRUE, readlen=100, seed=in.seed) 
