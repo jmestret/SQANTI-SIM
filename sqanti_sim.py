@@ -34,55 +34,32 @@ def classif(input: list):
         input (list): arguments to parse
     """
 
-    parser = argparse.ArgumentParser(
-        prog="sqanti_sim.py classif",
-        description="sqanti_sim.py classif parse options",
-    )
-    parser.add_argument(
-        "--gtf",
-        type=str,
-        help="\t\tReference annotation in GTF format",
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        default="sqanti_sim",
-        help="\t\tPrefix for output files",
-    )
-    parser.add_argument(
-        "-d",
-        "--dir",
-        default=".",
-        help="\t\tDirectory for output files (default: .)",
-    )
+    parser = argparse.ArgumentParser( prog="sqanti_sim.py classif", description="sqanti_sim.py classif parse options", )
+    parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
+    parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output files", )
+    parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     # parser.add_argument("--min_ref_len", default=0, type=int, help="\t\tMinimum reference transcript length (default: 0 bp as in largasp challenge 1 evaluation)")
-    parser.add_argument(
-        "-k",
-        "--cores",
-        default=1,
-        type=int,
-        help="\t\tNumber of cores to run in parallel",
-    )
+    parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
+        x = " ".join(unknown)
         print(
-            "classif mode unrecognized arguments: {}\n".format(
+            "[SQANTI-SIM] classif mode unrecognized arguments: {}\n".format(
                 " ".join(unknown)
-            ),
-            file=sys.stderr,
-        )
+                ),
+                file=sys.stderr,
+            )
 
     # Classify GTF transcripts in SQANTI3 structural categories
     trans_info = classif_gtf.classify_gtf(args)
 
     # Print summary table
-    print("***Summary table from categorization\n")
+    print("[SQANTI-SIM] Summary table from categorization\n")
     classif_gtf.summary_table_cat(trans_info)
 
-    print("***Finished succesfully")
+    print("[SQANTI-SIM] Finished succesfully")
     return
 
 
@@ -97,164 +74,50 @@ def preparatory(input: list):
         input (list): arguments to parse
     """
 
-    parser = argparse.ArgumentParser(
-        prog="sqanti_sim.py preparatory",
-        description="sqanti_sim.py preparatory parse options",
-    )
-    parser.add_argument(
-        "mode",
-        default="equal",
-        choices=["equal", "custom", "sample"],
-        help="\t\tDifferent modes to generate the expression matrix: equal (simulate with equal coverage for all reads), custom (simulate with diferent negative binomial distributions for novel and known transcripts) or sample (simulate using a real sample)",
-    )
-    parser.add_argument(
-        "-i",
-        "--trans_index",
-        type=str,
-        help="\t\tFile with transcript information generated with SQANTI-SIM",
-        required=True,
-    )
-    parser.add_argument(
-        "--gtf",
-        type=str,
-        help="\t\tReference annotation in GTF format",
-        required=True,
-    )
-    parser.add_argument(
-        "-o", "--output", default=str(), help="\t\tPrefix for output files"
-    )
-    parser.add_argument(
-        "-d",
-        "--dir",
-        default=".",
-        help="\t\tDirectory for output files (default: .)",
-    )
-    parser.add_argument(
-        "--read_count",
-        default=50000,
-        type=int,
-        help="\t\tNumber of reads to simulate (required for 'equal' mode)",
-    )
-    parser.add_argument(
-        "-nt",
-        "--trans_number",
-        default=10000,
-        type=int,
-        help="\t\tNumber of different transcripts to simulate (required for 'equal' or 'custom' mode)",
-    )
-    parser.add_argument(
-        "--nbn_known",
-        default=50,
-        type=float,
-        help="\t\tAverage read count per known transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)",
-    )
-    parser.add_argument(
-        "--nbp_known",
-        default=0.5,
-        type=float,
-        help="\t\tThe parameter 'p' of the Negative Binomial distribution for known transcripts (required for 'custom' mode)",
-    )
-    parser.add_argument(
-        "--nbn_novel",
-        default=5,
-        type=float,
-        help="\t\tAverage read count per novel transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)",
-    )
-    parser.add_argument(
-        "--nbp_novel",
-        default=0.5,
-        type=float,
-        help="\t\tThe parameter 'p' of the Negative Binomial distribution for novel transcripts (required for 'custom' mode)",
-    )
-    parser.add_argument(
-        "--rt",
-        default=str(),
-        type=str,
-        help="\t\tReference transcripts in FASTA format (required for 'sample' mode)",
-    )
+    parser = argparse.ArgumentParser( prog="sqanti_sim.py preparatory", description="sqanti_sim.py preparatory parse options", )
+    parser.add_argument( "mode", default="equal", choices=["equal", "custom", "sample"], help="\t\tDifferent modes to generate the expression matrix: equal (simulate with equal coverage for all reads), custom (simulate with diferent negative binomial distributions for novel and known transcripts) or sample (simulate using a real sample)", )
+    parser.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
+    parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
+    parser.add_argument( "-o", "--output", default=str(), help="\t\tPrefix for output files" )
+    parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
+    parser.add_argument( "--read_count", default=50000, type=int, help="\t\tNumber of reads to simulate (required for 'equal' mode)", )
+    parser.add_argument( "-nt", "--trans_number", default=10000, type=int, help="\t\tNumber of different transcripts to simulate (required for 'equal' or 'custom' mode)", )
+    parser.add_argument( "--nbn_known", default=50, type=float, help="\t\tAverage read count per known transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)", )
+    parser.add_argument( "--nbp_known", default=0.5, type=float, help="\t\tThe parameter 'p' of the Negative Binomial distribution for known transcripts (required for 'custom' mode)", )
+    parser.add_argument( "--nbn_novel", default=5, type=float, help="\t\tAverage read count per novel transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)", )
+    parser.add_argument( "--nbp_novel", default=0.5, type=float, help="\t\tThe parameter 'p' of the Negative Binomial distribution for novel transcripts (required for 'custom' mode)", )
+    parser.add_argument( "--rt", default=str(), type=str, help="\t\tReference transcripts in FASTA format (required for 'sample' mode)", )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--pb_reads",
-        default=str(),
-        type=str,
-        help="\t\tInput PacBio reads for quantification (required for 'sample' mode)",
-    )
-    group.add_argument(
-        "--ont_reads",
-        default=str(),
-        type=str,
-        help="\t\tInput ONT reads for quantification (required for 'sample' mode)",
-    )
-    parser.add_argument(
-        "--ISM",
-        default=0,
-        type=int,
-        help="\t\tNumber of incomplete-splice-matches to delete",
-    )
-    parser.add_argument(
-        "--NIC",
-        default=0,
-        type=int,
-        help="\t\tNumber of novel-in-catalog to delete",
-    )
-    parser.add_argument(
-        "--NNC",
-        default=0,
-        type=int,
-        help="\t\tNumber of novel-not-in-catalog to delete",
-    )
-    parser.add_argument(
-        "--Fusion", default=0, type=int, help="\t\tNumber of Fusion to delete"
-    )
-    parser.add_argument(
-        "--Antisense",
-        default=0,
-        type=int,
-        help="\t\tNumber of Antisense to delete",
-    )
-    parser.add_argument(
-        "--GG",
-        default=0,
-        type=int,
-        help="\t\tNumber of Genic-genomic to delete",
-    )
-    parser.add_argument(
-        "--GI",
-        default=0,
-        type=int,
-        help="\t\tNumber of Genic-intron to delete",
-    )
-    parser.add_argument(
-        "--Intergenic",
-        default=0,
-        type=int,
-        help="\t\tNumber of Intergenic to delete",
-    )
-    parser.add_argument(
-        "-k",
-        "--cores",
-        default=1,
-        type=int,
-        help="\t\tNumber of cores to run in parallel",
-    )
-    parser.add_argument(
-        "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int
-    )
+    group.add_argument( "--pb_reads", default=str(), type=str, help="\t\tInput PacBio reads for quantification (required for 'sample' mode)", )
+    group.add_argument( "--ont_reads", default=str(), type=str, help="\t\tInput ONT reads for quantification (required for 'sample' mode)", )
+    parser.add_argument( "--ISM", default=0, type=int, help="\t\tNumber of incomplete-splice-matches to delete", )
+    parser.add_argument( "--NIC", default=0, type=int, help="\t\tNumber of novel-in-catalog to delete", )
+    parser.add_argument( "--NNC", default=0, type=int, help="\t\tNumber of novel-not-in-catalog to delete", )
+    parser.add_argument( "--Fusion", default=0, type=int, help="\t\tNumber of Fusion to delete" )
+    parser.add_argument( "--Antisense", default=0, type=int, help="\t\tNumber of Antisense to delete", )
+    parser.add_argument( "--GG", default=0, type=int, help="\t\tNumber of Genic-genomic to delete", )
+    parser.add_argument( "--GI", default=0, type=int, help="\t\tNumber of Genic-intron to delete", )
+    parser.add_argument( "--Intergenic", default=0, type=int, help="\t\tNumber of Intergenic to delete", )
+    parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
+    parser.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
 
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print(
-            "preparatory mode unrecognized arguments: {}\n".format(
+            "[SQANTI-SIM] preparatory mode unrecognized arguments: {}\n".format(
                 " ".join(unknown)
             ),
             file=sys.stderr,
         )
 
+    if not os.path.isdir(args.dir):
+        os.makedirs(args.dir)
+
     if args.mode == "equal":
         if not args.read_count or not args.trans_number:
             print(
-                "sqanti_sim.py preparatory equal: error: the following arguments are required: --read_count, --trans_number",
+                "[SQANTI-SIM] sqanti_sim.py preparatory equal: error: the following arguments are required: --read_count, --trans_number",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -266,14 +129,14 @@ def preparatory(input: list):
             or not args.nbp_novel
         ):
             print(
-                "sqanti_sim.py preparatory custom: error: the following arguments are required: --trans_number, --nbn_known, --nbp_known, --nbn_novel, --nbp_novel",
+                "[SQANTI-SIM] sqanti_sim.py preparatory custom: error: the following arguments are required: --trans_number, --nbn_known, --nbp_known, --nbn_novel, --nbp_novel",
                 file=sys.stderr,
             )
             sys.exit(1)
     elif args.mode == "sample":
         if not args.rt or not (args.pb_reads or args.ont_reads):
             print(
-                "sqanti_sim.py preparatory sample: error: the following arguments are required: --rt, {--pb_reads, --ont_reads}",
+                "[SQANTI-SIM] sqanti_sim.py preparatory sample: error: the following arguments are required: --rt, {--pb_reads, --ont_reads}",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -288,7 +151,7 @@ def preparatory(input: list):
 
     counts_end = sim_preparatory.simulate_gtf(args)
 
-    print("***Summary table from GTF modification\n")
+    print("[SQANTI-SIM] Summary table from GTF modification\n")
     counts_ini = defaultdict(
         lambda: 0,
         {
@@ -331,7 +194,7 @@ def preparatory(input: list):
                 index_file, args.rt, args.ont_reads, "ont"
             )
     else:
-        print("Not valid sim mode", file=sys.stderr)
+        print("[SQANTI-SIM] Not valid sim mode", file=sys.stderr)
 
 
 def sim(input: list):
@@ -344,96 +207,33 @@ def sim(input: list):
         input (list): arguments to parse
     """
 
-    parser = argparse.ArgumentParser(
-        prog="sqanti_sim.py sim", description="sqanti_sim.py sim parse options"
-    )
-    parser.add_argument(
-        "--gtf",
-        type=str,
-        help="\t\tReference annotation in GTF format",
-        required=True,
-    )
-    parser.add_argument(
-        "--genome",
-        default=False,
-        help="\t\tReference genome FASTA",
-        required=True,
-    )
-    parser.add_argument(
-        "--rt",
-        default=str(),
-        type=str,
-        help="\t\tReference transcripts in FASTA format (required for simulating ONT or Illumina reads)",
-    )
-    parser.add_argument(
-        "-i",
-        "--trans_index",
-        type=str,
-        help="\t\tFile with transcript information generated with SQANTI-SIM",
-        required=True,
-    )
-    parser.add_argument(
-        "--read_type",
-        default="dRNA",
-        type=str,
-        help="\t\tRead type for NanoSim simulation",
-    )
-    parser.add_argument(
-        "-d",
-        "--dir",
-        default=".",
-        help="\t\tDirectory for output files (default: .)",
-    )
-    parser.add_argument(
-        "-k",
-        "--cores",
-        default=1,
-        type=int,
-        help="\t\tNumber of cores to run in parallel",
-    )
+    parser = argparse.ArgumentParser( prog="sqanti_sim.py sim", description="sqanti_sim.py sim parse options" )
+    parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
+    parser.add_argument( "--genome", default=False, help="\t\tReference genome FASTA", required=True, )
+    parser.add_argument( "--rt", default=str(), type=str, help="\t\tReference transcripts in FASTA format (required for simulating ONT or Illumina reads)", )
+    parser.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
+    parser.add_argument( "--read_type", default="dRNA", type=str, help="\t\tRead type for NanoSim simulation", )
+    parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
+    parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--pb",
-        action="store_true",
-        help="\t\tIf used the program will simulate PacBio reads with IsoSeqSim",
-    )
-    group.add_argument(
-        "--ont",
-        action="store_true",
-        help="\t\tIf used the program will simulate ONT reads with NanoSim",
-    )
-    parser.add_argument(
-        "--illumina",
-        action="store_true",
-        help="\t\tIf used the program will simulate Illumina reads with RSEM",
-    )
-    parser.add_argument(
-        "--long_count",
-        default=None,
-        type=int,
-        help="\t\tNumber of long reads to simulate (if not given it will use the counts of the given expression file)",
-    )
-    parser.add_argument(
-        "--short_count",
-        default=None,
-        type=int,
-        help="\t\tNumber of short reads to simulate (if not given it will use the counts of the given expression file)",
-    )
-    parser.add_argument(
-        "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int
-    )
+    group.add_argument( "--pb", action="store_true", help="\t\tIf used the program will simulate PacBio reads with IsoSeqSim", )
+    group.add_argument( "--ont", action="store_true", help="\t\tIf used the program will simulate ONT reads with NanoSim", )
+    parser.add_argument( "--illumina", action="store_true", help="\t\tIf used the program will simulate Illumina reads with RSEM", )
+    parser.add_argument( "--long_count", default=None, type=int, help="\t\tNumber of long reads to simulate (if not given it will use the counts of the given expression file)", )
+    parser.add_argument( "--short_count", default=None, type=int, help="\t\tNumber of short reads to simulate (if not given it will use the counts of the given expression file)", )
+    parser.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
 
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print(
-            "sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
+            "[SQANTI-SIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
             file=sys.stderr,
         )
 
     if (args.ont or args.illumina) and not args.rt:
         print(
-            "sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt",
+            "[SQANTI-SIM] sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -459,63 +259,23 @@ def eval(input: list):
         input (list): arguments to parse
     """
 
-    parser = argparse.ArgumentParser(
-        prog="sqanti_sim.py eval",
-        description="sqanti_sim.py eval parse options",
-    )
-    parser.add_argument(
-        "--isoforms",
-        default=str(),
-        help="\t\tGTF with trancriptome reconstructed with your pipeline",
-        required=True,
-    )
-    parser.add_argument(
-        "--gtf",
-        type=str,
-        help="\t\tReference annotation in GTF format",
-        required=True,
-    )
-    parser.add_argument(
-        "--genome",
-        default=False,
-        help="\t\tReference genome FASTA",
-        required=True,
-    )
-    parser.add_argument(
-        "-i",
-        "--trans_index",
-        type=str,
-        help="\t\tFile with transcript information generated with SQANTI-SIM",
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        default="sqanti_sim",
-        help="\t\tPrefix for output files",
-    )
-    parser.add_argument(
-        "-d",
-        "--dir",
-        default=".",
-        help="\t\tDirectory for output files (default: .)",
-    )
-    parser.add_argument('--short_reads', help='\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.', required=False)
-    parser.add_argument('--cage_peak', help='\t\tFANTOM5 Cage Peak (BED format, optional)')
+    parser = argparse.ArgumentParser( prog="sqanti_sim.py eval", description="sqanti_sim.py eval parse options", )
+    parser.add_argument( "--isoforms", default=str(), help="\t\tGTF with trancriptome reconstructed with your pipeline", required=True, )
+    parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
+    parser.add_argument( "--genome", default=False, help="\t\tReference genome FASTA", required=True, )
+    parser.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
+    parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output files", )
+    parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
+    parser.add_argument( "--short_reads", help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
+    parser.add_argument( "--cage_peak", help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
     # parser.add_argument("--min_ref_len", default=0, type=int, help="\t\tMinimum reference transcript length (use the same as in the classif step)")
-    parser.add_argument(
-        "-k",
-        "--cores",
-        default=1,
-        type=int,
-        help="\t\tNumber of cores to run in parallel",
-    )
+    parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
         print(
-            "sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
+            "[SQANTI-SIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
             file=sys.stderr,
         )
 
@@ -543,8 +303,8 @@ print(
 )
 
 if len(sys.argv) < 2:
-    print("usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
-    print("modes: classif, preparatory, sim, eval\n", file=sys.stderr)
+    print("[SQANTI-SIM] usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
+    print("[SQANTI-SIM] modes: classif, preparatory, sim, eval\n", file=sys.stderr)
     sys.exit(1)
 
 else:
@@ -552,25 +312,25 @@ else:
     input = sys.argv[2:]
 
 if mode == "classif":
-    print("CLASSIF MODE")
+    print("[SQANTI-SIM] CLASSIF MODE")
     res = classif(input)
 
 elif mode == "preparatory":
-    print("PREPARATORY MODE")
+    print("[SQANTI-SIM] PREPARATORY MODE")
     res = preparatory(input)
 
 elif mode == "sim":
-    print("SIM MODE")
+    print("[SQANTI-SIM] SIM MODE")
     res = sim(input)
 
 elif mode == "eval":
-    print("EVAL MODE")
+    print("[SQANTI-SIM] EVAL MODE")
     res = eval(input)
 
 elif mode in ["--version", "-v"]:
-    sys.stderr.write("SQANTI-SIM v0.0.0\n")
+    sys.stderr.write("[SQANTI-SIM] SQANTI-SIM v0.0.0\n")
 
 else:
-    print("usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
-    print("modes: classif, preparatory, sim, eval\n", file=sys.stderr)
+    print("[SQANTI-SIM] usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
+    print("[SQANTI-SIM] modes: classif, preparatory, sim, eval\n", file=sys.stderr)
     sys.exit(1)

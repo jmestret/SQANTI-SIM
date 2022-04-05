@@ -49,7 +49,7 @@ def sqanti3_stats(args):
                 min_cov = total_coverage_unique
         return min_cov
 
-    print("***Running SQANTI3")
+    print("[SQANTI-SIM] Running SQANTI3")
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, "SQANTI3/sqanti3_qc.py")
 
@@ -79,13 +79,14 @@ def sqanti3_stats(args):
         cmd.append(args.short_reads)
 
     cmd = " ".join(cmd)
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTI-SIM] ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
         # sys.exit(1)
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     if args.cage_peak:
-        print("***Parsing CAGE Peak data")
+        print("[SQANTI-SIM] Parsing CAGE Peak data")
         cage_peak_data = CAGEPeak(args.cage_peak)
 
         within_cage_dict = defaultdict(lambda: False)
@@ -137,7 +138,7 @@ def sqanti3_stats(args):
         args.trans_index, sep="\t", na_rep="NA", header=True, index=False
     )
 
-    print("***Generating SQANTI-SIM report")
+    print("[SQANTI-SIM] Generating SQANTI-SIM report")
     src_dir = os.path.dirname(os.path.realpath(__file__))
     classification_file = os.path.join(
         args.dir, (args.output + "_classification.txt")
@@ -156,7 +157,7 @@ def sqanti3_stats(args):
     cmd = " ".join(cmd)
     if subprocess.check_call(cmd, shell=True) != 0:
         print(
-            "ERROR running SQANTI-SIM report generation: {0}".format(cmd),
+            "[SQANTI-SIM] ERROR running SQANTI-SIM report generation: {0}".format(cmd),
             file=sys.stderr,
         )
         sys.exit(1)

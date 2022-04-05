@@ -414,6 +414,7 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
         ]
 
     cmd = " ".join(cmd)
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)

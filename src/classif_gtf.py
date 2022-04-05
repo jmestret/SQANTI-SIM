@@ -236,6 +236,7 @@ def gtf_parser(gtf_name: str) -> defaultdict:
             gtf_name, queryFile
         )
     )
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running cmd: {0}".format(cmd), file=sys.stderr)
         sys.exit(-1)

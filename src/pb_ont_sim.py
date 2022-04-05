@@ -90,6 +90,7 @@ def pb_simulation(args):
     ]
 
     cmd = " ".join(cmd)
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running IsoSeqSim: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
@@ -180,6 +181,7 @@ def ont_simulation(args):
         print("***Untar NanoSim model")
         cwd = os.getcwd()
         os.chdir(models)
+        sys.stdout.flush()
         res = subprocess.run(["tar", "-xzf", model_name + ".tar.gz"])
         os.chdir(cwd)
         if res.returncode != 0:
@@ -216,6 +218,7 @@ def ont_simulation(args):
         cmd.append("--uracil")
 
     cmd = " ".join(cmd)
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running NanoSim: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
@@ -351,6 +354,7 @@ def illumina_simulation(args):
     ]
 
     cmd = " ".join(cmd)
+    sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print(
             "ERROR simulatin with Polyester: {0}".format(cmd), file=sys.stderr
