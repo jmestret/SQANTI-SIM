@@ -10,18 +10,18 @@ categories
 @date 19/01/2022
 """
 
-__version__ = "0.1"
+__version__ = "1.0b1"
 
 import argparse
-import os
-import sys
-import random
 import numpy
+import os
+import random
+import sys
 from collections import defaultdict
 from src import classif_gtf
 from src import pb_ont_sim
-from src import sqanti3_stats
 from src import sim_preparatory
+from src import sqanti3_stats
 
 
 def classif(input: list):
@@ -36,7 +36,7 @@ def classif(input: list):
 
     parser = argparse.ArgumentParser( prog="sqanti_sim.py classif", description="sqanti_sim.py classif parse options", )
     parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
-    parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output files", )
+    parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output file", )
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
@@ -46,9 +46,9 @@ def classif(input: list):
         print(
             "[SQANTI-SIM] classif mode unrecognized arguments: {}\n".format(
                 " ".join(unknown)
-                ),
-                file=sys.stderr,
-            )
+            ),
+            file=sys.stderr,
+        )
 
     # Classify GTF transcripts in SQANTI3 structural categories
     trans_info = classif_gtf.classify_gtf(args)
@@ -56,7 +56,7 @@ def classif(input: list):
     print("[SQANTI-SIM] Summary table from categorization\n")
     classif_gtf.summary_table_cat(trans_info)
 
-    print("[SQANTI-SIM] Finished succesfully")
+    print("[SQANTI-SIM] classif step finished succesfully")
 
 
 def preparatory(input: list):
@@ -78,7 +78,7 @@ def preparatory(input: list):
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument( "--read_count", default=50000, type=int, help="\t\tNumber of reads to simulate (required for 'equal' mode)", )
     parser.add_argument( "-nt", "--trans_number", default=10000, type=int, help="\t\tNumber of different transcripts to simulate (required for 'equal' or 'custom' mode)", )
-    parser.add_argument( "--nbn_known", default=50, type=float, help="\t\tAverage read count per known transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)", )
+    parser.add_argument( "--nbn_known", default=15, type=float, help="\t\tAverage read count per known transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)", )
     parser.add_argument( "--nbp_known", default=0.5, type=float, help="\t\tThe parameter 'p' of the Negative Binomial distribution for known transcripts (required for 'custom' mode)", )
     parser.add_argument( "--nbn_novel", default=5, type=float, help="\t\tAverage read count per novel transcript to simulate (i.e., the parameter 'n' of the Negative Binomial distribution) (required for 'custom' mode)", )
     parser.add_argument( "--nbp_novel", default=0.5, type=float, help="\t\tThe parameter 'p' of the Negative Binomial distribution for novel transcripts (required for 'custom' mode)", )
@@ -110,32 +110,27 @@ def preparatory(input: list):
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir)
 
+    print("[SQANTI-SIM] Parameters for expression file:")
     if args.mode == "equal":
-        if not args.read_count or not args.trans_number:
-            print(
-                "[SQANTI-SIM] sqanti_sim.py preparatory equal: error: the following arguments are required: --read_count, --trans_number",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        print("[SQANTI-SIM] \tMode: equal")
+        print("[SQANTI-SIM] \tNº transcripts: %s" %(args.trans_number))
+        print("[SQANTI-SIM] \tNº reads: %s" %(args.read_count))
+
     elif args.mode == "custom":
-        if (
-            not args.nbn_known
-            or not args.nbp_known
-            or not args.nbn_novel
-            or not args.nbp_novel
-        ):
-            print(
-                "[SQANTI-SIM] sqanti_sim.py preparatory custom: error: the following arguments are required: --trans_number, --nbn_known, --nbp_known, --nbn_novel, --nbp_novel",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        print("[SQANTI-SIM] \tMode: custom")
+        print("[SQANTI-SIM] \tNº transcripts: %s" %(args.trans_number))
+        print("[SQANTI-SIM] \tKnown NB mean count: %s" %(args.nbn_known))
+        print("[SQANTI-SIM] \tKnown NB probability: %s" %(args.nbp_known))
+        print("[SQANTI-SIM] \tnovel NB mean count: %s" %(args.nbn_novel))
+        print("[SQANTI-SIM] \tnovel NB probability: %s" %(args.nbp_novel))
+
     elif args.mode == "sample":
-        if not args.rt or not (args.pb_reads or args.ont_reads):
-            print(
-                "[SQANTI-SIM] sqanti_sim.py preparatory sample: error: the following arguments are required: --rt, {--pb_reads, --ont_reads}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        print("[SQANTI-SIM] \tMode: sample")
+        print("[SQANTI-SIM] \tReference transcriptome: %s" %(args.rt))
+        if args.pb_reads:
+            print("[SQANTI-SIM] \tPacBio reads: %s" %(args.pb_reads))
+        else:
+            print("[SQANTI-SIM] \tONT reads: %s" %(args.ont_reads))
 
     if not args.output:
         output = os.path.basename(args.trans_index).split("_")
@@ -144,10 +139,9 @@ def preparatory(input: list):
     # Modify GTF
     random.seed(args.seed)
     numpy.random.seed(args.seed)
-
     counts_end = sim_preparatory.simulate_gtf(args)
 
-    print("[SQANTI-SIM] Summary table from GTF modification\n")
+    print("[SQANTI-SIM] Deleted transcripts from GTF\n")
     counts_ini = defaultdict(
         lambda: 0,
         {
@@ -164,9 +158,9 @@ def preparatory(input: list):
     )
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
+    # Generate expression matrix
     index_file = os.path.join(args.dir, (args.output + "_index.tsv"))
 
-    # Generate expression matrix
     if args.mode == "equal":
         sim_preparatory.create_expr_file_fixed_count(
             index_file, args.trans_number, args.read_count
@@ -189,9 +183,9 @@ def preparatory(input: list):
             sim_preparatory.create_expr_file_sample(
                 index_file, args.rt, args.ont_reads, "ont"
             )
-    else:
-        print("[SQANTI-SIM] Not valid sim mode", file=sys.stderr)
 
+    print("[SQANTI-SIM] preparatory step finished succesfully")
+    
 
 def sim(input: list):
     """Simulate reads
@@ -229,11 +223,12 @@ def sim(input: list):
 
     if (args.ont or args.illumina) and not args.rt:
         print(
-            "[SQANTI-SIM] sqanti_sim.py sim: error: the following arguments are required when using --ont: --rt",
+            "[SQANTI-SIM] sqanti_sim.py sim ERROR: the following arguments are required when using --ont or --illumina: --rt",
             file=sys.stderr,
         )
         sys.exit(1)
 
+    # Simulation with IsoSeqSim, NanoSim and/or Polyester
     random.seed(args.seed)
     numpy.random.seed(args.seed)
 
@@ -243,6 +238,8 @@ def sim(input: list):
         pb_ont_sim.ont_simulation(args)
     if args.illumina:
         pb_ont_sim.illumina_simulation(args)
+
+    print("[SQANTI-SIM] sim step finished succesfully")
 
 
 def eval(input: list):
@@ -276,6 +273,8 @@ def eval(input: list):
         )
 
     sqanti3_stats.sqanti3_stats(args)
+
+    print("[SQANTI-SIM] eval step finished succesfully")
 
 
 #####################################
@@ -324,7 +323,7 @@ elif mode == "eval":
     res = eval(input)
 
 elif mode in ["--version", "-v"]:
-    sys.stderr.write("[SQANTI-SIM] SQANTI-SIM v0.0.0\n")
+    print("[SQANTI-SIM] SQANTI-SIM %s\n" %(__version__))
 
 else:
     print("[SQANTI-SIM] usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)

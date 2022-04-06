@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
 """
 sqanti3_stats.py
-Generate counts for sim
+Generates SQANTI-SIM report and metrics
 
-@author Jorge Mestre Tomas (jormart2@alumni.uv.es)
+@author Jorge Martinez Tomas (jormart2@alumni.uv.es)
 @date 20/02/2022
 """
 
-import argparse
-import subprocess
 import os
-import sys
 import pandas
+import subprocess
+import sys
 from collections import defaultdict
 from src.SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS
 from src.SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
 
 
-def sqanti3_stats(args):
+def sqanti3_stats(args: list):
+    """Runs SQANTI3 and generates SQANTI-SIM report
+
+    Given the reconstructed transcripts in GTF format it runs the SQANTI3
+    pipeline and computes the SQANTI-SIM metrics to evaluate how well it
+    recovered the novel transcripts
+
+    Args:
+        args (list): arguments to parse
+    """
+
     def write_whithin_cage(row):
         return within_cage_dict[row["transcript_id"]]
 
@@ -37,7 +46,7 @@ def sqanti3_stats(args):
         d = row["donors"].split(",")
         a = row["acceptors"].split(",")
         for i in range(int(row["exons"]) - 1):
-            sample_cov = SJcovInfo[row["chrom"], row["strand"]][(int(d[i]), (int(a[i])-1))] # make exon starts (SJ acceptors 0 based)
+            sample_cov = SJcovInfo[row["chrom"], row["strand"]][(int(d[i]), (int(a[i])-1))] # make exon starts (SJ acceptors) 0 based
             total_coverage_unique = (
                 sum(
                     [cov_uniq for (cov_uniq, cov_multi) in sample_cov.values()]
@@ -86,7 +95,7 @@ def sqanti3_stats(args):
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
         print("[SQANTI-SIM] ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
-        # sys.exit(1)
+        #sys.exit(1)
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     if args.cage_peak:
@@ -101,7 +110,7 @@ def sqanti3_stats(args):
             id_pos = header_names.index("transcript_id")
             chrom_pos = header_names.index("chrom")
             strand_pos = header_names.index("strand")
-            start_pos = header_names.index("TSS_genomic_coord")  # start and end coordinates already swapped for negative strand
+            start_pos = header_names.index("TSS_genomic_coord")  # start and end coordinates already swapped in the index file for negative strand
             for line in index_file:
                 line = line.split()
                 within_cage, dist_cage = cage_peak_data.find(
@@ -119,6 +128,7 @@ def sqanti3_stats(args):
         )
 
     if args.short_reads:
+        print("[SQANTI-SIM] Parsing Short Read data")
         star_out = os.path.join(args.dir, "STAR_mapping/")
         star_index = os.path.join(args.dir, "STAR_index/")
 

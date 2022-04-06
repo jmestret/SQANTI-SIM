@@ -7,7 +7,7 @@ category not taking into account itself in the reference.
 The classification step is adapted from the original SQANTI3 v4.2.
 (sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 
-@author: Jorge Mestre
+@author Jorge Martinez Tomas (jormart2@alumni.uv.es)
 @date: 19/01/2021
 """
 
@@ -1341,12 +1341,12 @@ def classify_gtf(args):
         min_ref_len = 0
 
     # parsing transcripts from GTF
-    print("***Parsing transcripts from GTF reference annotation file\n")
+    print("[SQANTI-SIM] Parsing transcripts from GTF reference annotation file\n")
     trans_by_chr = gtf_parser(args.gtf)
 
     # classify transcripts
     print(
-        "***Classifying transcripts according to its SQANTI3 structural category\n"
+        "[SQANTI-SIM] Classifying transcripts according to its SQANTI3 structural category\n"
     )
     trans_info = defaultdict(lambda: [])
 
@@ -1372,7 +1372,7 @@ def classify_gtf(args):
                 trans_info[k].extend(v)
 
     # Write category file
-    print("***Writting structural category file\n")
+    print("[SQANTI-SIM] Writting structural category file\n")
     cat_out = os.path.join(args.dir, (args.output + "_index.tsv"))
     write_category_file(trans_info, cat_out)
 
