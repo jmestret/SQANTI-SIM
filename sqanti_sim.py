@@ -112,25 +112,25 @@ def preparatory(input: list):
 
     print("[SQANTI-SIM] Parameters for expression file:")
     if args.mode == "equal":
-        print("[SQANTI-SIM] \tMode: equal")
-        print("[SQANTI-SIM] \tNº transcripts: %s" %(args.trans_number))
-        print("[SQANTI-SIM] \tNº reads: %s" %(args.read_count))
+        print("[SQANTI-SIM] -Mode: equal")
+        print("[SQANTI-SIM] -Nº transcripts: %s" %(args.trans_number))
+        print("[SQANTI-SIM] -Nº reads: %s" %(args.read_count))
 
     elif args.mode == "custom":
-        print("[SQANTI-SIM] \tMode: custom")
-        print("[SQANTI-SIM] \tNº transcripts: %s" %(args.trans_number))
-        print("[SQANTI-SIM] \tKnown NB mean count: %s" %(args.nbn_known))
-        print("[SQANTI-SIM] \tKnown NB probability: %s" %(args.nbp_known))
-        print("[SQANTI-SIM] \tnovel NB mean count: %s" %(args.nbn_novel))
-        print("[SQANTI-SIM] \tnovel NB probability: %s" %(args.nbp_novel))
+        print("[SQANTI-SIM] -Mode: custom")
+        print("[SQANTI-SIM] -Nº transcripts: %s" %(args.trans_number))
+        print("[SQANTI-SIM] -Known NB mean count: %s" %(args.nbn_known))
+        print("[SQANTI-SIM] -Known NB probability: %s" %(args.nbp_known))
+        print("[SQANTI-SIM] -novel NB mean count: %s" %(args.nbn_novel))
+        print("[SQANTI-SIM] -novel NB probability: %s" %(args.nbp_novel))
 
     elif args.mode == "sample":
-        print("[SQANTI-SIM] \tMode: sample")
-        print("[SQANTI-SIM] \tReference transcriptome: %s" %(args.rt))
+        print("[SQANTI-SIM] -Mode: sample")
+        print("[SQANTI-SIM] -Reference transcriptome: %s" %(args.rt))
         if args.pb_reads:
-            print("[SQANTI-SIM] \tPacBio reads: %s" %(args.pb_reads))
+            print("[SQANTI-SIM] -PacBio reads: %s" %(args.pb_reads))
         else:
-            print("[SQANTI-SIM] \tONT reads: %s" %(args.ont_reads))
+            print("[SQANTI-SIM] -ONT reads: %s" %(args.ont_reads))
 
     if not args.output:
         output = os.path.basename(args.trans_index).split("_")
@@ -159,6 +159,7 @@ def preparatory(input: list):
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
     # Generate expression matrix
+    print("[SQANTI-SIM] Generating expression matrix\n")
     index_file = os.path.join(args.dir, (args.output + "_index.tsv"))
 
     if args.mode == "equal":

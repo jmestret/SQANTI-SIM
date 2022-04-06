@@ -228,7 +228,7 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
 
 
 def simulate_gtf(args):
-    print("***Writting modified GTF\n")
+    print("[SQANTI-SIM] Writting modified GTF\n")
     counts = defaultdict(
         lambda: 0,
         {
@@ -504,3 +504,6 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
     trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
+
+    print("[SQANTI-SIM] -Nº transcripts: %s" %(len(expr_distr)))
+    print("[SQANTI-SIM] -Nº reads: %s" %(n_reads))

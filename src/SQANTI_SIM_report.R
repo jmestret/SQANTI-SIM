@@ -48,9 +48,6 @@ src.path <- args[4] # path to src utilities
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
-class.file <-'talon_cage_classification.txt'
-junc.file <-'talon_cage_junctions.txt'
-index.file <- 'mix_equal_index.tsv'
 # Read classification file
 data.class <- read.table(class.file, header=T, as.is=T, sep="\t")
 rownames(data.class) <- data.class$isoform
