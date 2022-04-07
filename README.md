@@ -2,9 +2,9 @@
   <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png">
 </p>
 
-# SQANTI-SIM
+***
 
-**SQANTI-SIM** is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. SQANTI-SIM is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
+*SQANTI-SIM* is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
 
 The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a controlled way using as ground-truth real transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
@@ -25,23 +25,21 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 
 ## <a name="overview"></a>Overview
 
-The SQANTI-SIM pipeline consists mainly in 3 different stages: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline. `sqanti_sim.py` is a wrapper script with modules that are assumed to be run in the following order: classif, preparatory, sim and eval. The 3 first modules will simulate the data and the last module would generate the evalution report.
+The SQANTI-SIM pipeline consists mainly in 3 different steps: (i) simulate data, (ii) reconstruct the transcriptome with your pipeline and (iii) evaluate the performance of the transcript reconstruction pipeline. `sqanti_sim.py` is a wrapper script with modules that are assumed to be run in the following order: classif, preparatory, sim and eval. The 3 first modules will simulate the data and the last module would generate the evalution report.
 
 ![workflow](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_workflow.png)
 
 ## <a name="requirements"></a>Requirements
 
-- Perl
-- minimap2
-- Python (3.7)
-- R (3.6)
-- kallisto
+- Python (>=3.7)
+- R (>=3.6)
+- Minimap2
 - STAR
-- samtools
-- bedtools
-- GMAP
-- Python modules: bcbiogff, bedtools, biopython
-[...]
+- Python libraries: bx-python, BioPython, numpy, pandas, scipy, tqdm
+- R packages: [polyester](https://github.com/alyssafrazee/polyester), tidyverse, DT, fmsb, griExtra, knitr, rmarkdown
+- [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake)
+- [NanoSim requirements](https://github.com/bcgsc/NanoSim)
+- [SQANTI3 requirements](https://github.com/ConesaLab/SQANTI3)
 
 ## <a name="conda"></a>Conda enviroment
 

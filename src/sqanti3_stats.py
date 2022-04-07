@@ -130,7 +130,10 @@ def sqanti3_stats(args: list):
     if args.short_reads:
         print("[SQANTI-SIM] Parsing Short Read data")
         star_out = os.path.join(args.dir, "STAR_mapping/")
-        star_index = os.path.join(args.dir, "STAR_index/")
+        if args.STAR_index:
+            star_index = args.STAR_index
+        else:
+            star_index = os.path.join(args.dir, "STAR_index/")
 
         # Short Read Coverage
         SJcovNames, SJcovInfo = STARcov_parser(star_out)

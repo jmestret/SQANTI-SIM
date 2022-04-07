@@ -53,7 +53,7 @@ def pb_simulation(args):
     else:
         os.makedirs(args.dir)
 
-    print("***Simulating PacBio reads with IsoSeqSim")
+    print("[SQANTI-SIM] Simulating PacBio reads with IsoSeqSim")
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, "IsoSeqSim/bin/isoseqsim")
     util_dir = os.path.join(src_dir, "IsoSeqSim/utilities/")
@@ -96,7 +96,7 @@ def pb_simulation(args):
         sys.exit(1)
 
     os.remove(expr_f)
-    print("***Counting PacBio reads")
+    print("[SQANTI-SIM] Counting PacBio reads")
     output_read_info = open(
         os.path.join(args.dir, "PacBio_simulated.read_to_isoform.tsv"), "w"
     )
@@ -121,7 +121,7 @@ def pb_simulation(args):
         args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
     )
 
-    print("***IsoSeqSim simulation done")
+    print("[SQANTI-SIM] IsoSeqSim simulation done")
     return
 
 
@@ -168,7 +168,7 @@ def ont_simulation(args):
         uracil = False
     else:
         print(
-            "***ERROR not valid read_type value %s" % (args.read_type),
+            "[SQANTI-SIM] ERROR not valid read_type value %s" % (args.read_type),
             file=sys.stderr,
         )
         return
@@ -178,7 +178,7 @@ def ont_simulation(args):
     models = os.path.join(src_dir, "NanoSim/pre-trained_models/")
     model_dir = models + model_name + "/"
     if not os.path.exists(model_dir):
-        print("***Untar NanoSim model")
+        print("[SQANTI-SIM] Untar NanoSim model")
         cwd = os.getcwd()
         os.chdir(models)
         sys.stdout.flush()
@@ -189,7 +189,7 @@ def ont_simulation(args):
                 "Unpacking NanoSim pre-trained model failed", file=sys.stderr
             )
 
-    print("***Simulating ONT reads with NanoSim")
+    print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
     cmd = [
         nanosim,
         "transcriptome",
@@ -224,7 +224,7 @@ def ont_simulation(args):
         sys.exit(1)
 
     os.remove(expr_f)
-    print("***Renaming and counting ONT reads")
+    print("[SQANTI-SIM] Renaming and counting ONT reads")
     ref_trans = set()
     ref_dict = defaultdict(lambda: str())
     with open(args.gtf, "r") as f_in:
@@ -279,7 +279,7 @@ def ont_simulation(args):
     f_in.close()
     f_out.close()
 
-    print("***Saving counts and read-to-isoform files")
+    print("[SQANTI-SIM] Saving counts and read-to-isoform files")
     f_name = os.path.join(args.dir, "ONT_simulated.read_to_isoform.tsv")
     f_out = open(f_name, "w")
 
@@ -294,7 +294,7 @@ def ont_simulation(args):
         args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
     )
 
-    print("***NanoSim simulation done")
+    print("[SQANTI-SIM] NanoSim simulation done")
     return
 
 
@@ -302,8 +302,8 @@ def illumina_simulation(args):
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
-    print("***Simulating Illumina reads")
-    print("***Preparing expression matrix")
+    print("[SQANTI-SIM] Simulating Illumina reads")
+    print("[SQANTI-SIM] Preparing expression matrix")
 
     count_d = defaultdict(float)
     n = 0
@@ -341,7 +341,7 @@ def illumina_simulation(args):
     rt.close()
     f_out.close()
 
-    print("***Simulating with Polyester")
+    print("[SQANTI-SIM] Simulating with Polyester")
     src_dir = os.path.dirname(os.path.realpath(__file__))
 
     cmd = [
@@ -362,7 +362,7 @@ def illumina_simulation(args):
         sys.exit(1)
     os.remove(expr_f)
 
-    print("***Counting Illumina reads")
+    print("[SQANTI-SIM] Counting Illumina reads")
     os.rename(
         os.path.join(args.dir, "sample_01_1.fasta"),
         os.path.join(args.dir, "Illumina_simulated_1.fasta"),
@@ -393,5 +393,5 @@ def illumina_simulation(args):
     trans_index["illumina_counts"] = trans_index["illumina_counts"].fillna(0)
     trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("***Polyester simulation done")
+    print("[SQANTI-SIM] Polyester simulation done")
     return
