@@ -8,21 +8,20 @@ Modifies index file and add expression values for the simulation step
 @date 03/03/2022
 """
 
-import os
-import sys
-import subprocess
-import statistics
-import random
 import numpy
-import pysam
+import os
 import pandas
+import pysam
+import random
+import subprocess
+import sys
 from collections import defaultdict
 
 
 def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
     """
     Choose those transcripts that will be deleted from the original GTF
-    to generate the modified file to use as the reference annotation
+    to generate the modified file that will be used as the reference annotation
 
     Args:
         f_idx (str): name of the input transcript index file
@@ -49,7 +48,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
     ref_trans = set()
     ref_genes = set()
 
-    # Build a list for each SC with all transcripts that were classified there
+    # Build a dict with all transcripts classified in each structural category
     with open(f_idx, "r") as cat:
         col_names = cat.readline()
         for line in cat:
@@ -158,8 +157,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
 
 
 def getGeneID(line: str) -> str:
-    """
-    Returns the gene_id of a GTF line
+    """Returns the gene_id of a GTF line
 
     Args:
         line (str) line readed from GTF file
@@ -176,8 +174,7 @@ def getGeneID(line: str) -> str:
 
 
 def getTransID(line: str) -> str:
-    """
-    Returns the transcript_id of a GTF line
+    """Returns the transcript_id of a GTF line
 
     Args:
         line (str) line readed from GTF file
@@ -228,6 +225,8 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
 
 
 def simulate_gtf(args):
+    """Generates the modified reference annotation"""
+
     print("[SQANTI-SIM] Writting modified GTF\n")
     counts = defaultdict(
         lambda: 0,
@@ -254,6 +253,17 @@ def simulate_gtf(args):
 
 
 def summary_table_del(counts_ini: dict, counts_end: dict):
+    """Prints summary table of simulate_gtf
+
+    Prints a summary table of the transcripts that were deleted from the
+    original reference annotation file
+
+    Args:
+        counts_ini (dict) dictionary with all the transcripts associated to each
+                          SQANTI3 structural category
+        counts_end (dict) remaining classified transcripts after deletion
+    """
+
     for sc in counts_end:
         counts_ini[sc] -= counts_end[sc]
 
@@ -266,7 +276,17 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         print("\033[92m|\033[0m " + k + ": " + str(v))
 
 
-def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
+def create_expr_file_fixed_count(f_idx: str, args: list):
+    """ Expression matrix - equal mode
+
+    Modifies the index file adding the counts and TPM for the transcripts that
+    will be simulated with a fixed count value
+
+    Args:
+        f_idx (str) index file name
+        args (list) the number of transcripts and reads to be simulated
+    """
+
     def fixed_coverage(row):
         if row["transcript_id"] in tot_trans:
             return coverage
@@ -278,8 +298,8 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
         skip = skip.split()
-        i = skip.index('sim_type')
-        j = skip.index('transcript_id')
+        i = skip.index("sim_type")
+        j = skip.index("transcript_id")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
@@ -290,19 +310,19 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     f_in.close()
 
     random.shuffle(known_trans)
-    known_trans = known_trans[: (n_trans - len(novel_trans))]
+    known_trans = known_trans[: (args.trans_number - len(novel_trans))]
 
     tot_trans = len(novel_trans) + len(known_trans)
-    if tot_trans != n_trans:
+    if tot_trans != args.trans_number:
         print(
-            "Warning: A higher number than annotated transcripts was requested to simulates, only %s transcript will be simulated"
+            "Warning: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (tot_trans)
         )
 
     tot_trans = novel_trans + known_trans
-    coverage = read_count // n_trans
+    coverage = args.read_count // args.trans_number
     tpm = (1000000.0 * coverage) / (
-        coverage * n_trans
+        coverage * args.trans_number
     )  # Not taking into account transcript length
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
@@ -310,7 +330,7 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     trans_index["requested_tpm"] = round(
         (
             (1000000.0 * trans_index["requested_counts"])
-            / (trans_index["requested_counts"] * n_trans)
+            / (trans_index["requested_counts"] * args.trans_number)
         ),
         2,
     )
@@ -319,9 +339,19 @@ def create_expr_file_fixed_count(f_idx: str, n_trans: int, read_count: int):
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
 
-def create_expr_file_nbinom(
-    f_idx: str, n_trans, nbn_known, nbp_known, nbn_novel, nbp_novel
-):
+def create_expr_file_nbinom(f_idx: str, args: list):
+    """ Expression matrix - custom mode
+
+    Modifies the index file adding the counts and TPM for the transcripts that
+    will be simulated from 2 different negative binomial distributions: one for
+    known transcripts and the other for the novel ones
+
+    Args:
+        f_idx (str) index file name
+        args (list) the number of transcripts to be simulated and parameters for
+                    the negative binomial distributions
+    """
+
     def nbinom_coverage(row):
         if row["transcript_id"] in novel_trans:
             coverage = nb_novel.pop()
@@ -336,8 +366,8 @@ def create_expr_file_nbinom(
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
         skip = skip.split()
-        i = skip.index('sim_type')
-        j = skip.index('transcript_id')
+        i = skip.index("sim_type")
+        j = skip.index("transcript_id")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
@@ -348,16 +378,16 @@ def create_expr_file_nbinom(
     f_in.close()
 
     random.shuffle(known_trans)
-    known_trans = known_trans[: (n_trans - len(novel_trans))]
+    known_trans = known_trans[: (args.trans_number - len(novel_trans))]
 
     nb_known = numpy.random.negative_binomial(
-        nbn_known, nbp_known, len(known_trans)
+        args.nbn_known, args.nbp_known, len(known_trans)
     ).tolist()
     nb_known = [
         1 if n == 0 else n for n in nb_known
     ]  # minimum one count per transcript
     nb_novel = numpy.random.negative_binomial(
-        nbn_novel, nbp_novel, len(novel_trans)
+        args.nbn_novel, args.nbp_novel, len(novel_trans)
     ).tolist()
     nb_novel = [
         1 if n == 0 else n for n in nb_novel
@@ -376,7 +406,18 @@ def create_expr_file_nbinom(
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
 
-def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
+def create_expr_file_sample(f_idx: str, args: list, tech: str):
+    """ Expression matrix - sample mode
+
+    Modifies the index file adding the counts and TPM for the transcripts that
+    will be simulated using a real expression distribution
+
+    Args:
+        f_idx (str) index file name
+        args (list) reference transcriptome and real reads
+        tech (str) sequencing platform {pb, ont}
+    """
+
     def sample_coverage(row):
         if row["transcript_id"] in novel_trans:
             coverage = novel_expr.pop()
@@ -386,13 +427,14 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
             coverage = 0
         return coverage
 
+    # Align with minimap
     sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
 
     if tech == "pb":
         cmd = [
             "minimap2",
-            ref_trans,
-            reads,
+            args.rt,
+            args.pb_reads,
             "-x",
             "map-pb",
             "-a",
@@ -403,8 +445,8 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
     elif tech == "ont":
         cmd = [
             "minimap2",
-            ref_trans,
-            reads,
+            args.rt,
+            args.ont_reads,
             "-x",
             "map-ont",
             "-a",
@@ -419,6 +461,7 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
         print("ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
+    # Count only primary alignments
     trans_counts = defaultdict(lambda: 0)
 
     with pysam.AlignmentFile(sam_file, "r") as sam_file_in:
@@ -434,28 +477,22 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
             trans_counts[trans_id] += 1
     os.remove(sam_file)
 
+    # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
-    median_poss = round(len(expr_distr) / 2)
-    median_half1 = statistics.median(expr_distr[0:median_poss])
-    median_half2 = statistics.median(expr_distr[median_poss : len(expr_distr)])
     prob = numpy.linspace(
-        start=0.1, stop=0.9, num=int(median_half2 - median_half1)
-    )
-    prob = (
-        ([0.1] * int(median_half1 - min(expr_distr)))
-        + list(prob)
-        + ([0.9] * int(max(expr_distr) - median_half2))
+        start=0.1, stop=0.9, num=int(max(expr_distr) - min(expr_distr))
     )
 
+    # Read transcripts from index file
     n_trans = len(expr_distr)
     novel_trans = []
     known_trans = []
     with open(f_idx, "r") as f_in:
         skip = f_in.readline()
         skip = skip.split()
-        i = skip.index('sim_type')
-        j = skip.index('transcript_id')
+        i = skip.index("sim_type")
+        j = skip.index("transcript_id")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
@@ -473,7 +510,8 @@ def create_expr_file_sample(f_idx: str, ref_trans, reads, tech):
             -n_trans,
         ]
 
-    min_expr = min(expr_distr) + 1
+    # Choose expression values for novel and known transcripts
+    min_expr = min(expr_distr)
     novel_expr = []
     n_novel = 0
     while n_novel < len(novel_trans):

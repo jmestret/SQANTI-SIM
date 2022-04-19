@@ -163,27 +163,16 @@ def preparatory(input: list):
     index_file = os.path.join(args.dir, (args.output + "_index.tsv"))
 
     if args.mode == "equal":
-        sim_preparatory.create_expr_file_fixed_count(
-            index_file, args.trans_number, args.read_count
-        )
+        sim_preparatory.create_expr_file_fixed_count(index_file, args)
+
     elif args.mode == "custom":
-        sim_preparatory.create_expr_file_nbinom(
-            index_file,
-            args.trans_number,
-            args.nbn_known,
-            args.nbp_known,
-            args.nbn_novel,
-            args.nbp_novel,
-        )
+        sim_preparatory.create_expr_file_nbinom(index_file, args)
+
     elif args.mode == "sample":
         if args.pb_reads:
-            sim_preparatory.create_expr_file_sample(
-                index_file, args.rt, args.pb_reads, "pb"
-            )
+            sim_preparatory.create_expr_file_sample(index_file, args, "pb")
         else:
-            sim_preparatory.create_expr_file_sample(
-                index_file, args.rt, args.ont_reads, "ont"
-            )
+            sim_preparatory.create_expr_file_sample(index_file, args, "ont")
 
     print("[SQANTI-SIM] preparatory step finished succesfully")
     
