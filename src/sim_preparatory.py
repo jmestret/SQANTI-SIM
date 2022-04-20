@@ -418,7 +418,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         tech (str) sequencing platform {pb, ont}
     """
 
-    def sample_coverage_diff(row):
+    def sample_coverage(row):
         if row["transcript_id"] in novel_trans:
             coverage = novel_expr.pop()
         elif row["transcript_id"] in known_trans:
@@ -426,11 +426,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         else:
             coverage = 0
         return coverage
-    
-    def sample_coverage_equal(row):
-        coverage = random.choice(expr_distr)
 
-        return coverage
 
     # Align with minimap
     sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
@@ -539,17 +535,33 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 known_expr.append(s)
                 n_known += 1
 
-        n_reads = sum(novel_expr) + sum(known_expr)
+        #n_reads = sum(novel_expr) + sum(known_expr)
 
         trans_index["requested_counts"] = trans_index.apply(
-            sample_coverage_diff, axis=1
+            sample_coverage, axis=1
         )
 
     else: # No bias for novel/known expression distribution
+        novel_expr = []
+        n_novel = 0
+        while n_novel < len(novel_trans):
+            s = random.choice(expr_distr)
+            novel_expr.append(s)
+            n_novel += 1
+
+        known_expr = []
+        n_known = 0
+        while n_known < len(known_trans):
+            s = random.choice(expr_distr)
+            known_expr.append(s)
+            n_known += 1
+
         trans_index["requested_counts"] = trans_index.apply(
-            sample_coverage_equal, axis=1
+            sample_coverage, axis=1
         )
 
+        
+    n_reads = trans_index["requested_counts"].sum()
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
     )
