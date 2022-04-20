@@ -512,10 +512,10 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             -n_trans,
         ]
 
-    # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
     if args.diff_exp:
+        # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
         prob = numpy.linspace(
-            start=args.low_prob, stop=args.high_prob, num=int(max(expr_distr) - min(expr_distr))
+            start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr))
         )
 
         # Choose expression values for novel and known transcripts

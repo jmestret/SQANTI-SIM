@@ -168,6 +168,7 @@ def sqanti3_stats(args: list):
         classification_file,
         junctions_file,
         args.trans_index,
+        args.min_support,
         src_dir,
     ]
 

@@ -4,7 +4,7 @@
 #                                     #
 #######################################
 
-# Author: Jorge Meste
+# Author: Jorge Mestre
 # Last modified: 03/02/2022 by Jorge Mestre
 
 
@@ -43,7 +43,8 @@ args <- commandArgs(trailingOnly = TRUE)
 class.file <- args[1] # classification file SQANTI3
 junc.file <- args[2] # junctions file SQANTI3
 index.file <- args[3] # index file
-src.path <- args[4] # path to src utilities
+min.supp <- args[4] # min support reads
+src.path <- args[5] # path to src utilities
 
 output_directory <- dirname(class.file)
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
