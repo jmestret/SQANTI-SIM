@@ -512,6 +512,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             -n_trans,
         ]
 
+    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
     if args.diff_exp:
         # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
         prob = numpy.linspace(
@@ -540,7 +541,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
         n_reads = sum(novel_expr) + sum(known_expr)
 
-        trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
         trans_index["requested_counts"] = trans_index.apply(
             sample_coverage_diff, axis=1
         )
