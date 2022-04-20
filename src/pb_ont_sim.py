@@ -7,20 +7,24 @@ Simulation step
 @date 20/02/2022
 """
 
-import os
-import sys
-import subprocess
-import pandas
-import random
 import numpy
+import os
+import pandas
 import pysam
+import random
+import subprocess
+import sys
 from collections import defaultdict
 
 
 def pb_simulation(args):
+    """Simulate PacBio reads using the IsoSeqSim pipeline"""
+
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
+    
+    # Generate IsoSeqSim template expression file
     expr_f = os.path.join(
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",

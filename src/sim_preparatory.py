@@ -418,13 +418,18 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         tech (str) sequencing platform {pb, ont}
     """
 
-    def sample_coverage(row):
+    def sample_coverage_diff(row):
         if row["transcript_id"] in novel_trans:
             coverage = novel_expr.pop()
         elif row["transcript_id"] in known_trans:
             coverage = known_expr.pop()
         else:
             coverage = 0
+        return coverage
+    
+    def sample_coverage_equal(row):
+        coverage = random.choice(expr_distr)
+
         return coverage
 
     # Align with minimap
@@ -477,12 +482,9 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             trans_counts[trans_id] += 1
     os.remove(sam_file)
 
-    # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
+    # Get expression distribution
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
-    prob = numpy.linspace(
-        start=0.1, stop=0.9, num=int(max(expr_distr) - min(expr_distr))
-    )
 
     # Read transcripts from index file
     n_trans = len(expr_distr)
@@ -510,32 +512,44 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             -n_trans,
         ]
 
-    # Choose expression values for novel and known transcripts
-    min_expr = min(expr_distr)
-    novel_expr = []
-    n_novel = 0
-    while n_novel < len(novel_trans):
-        s = random.choice(expr_distr)
-        r = random.uniform(0, 1)
-        if r > prob[(s - min_expr)]:
-            novel_expr.append(s)
-            n_novel += 1
+    # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
+    if args.diff_exp:
+        prob = numpy.linspace(
+            start=args.low_prob, stop=args.high_prob, num=int(max(expr_distr) - min(expr_distr))
+        )
 
-    known_expr = []
-    n_known = 0
-    while n_known < len(known_trans):
-        s = random.choice(expr_distr)
-        r = random.uniform(0, 1)
-        if r < prob[(s - min_expr)]:
-            known_expr.append(s)
-            n_known += 1
+        # Choose expression values for novel and known transcripts
+        min_expr = min(expr_distr)
+        novel_expr = []
+        n_novel = 0
+        while n_novel < len(novel_trans):
+            s = random.choice(expr_distr)
+            r = random.uniform(0, 1)
+            if r > prob[(s - min_expr)]:
+                novel_expr.append(s)
+                n_novel += 1
 
-    n_reads = sum(novel_expr) + sum(known_expr)
+        known_expr = []
+        n_known = 0
+        while n_known < len(known_trans):
+            s = random.choice(expr_distr)
+            r = random.uniform(0, 1)
+            if r < prob[(s - min_expr)]:
+                known_expr.append(s)
+                n_known += 1
 
-    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
-    trans_index["requested_counts"] = trans_index.apply(
-        sample_coverage, axis=1
-    )
+        n_reads = sum(novel_expr) + sum(known_expr)
+
+        trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
+        trans_index["requested_counts"] = trans_index.apply(
+            sample_coverage_diff, axis=1
+        )
+
+    else: # No bias for novel/known expression distribution
+        trans_index["requested_counts"] = trans_index.apply(
+            sample_coverage_equal, axis=1
+        )
+
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
     )
