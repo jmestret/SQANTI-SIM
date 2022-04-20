@@ -194,6 +194,8 @@ def ont_simulation(args):
             )
 
     print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
+    
+    # WARNING: NanoSim does not simulate exactly the TPMs you ask for. str(args.long_count*2) to oversimulate and sample after the requested number of reads
     cmd = [
         nanosim,
         "transcriptome",
@@ -208,7 +210,7 @@ def ont_simulation(args):
         "-o",
         os.path.join(args.dir, "ONT_simulated"),
         "-n",
-        str(args.long_count),
+        str(args.long_count*2),
         "-r",
         r_type,
         "-b",
@@ -228,6 +230,7 @@ def ont_simulation(args):
         sys.exit(1)
 
     os.remove(expr_f)
+    # Change short transcript id from NanoSim to original transcript id from the annotation
     print("[SQANTI-SIM] Renaming and counting ONT reads")
     ref_trans = set()
     ref_dict = defaultdict(lambda: str())
@@ -257,8 +260,11 @@ def ont_simulation(args):
     f_name = os.path.join(args.dir, "ONT_simulated.fastq")
     f_out = open(f_name, "w")
 
+    # Sample from the oversimulated reads and rename reads
+    requested_counts = defaultdict(lambda: 0)
     for f in fastqs:
         f_in = open(f, "r")
+        write_seq = True
         for line in f_in:
             if line.startswith("@"):
                 line = line.lstrip("@")
@@ -272,13 +278,19 @@ def ont_simulation(args):
                 else:
                     trans_id = ref_dict[trans_id]
 
-                id_counts[trans_id] += 1
-                read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
-                n_read += 1
-                pair_id.append((read_id, trans_id))
+                if requested_counts[trans_id] > 0:
+                    id_counts[trans_id] += 1
+                    read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
+                    n_read += 1
+                    pair_id.append((read_id, trans_id))
 
-                f_out.write("@{}\n".format(read_id))
-            else:
+                    f_out.write("@{}\n".format(read_id))
+
+                    requested_counts[trans_id] -= 1
+                    write_seq = True
+                else:
+                    write_seq = False
+            elif write_seq:
                 f_out.write(line)
     f_in.close()
     f_out.close()
