@@ -483,7 +483,10 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     expr_distr.sort()
 
     # Read transcripts from index file
-    n_trans = len(expr_distr)
+    if args.trans_number:
+        n_trans = args.trans_number
+    else:
+        n_trans = len(expr_distr)
     novel_trans = []
     known_trans = []
     with open(f_idx, "r") as f_in:
@@ -500,6 +503,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 known_trans.append(line[j])
     f_in.close()
 
+    # TODO add warnings n_trans
     random.shuffle(known_trans)
     known_trans = known_trans[: (n_trans - len(novel_trans))]
     if (len(novel_trans) + len(known_trans)) < n_trans:
