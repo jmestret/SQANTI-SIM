@@ -7,6 +7,7 @@ Simulation step
 @date 20/02/2022
 """
 
+from urllib import request
 import numpy
 import os
 import pandas
@@ -137,6 +138,7 @@ def ont_simulation(args):
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",
     )
+    requested_counts = defaultdict(lambda: 0)
     n = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
@@ -151,11 +153,16 @@ def ont_simulation(args):
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
             n += int(line[i])
+            requested_counts[line[0]] = line[j]
     idx.close()
     f_out.close()
 
     if not args.long_count:
         args.long_count = n
+    
+    mill_reads = args.long_count/1000000
+    for i in requested_counts:
+        requested_counts[i] = int(round(mill_reads * float(requested_counts[i])))
 
     if os.path.isdir(args.dir):
         print("WARNING: output direcory already exists. Overwritting!")
@@ -261,7 +268,6 @@ def ont_simulation(args):
     f_out = open(f_name, "w")
 
     # Sample from the oversimulated reads and rename reads
-    requested_counts = defaultdict(lambda: 0)
     for f in fastqs:
         f_in = open(f, "r")
         write_seq = True
