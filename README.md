@@ -1,5 +1,22 @@
+[![Release](https://img.shields.io/github/v/release/jorgemt98/sqanti-sim?include_prereleases)](https://github.com/jorgemt98/SQANTI-SIM/releases)
+[![Downloads](https://img.shields.io/github/downloads/jorgemt98/SQANTI-SIM/total?logo=github)](https://github.com/jorgemt98/SQANTI-SIM)
+[![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTI-SIM.svg)](https://github.com/jorgemt98/SQANTI-SIM/stargazers) 
+
 <p align="center">
   <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png">
+</p>
+
+<p align="center">
+  Simulator of controlled novelty and degradation of transcripts sequenced by long-reads 
+  <br>
+  <br>
+  <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki2.md">Installation</a>
+  ·
+  <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki1.md">Documentation</a>
+  ·
+  <a href="https://github.com/jorgemt98/SQANTI-SIM/issues">Report bug</a>
+  ·
+  <a href="https://github.com/ConesaLab/SQANTI3">SQANTI3</a>
 </p>
 
 ***
@@ -10,7 +27,7 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 
 ## Documentation
 
-Please refer to [Wiki]() for how to install and use SQANTI-SIM 
+Please refer to [Wiki](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki0.md) for how to install and use SQANTI-SIM 
 
 ## Lastest updates
 
