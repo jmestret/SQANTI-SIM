@@ -1,9 +1,3 @@
-<p align="center">
-  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png">
-</p>
-
-***
-
 Welcome to the SQANTI-SIM wiki!
 
 ### Table of Contents
