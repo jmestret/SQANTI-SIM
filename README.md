@@ -7,8 +7,6 @@
 </p>
 
 <p align="center">
-  Simulator of controlled novelty and degradation of transcripts sequenced by long-reads 
-  <br>
   <br>
   <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki2.md">Installation</a>
   ·
