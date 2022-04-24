@@ -225,6 +225,7 @@ def ont_simulation(args):
         "-t",
         str(args.cores),
         "--fastq",
+        "--no_model_ir",
     ]
 
     if uracil:

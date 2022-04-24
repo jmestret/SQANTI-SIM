@@ -2,8 +2,11 @@
 """
 @author: Chen Yang, Saber Hafezqorani, Ka Ming Nip, and Theodora Lo
 This script generates simulated Oxford Nanopore reads (genomic, transcriptomic, and metagenomic).
-Last modified: 24/04/2022 by Jorge Mestre (fix line 1387 str.translate method)
-               24/04/2022 by Jorge Mestre (only sim aligned reads)
+Last modified: 24/04/2022 by Jorge Mestre (
+    fix: str.traslate to str.translate method line 1456,
+    adapt: only sim aligned reads line 519,
+    adapt: sim for each transcript (tpm*total_reads_to_sim)/1000000 reads
+)
 """
 
 from __future__ import print_function
@@ -983,7 +986,23 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
 
 
 def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, basecaller, read_type, num_simulate,
-                                     polya, fastq, per=False, uracil=False):
+                                     polya, fastq, per=False, uracil=False, exp=None):
+
+    # Get expression dictionary(Modified for SQANTI-SIM)
+    dict_exp = {}
+    with open(exp, 'r') as exp_file:
+        header = exp_file.readline()
+        for line in exp_file:
+            parts = line.split("\t")
+            if len(parts) < 3:
+                sys.stderr.write("Expression profile must contain 3 columns: ID, count, TPM \n")
+                sys.exit(1)
+            transcript_id = parts[0].split(".")[0]
+            tpm = float(parts[2])
+            if tpm > 0:
+                dict_exp[transcript_id] = tpm
+    exp_file.close()
+    
 
     if basecaller == "albacore":
         polya_len_dist_scale = 2.409858743694814
@@ -1020,185 +1039,188 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
     sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False) # initial sample from the KDE
     trx_sampled = set() # track transcript IDs that are associated with the KDE sample
     
-    while simulated < num_simulate:
-        while True:            
-            # select a random reference transcript
-            ref_trx, ref_trx_len = random.choices(ecdf_length_list, weights=ecdf_weight_list, k=1)[0]
-            
-            # if this transcript was previously associated with the currect KDE sample
-            if ref_trx in trx_sampled:
-                # draw a new sample from the KDE
-                sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False)
+    #while simulated < num_simulate:
+    for ref_trx, ref_trx_len in ecdf_length_list: # Simulate x reads for each trans (Modified for SQANTI-SIM)
+        trans_n_reads = int(round((dict_exp[ref_trx]*num_simulate)/1000000))
+        for i in range(trans_n_reads):
+            while True:            
+                # select a random reference transcript
+                #ref_trx, ref_trx_len = random.choices(ecdf_length_list, weights=ecdf_weight_list, k=1)[0]
                 
-                # track a new set of transcript IDs
-                trx_sampled = set()
+                # if this transcript was previously associated with the currect KDE sample
+                if ref_trx in trx_sampled:
+                    # draw a new sample from the KDE
+                    sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False)
+                    
+                    # track a new set of transcript IDs
+                    trx_sampled = set()
 
-            if model_ir:
-                if ref_trx in dict_ref_structure:
-                    ref_trx_len_fromstructure = ref_len_from_structure(dict_ref_structure[ref_trx])
-                    if ref_trx_len == ref_trx_len_fromstructure:
-                        ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
-                        if ref_len_aligned < ref_trx_len:
-                            break
-            else:
-                ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
-                if ref_len_aligned < ref_trx_len:
-                    break
-        
-        # associate the transcript ID to the KDE sample
-        trx_sampled.add(ref_trx)
-               
-        trx_has_polya = polya and ref_trx in trx_with_polya     
-        is_reversed = random.random() > strandness_rate
+                if model_ir:
+                    if ref_trx in dict_ref_structure:
+                        ref_trx_len_fromstructure = ref_len_from_structure(dict_ref_structure[ref_trx])
+                        if ref_trx_len == ref_trx_len_fromstructure:
+                            ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
+                            if ref_len_aligned < ref_trx_len:
+                                break
+                else:
+                    ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
+                    if ref_len_aligned < ref_trx_len:
+                        break
             
-        if per:
-            with total_simulated.get_lock():
-                sequence_index = total_simulated.value
-                total_simulated.value += 1
+            # associate the transcript ID to the KDE sample
+            trx_sampled.add(ref_trx)
+                
+            trx_has_polya = polya and ref_trx in trx_with_polya     
+            is_reversed = random.random() > strandness_rate
+                
+            if per:
+                with total_simulated.get_lock():
+                    sequence_index = total_simulated.value
+                    total_simulated.value += 1
 
-            new_read, ref_start_pos, retain_polya = extract_read_trx(ref_trx, ref_len_aligned, trx_has_polya)
-            new_read_name = ref_trx + "_" + str(ref_start_pos) + "_perfect_" + str(sequence_index)
-            read_mutated = case_convert(new_read)  # not mutated actually, just to be consistent with per == False
+                new_read, ref_start_pos, retain_polya = extract_read_trx(ref_trx, ref_len_aligned, trx_has_polya)
+                new_read_name = ref_trx + "_" + str(ref_start_pos) + "_perfect_" + str(sequence_index)
+                read_mutated = case_convert(new_read)  # not mutated actually, just to be consistent with per == False
 
-            if fastq:
-                base_quals = mm.trunc_lognorm_rvs("match", read_type, basecaller, ref_len_aligned).tolist()
+                if fastq:
+                    base_quals = mm.trunc_lognorm_rvs("match", read_type, basecaller, ref_len_aligned).tolist()
+                else:
+                    base_quals = []
+
+                head = 0
+                tail = 0
+                
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                if retain_polya:
+                    polya_len = get_polya_len()
+                    if polya_len > 0:
+                        read_mutated += "A" * polya_len
+                else:
+                    polya_len = 0
+                            
+                new_read_name += "_0_" + str(ref_len_aligned) + "_" + str(polya_len)
+                
             else:
-                base_quals = []
+                middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
+                                                                            match_ht_list, error_par, trans_error_pr,
+                                                                            fastq)
 
-            head = 0
-            tail = 0
-            
-            if is_reversed:
-                new_read_name += "_R"
-            else:
-                new_read_name += "_F"
-            
-            if retain_polya:
-                polya_len = get_polya_len()
-                if polya_len > 0:
-                    read_mutated += "A" * polya_len
-            else:
-                polya_len = 0
-                        
-            new_read_name += "_0_" + str(ref_len_aligned) + "_" + str(polya_len)
-            
-        else:
-            middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
-                                                                          match_ht_list, error_par, trans_error_pr,
-                                                                          fastq)
+                if middle_ref > ref_trx_len:
+                    continue
 
-            if middle_ref > ref_trx_len:
-                continue
+                with total_simulated.get_lock():
+                    sequence_index = total_simulated.value
+                    total_simulated.value += 1
 
-            with total_simulated.get_lock():
-                sequence_index = total_simulated.value
-                total_simulated.value += 1
+                ir_list = []
+                if model_ir:
+                    ir_flag, ref_trx_structure_new = update_structure(dict_ref_structure[ref_trx], IR_markov_model)
+                    if ir_flag:
+                        list_iv, retain_polya, ir_list = extract_read_pos(middle_ref, ref_trx_len, ref_trx_structure_new,
+                                                                        trx_has_polya)
+                        new_read = ""
+                        flag = False
+                        for interval in list_iv:
+                            chrom = interval.chrom
+                            if flag_chrom:
+                                chrom = "chr" + chrom
+                            if chrom not in genome_fai.references:
+                                flag = True
+                                break
+                            start = interval.start
+                            end = interval.end
+                            new_read += genome_fai.fetch(chrom, start, end)  # len(new_read) > middle_ref
+                        if flag:
+                            continue
+                        ref_start_pos = list_iv[0].start
+    
+                        if interval.strand == '-':  # Keep the read direction the same as reference transcripts
+                            new_read = reverse_complement(new_read)
 
-            ir_list = []
-            if model_ir:
-                ir_flag, ref_trx_structure_new = update_structure(dict_ref_structure[ref_trx], IR_markov_model)
-                if ir_flag:
-                    list_iv, retain_polya, ir_list = extract_read_pos(middle_ref, ref_trx_len, ref_trx_structure_new,
-                                                                      trx_has_polya)
-                    new_read = ""
-                    flag = False
-                    for interval in list_iv:
-                        chrom = interval.chrom
-                        if flag_chrom:
-                            chrom = "chr" + chrom
-                        if chrom not in genome_fai.references:
-                            flag = True
-                            break
-                        start = interval.start
-                        end = interval.end
-                        new_read += genome_fai.fetch(chrom, start, end)  # len(new_read) > middle_ref
-                    if flag:
-                        continue
-                    ref_start_pos = list_iv[0].start
- 
-                    if interval.strand == '-':  # Keep the read direction the same as reference transcripts
-                        new_read = reverse_complement(new_read)
+                        if fastq:  # since len(new_read) > middle_ref if IR, add more match quals for retained intron
+                            error_count["match"] += len(new_read) - middle_ref
+                    else:
+                        new_read, ref_start_pos, retain_polya = extract_read_trx(ref_trx, middle_ref, trx_has_polya)
 
-                    if fastq:  # since len(new_read) > middle_ref if IR, add more match quals for retained intron
-                        error_count["match"] += len(new_read) - middle_ref
                 else:
                     new_read, ref_start_pos, retain_polya = extract_read_trx(ref_trx, middle_ref, trx_has_polya)
 
-            else:
-                new_read, ref_start_pos, retain_polya = extract_read_trx(ref_trx, middle_ref, trx_has_polya)
+                new_read_name = str(ref_trx) + "_" + str(ref_start_pos) + "_aligned_" + str(sequence_index)
+                if len(ir_list) > 0:
+                    new_read_name += "_RetainedIntron_"
+                    for ir_tuple in ir_list:
+                        new_read_name += '-'.join(str(x) for x in ir_tuple) + ';'
+                
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                # start HD len simulation
+                remainder = int(remainder_l[simulated])
+                head_vs_ht_ratio = head_vs_ht_ratio_l[simulated]
+                
+                if remainder == 0:
+                    head = 0
+                    tail = 0
+                else:
+                    head = int(round(remainder * head_vs_ht_ratio))
+                    tail = remainder - head
+                # end HD len simulation
+                
+                if retain_polya:
+                    polya_len = get_polya_len()
+                else:
+                    polya_len = 0
+                
+                
+                new_read_name += "_" + str(head) + \
+                                "_" + str(middle_ref) + \
+                                "_" + str(tail + polya_len)
+                
+                # Mutate read
+                new_read = case_convert(new_read)
+                read_mutated, base_quals = mutate_read(new_read, new_read_name, out_error, error_dict, error_count,
+                                                    basecaller, read_type, fastq, kmer_bias)
+                if kmer_bias:
+                    read_mutated, base_quals = mutate_homo(read_mutated, base_quals, kmer_bias, basecaller, read_type)
+                
+                if polya_len > 0:
+                    read_mutated += "A" * polya_len
 
-            new_read_name = str(ref_trx) + "_" + str(ref_start_pos) + "_aligned_" + str(sequence_index)
-            if len(ir_list) > 0:
-                new_read_name += "_RetainedIntron_"
-                for ir_tuple in ir_list:
-                    new_read_name += '-'.join(str(x) for x in ir_tuple) + ';'
+            if fastq:  # Get head/tail qualities
+                ht_quals = mm.trunc_lognorm_rvs("ht", read_type, basecaller, head + tail + polya_len).tolist()
+                for a in xrange(polya_len):
+                    base_quals.append(ht_quals.pop())
+                base_quals = ht_quals[:head] + base_quals + ht_quals[head:]
+
+            # Add head and tail region
+            read_mutated = ''.join(np.random.choice(BASES, head)) + read_mutated + ''.join(np.random.choice(BASES, tail))
             
+            # Reverse complement according to strandness rate
             if is_reversed:
-                new_read_name += "_R"
-            else:
-                new_read_name += "_F"
-            
-            # start HD len simulation
-            remainder = int(remainder_l[simulated])
-            head_vs_ht_ratio = head_vs_ht_ratio_l[simulated]
-            
-            if remainder == 0:
-                head = 0
-                tail = 0
-            else:
-                head = int(round(remainder * head_vs_ht_ratio))
-                tail = remainder - head
-            # end HD len simulation
-            
-            if retain_polya:
-                polya_len = get_polya_len()
-            else:
-                polya_len = 0
-            
-            
-            new_read_name += "_" + str(head) + \
-                             "_" + str(middle_ref) + \
-                             "_" + str(tail + polya_len)
-            
-            # Mutate read
-            new_read = case_convert(new_read)
-            read_mutated, base_quals = mutate_read(new_read, new_read_name, out_error, error_dict, error_count,
-                                                   basecaller, read_type, fastq, kmer_bias)
-            if kmer_bias:
-                read_mutated, base_quals = mutate_homo(read_mutated, base_quals, kmer_bias, basecaller, read_type)
-            
-            if polya_len > 0:
-                read_mutated += "A" * polya_len
+                read_mutated = reverse_complement(read_mutated)
+                base_quals.reverse()
 
-        if fastq:  # Get head/tail qualities
-            ht_quals = mm.trunc_lognorm_rvs("ht", read_type, basecaller, head + tail + polya_len).tolist()
-            for a in xrange(polya_len):
-                base_quals.append(ht_quals.pop())
-            base_quals = ht_quals[:head] + base_quals + ht_quals[head:]
+            out_reads.write(id_begin + new_read_name + '\n')
 
-        # Add head and tail region
-        read_mutated = ''.join(np.random.choice(BASES, head)) + read_mutated + ''.join(np.random.choice(BASES, tail))
-        
-        # Reverse complement according to strandness rate
-        if is_reversed:
-            read_mutated = reverse_complement(read_mutated)
-            base_quals.reverse()
+            if uracil:
+                read_mutated = read_mutated.translate(trantab)
 
-        out_reads.write(id_begin + new_read_name + '\n')
+            out_reads.write(read_mutated + '\n')
 
-        if uracil:
-            read_mutated = read_mutated.translate(trantab)
+            if fastq:
+                out_reads.write("+\n")
+                out_quals = "".join([chr(qual + 33) for qual in base_quals])
+                out_reads.write(out_quals + "\n")
 
-        out_reads.write(read_mutated + '\n')
+            check_print_progress(sequence_index)
 
-        if fastq:
-            out_reads.write("+\n")
-            out_quals = "".join([chr(qual + 33) for qual in base_quals])
-            out_reads.write(out_quals + "\n")
-
-        check_print_progress(sequence_index)
-
-        simulated += 1
+            simulated += 1
 
     sys.stdout.write('\n')
     out_reads.close()
@@ -1450,7 +1472,7 @@ def simulation_unaligned(dna_type, min_l, max_l, median_l, sd_l, out_reads, base
 
             out_reads.write(id_begin + new_read_name + "_0_" + str(middle_ref) + "_0" + '\n')
             if uracil:
-                read_mutated = read_mutated.translate(trantab)
+                read_mutated = read_mutated.translate(trantab) # Fix for SQANTI-SIM
             out_reads.write(read_mutated + "\n")
 
             if fastq:
@@ -1487,7 +1509,8 @@ def simulation_gap(ref, basecaller, read_type, dna_type, fastq):
 
 
 def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l, min_l, num_threads, fastq,
-               median_l=None, sd_l=None, model_ir=False, uracil=False, polya=None, chimeric=False):
+               median_l=None, sd_l=None, model_ir=False, uracil=False, polya=None, chimeric=False, exp=None):
+    # exp argument added by Jorge Mestre (SQANTI-SIM)
     global total_simulated  # Keeps track of number of reads that have been simulated so far
     total_simulated = mp.Value("i", 0, lock=True)
 
@@ -1531,7 +1554,7 @@ def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l
         else:
             p = mp.Process(target=simulation_aligned_transcriptome,
                            args=(model_ir, aligned_subfile, error_subfile, kmer_bias, basecaller, read_type,
-                                 num_simulate, polya, fastq, per, uracil))
+                                 num_simulate, polya, fastq, per, uracil, exp)) # Add exp file (Modified for SQANTI-SIM)
             procs.append(p)
             p.start()
 
@@ -2268,7 +2291,7 @@ def main():
         number_unaligned = number_unaligned_l[0]
         max_len = min(max_len, max_chrom)
         simulation(args.mode, out, dna_type, perfect, kmer_bias, basecaller, read_type, max_len, min_len, num_threads,
-                   fastq, None, None, model_ir, uracil, polya)
+                   fastq, None, None, model_ir, uracil, polya, exp=exp) # Add exp file (Modified for SQANTI-SIM)
 
     elif args.mode == "metagenome":
         genome_list = args.genome_list
