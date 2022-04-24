@@ -2,6 +2,8 @@
 """
 @author: Chen Yang, Saber Hafezqorani, Ka Ming Nip, and Theodora Lo
 This script generates simulated Oxford Nanopore reads (genomic, transcriptomic, and metagenomic).
+Last modified: 24/04/2022 by Jorge Mestre (fix line 1387 str.translate method)
+               24/04/2022 by Jorge Mestre (only sim aligned reads)
 """
 
 from __future__ import print_function
@@ -509,7 +511,8 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
             if rate == "100%":
                 number_aligned_l = number_list
             else:
-                number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
+                #number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
+                number_aligned_l = number_list # All aligned reads (Modified for SQANTI-SIM)
             number_unaligned_l = [x - y for x, y in zip(number_list, number_aligned_l)]
 
         if min(number_unaligned_l) > 0:
@@ -1447,7 +1450,7 @@ def simulation_unaligned(dna_type, min_l, max_l, median_l, sd_l, out_reads, base
 
             out_reads.write(id_begin + new_read_name + "_0_" + str(middle_ref) + "_0" + '\n')
             if uracil:
-                read_mutated = read_mutated.traslate(trantab)
+                read_mutated = read_mutated.translate(trantab)
             out_reads.write(read_mutated + "\n")
 
             if fastq:
