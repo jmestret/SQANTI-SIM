@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 """
-@author: Chen Yang & Saber HafezQorani
-This script generates simulated Oxford Nanopore 2D reads (genomic and transcriptomic - cDNA/directRNA).
-Last modified: 01/03/2022 by Jorge Mestre (fix line 1387 str.translate method)
-               18/03/2022 by Jorge Mestre (only sim aligned reads)
+@author: Chen Yang, Saber Hafezqorani, Ka Ming Nip, and Theodora Lo
+This script generates simulated Oxford Nanopore reads (genomic, transcriptomic, and metagenomic).
 """
 
 from __future__ import print_function
@@ -42,25 +40,19 @@ import norm_distr as nd
 import math
 
 PYTHON_VERSION = sys.version_info
-VERSION = "3.0.3"
-PRORAM = "NanoSim"
-AUTHOR = "Chen Yang, Saber Hafezqorani, Theodora Lo (UBC & BCGSC)"
-CONTACT = "cheny@bcgsc.ca; shafezqorani@bcgsc.ca"
+VERSION = "3.1.0"
+PROGRAM = "NanoSim"
+AUTHOR = "Chen Yang, Saber Hafezqorani, Ka Ming Nip, and Theodora Lo (UBC & BCGSC)"
+CONTACT = "cheny@bcgsc.ca; shafezqorani@bcgsc.ca; kmnip@bcgsc.ca"
 
 BASES = ['A', 'T', 'C', 'G']
 
 
-def select_ref_transcript(input_dict):
-    length = 0
-    while True:
-        p = random.random()
-        for key, val in input_dict.items():
-            if key[0] <= p < key[1]:
-                length = val[1]
-                break
-        if length != 0:
-            break
-    return val[0], length
+def check_print_progress(sequence_index):
+    if sequence_index % 10000 == 0:
+        sys.stdout.write(strftime("%Y-%m-%d %H:%M:%S") + ": Number of reads simulated >> " +
+                         str(sequence_index + 1) + "\r")
+        sys.stdout.flush()
 
 
 def list_to_range(input_list, min_l):
@@ -75,10 +67,15 @@ def list_to_range(input_list, min_l):
 
 def make_cdf(dict_exp, dict_len):
     sum_exp = 0
+    match_count = 0
     list_value = []
     for item in dict_exp:
         if item in dict_len:
+            match_count += 1
             sum_exp += dict_exp[item]
+    if match_count == 0:
+        sys.stderr.write("Please make sure transcript IDs in the expression profile match with those in reference transcriptome (example: both Ensembl IDs)\n")
+        sys.exit(1)
     for item in dict_exp:
         if item in dict_len:
             value = dict_exp[item] / float(sum_exp)
@@ -89,13 +86,14 @@ def make_cdf(dict_exp, dict_len):
     list_cdf = np.cumsum(sorted_only_values)
     ranged_cdf_list = list_to_range(list_cdf, 0)
 
-    ecdf_dict = {}
-    for i in xrange(len(ranged_cdf_list)):
-        cdf_range = ranged_cdf_list[i]
-        ecdf_dict[cdf_range] = (sorted_value_list[i][0], dict_len[sorted_value_list[i][0]])
-        # ecdf_dict[cdf_range] = dict_len[sorted_value_list[i][0]]
+    ecdf_weight_list = list()
+    ecdf_length_list = list()
+    for cdf_range, txpt in zip(ranged_cdf_list, sorted_value_list):
+        ecdf_weight_list.append(abs(cdf_range[1] - cdf_range[0]))
+        tname = txpt[0]
+        ecdf_length_list.append((tname, dict_len[tname]))
 
-    return ecdf_dict
+    return ecdf_length_list, ecdf_weight_list
 
 
 def ref_len_from_structure(input):
@@ -236,11 +234,10 @@ def get_length_kde(kde, num, log=False, flatten=True):
     tmp_list = kde.sample(num)
     if log:
         tmp_list = np.power(10, tmp_list) - 1
-    length_list = tmp_list.flatten()
-    if not flatten:
-        return tmp_list
-    else:
-        return length_list
+    if flatten:
+        return tmp_list.flatten()
+    
+    return tmp_list
 
 
 def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=None, dna_type=None, abun=None,
@@ -267,7 +264,7 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
                 genome = fields[1].strip("\n")
                 ref[species] = genome
     else:
-        global dict_exp, ecdf_dict_ref_exp
+        global dict_exp, ecdf_length_list, ecdf_weight_list
         ref = ref_t
 
     if strandness is None:
@@ -389,12 +386,18 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
             header = exp_file.readline()
             for line in exp_file:
                 parts = line.split("\t")
+                if len(parts) < 3:
+                    sys.stderr.write("Expression profile must contain 3 columns: ID, count, TPM \n")
+                    sys.exit(1)
                 transcript_id = parts[0].split(".")[0]
                 tpm = float(parts[2])
-                if transcript_id.startswith("ENS") and tpm > 0:
+                if tpm > 0:
                     dict_exp[transcript_id] = tpm
+        if len(dict_exp) == 0:
+            sys.stderr.write("Expression profile contains no TPM values > 0\n")
+            sys.exit(1)
         # create the ecdf dict considering the expression profiles
-        ecdf_dict_ref_exp = make_cdf(dict_exp, seq_len)
+        ecdf_length_list, ecdf_weight_list = make_cdf(dict_exp, seq_len)
 
         if model_ir:
             global genome_fai, IR_markov_model, dict_ref_structure
@@ -506,8 +509,7 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
             if rate == "100%":
                 number_aligned_l = number_list
             else:
-                #number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
-                number_aligned_l = number_list # All aligned reads (Modified for SQANTI-SIM)
+                number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
             number_unaligned_l = [x - y for x, y in zip(number_list, number_aligned_l)]
 
         if min(number_unaligned_l) > 0:
@@ -809,6 +811,8 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
         species_pool, ref_lengths, remaining_segments = \
             assign_species(ref_lengths, remaining_segments, current_species_bases)
 
+        is_reversed = random.random() > strandness_rate
+
         seg_pointer = 0
         gap_pointer = 0
         species_pointer = 0
@@ -847,6 +851,13 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
 
                 head = 0
                 tail = 0
+
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                new_read_name += "_0_" + str(sum(ref_length_list)) + "_0"
 
             else:
                 gap_list = []
@@ -890,34 +901,50 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
                     tail = remainder - head
 
                 # Extract middle region from reference genome
+                num_seg = len(seg_length_list)
+                new_seg_list = [None] * num_seg
+                read_name_components = list()
+                for seg_idx in range(num_seg):
+                    new_seg_list[seg_idx], new_seg_name = extract_read("metagenome", seg_length_list[seg_idx], species_list[seg_idx])
+                    read_name_components.append(new_seg_name)
+                    if seg_idx < len(gap_list):
+                        read_name_components.append("gap_" + str(len(gap_list[seg_idx])))
+                new_read_name = ';'.join(read_name_components) + "_aligned_" + str(sequence_index)
+                
+                if num_seg > 1:
+                    new_read_name += "_chimeric"
+                
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                new_read_name += "_" + str(head) + \
+                                 "_" + ";".join(str(x) for x in seg_length_list) + \
+                                 "_" + str(tail)
+                    
                 read_mutated = ""
                 new_read_name = ""
                 base_quals = []
-                for seg_idx in range(len(seg_length_list)):
-                    new_seg, new_seg_name = extract_read("metagenome", seg_length_list[seg_idx], species_list[seg_idx])
+                for seg_idx in range(num_seg):
                     # Mutate read
-                    new_seg = case_convert(new_seg)
+                    new_seg = case_convert(new_seg_list[seg_idx])
                     seg_mutated, seg_base_quals = \
-                        mutate_read(new_seg, new_seg_name, out_error, seg_error_dict_list[seg_idx],
+                        mutate_read(new_seg, new_read_name, out_error, seg_error_dict_list[seg_idx],
                                     seg_error_count_list[seg_idx], basecaller, read_type, fastq, kmer_bias)
 
                     if kmer_bias:
                         seg_mutated, seg_base_quals = mutate_homo(seg_mutated, seg_base_quals, kmer_bias, basecaller,
                                                                   None)
-                    new_read_name += new_seg_name + ';'
                     read_mutated += seg_mutated
                     base_quals.extend(seg_base_quals)
                     if seg_idx < len(gap_list):
                         read_mutated += gap_list[seg_idx]
                         base_quals.extend(gap_base_qual_list[seg_idx])
-                        new_read_name += "gap_" + str(len(gap_list[seg_idx])) + ';'
 
                     # Update base level abundance info
                     current_species_bases[species_list[seg_idx]] += len(new_seg)
 
-                new_read_name = new_read_name + "aligned_" + str(sequence_index)
-                if len(seg_length_list) > 1:
-                    new_read_name += "_chimeric"
                 if fastq:  # Get head/tail qualities and add to base_quals
                     ht_quals = mm.trunc_lognorm_rvs("ht", read_type, basecaller, head + tail).tolist()
                     base_quals = ht_quals[:head] + base_quals + ht_quals[head:]
@@ -927,19 +954,11 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
                            ''.join(np.random.choice(BASES, tail))
 
             # Reverse complement half of the reads
-            p = random.random()
-            if p > strandness_rate:
+            if is_reversed:
                 read_mutated = reverse_complement(read_mutated)
-                new_read_name += "_R"
                 base_quals.reverse()
-            else:
-                new_read_name += "_F"
 
-            if per:
-                out_reads.write(id_begin + new_read_name + "_0_" + str(sum(ref_length_list)) + "_0" + '\n')
-            else:
-                out_reads.write(id_begin + new_read_name + "_" + str(head) + "_" +
-                                ";".join(str(x) for x in seg_length_list) + "_" + str(tail) + '\n')
+            out_reads.write(id_begin + new_read_name + '\n')
             out_reads.write(read_mutated + '\n')
 
             if fastq:
@@ -947,11 +966,7 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
                 out_quals = "".join([chr(qual + 33) for qual in base_quals])
                 out_reads.write(out_quals + "\n")
 
-            if (sequence_index + 1) % 100 == 0:
-                sys.stdout.write(strftime("%Y-%m-%d %H:%M:%S") + ": Number of reads simulated >> " +
-                                 str(sequence_index + 1) + "\r")
-                # +1 is just to ignore the zero index by python
-                sys.stdout.flush()
+            check_print_progress(sequence_index)
 
             passed += 1
 
@@ -966,6 +981,16 @@ def simulation_aligned_metagenome(min_l, max_l, median_l, sd_l, out_reads, out_e
 
 def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, basecaller, read_type, num_simulate,
                                      polya, fastq, per=False, uracil=False):
+
+    if basecaller == "albacore":
+        polya_len_dist_scale = 2.409858743694814
+    else:
+        polya_len_dist_scale = 4.168299657168961
+    
+    # inner function to return a polyA tail length    
+    def get_polya_len():
+        return int(scipy.stats.expon.rvs(loc=2.0, scale=polya_len_dist_scale))
+                                         
     # Simulate aligned reads
     out_reads = open(out_reads, "w")
     out_error = open(out_error, "w")
@@ -982,21 +1007,28 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
             if "chr" in item:
                 flag_chrom = True
                 break
-    sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False)
 
     remainder_l = get_length_kde(kde_ht, num_simulate, True)
     head_vs_ht_ratio_temp = get_length_kde(kde_ht_ratio, num_simulate)
     head_vs_ht_ratio_l = [1 if x > 1 else x for x in head_vs_ht_ratio_temp]
     head_vs_ht_ratio_l = [0 if x < 0 else x for x in head_vs_ht_ratio_l]
 
-    remaining_reads = 0
-    while remaining_reads < num_simulate:
-        while True:
-            ref_trx, ref_trx_len = select_ref_transcript(ecdf_dict_ref_exp)
-            if polya and ref_trx in trx_with_polya:
-                trx_has_polya = True
-            else:
-                trx_has_polya = False
+    simulated = 0
+    sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False) # initial sample from the KDE
+    trx_sampled = set() # track transcript IDs that are associated with the KDE sample
+    
+    while simulated < num_simulate:
+        while True:            
+            # select a random reference transcript
+            ref_trx, ref_trx_len = random.choices(ecdf_length_list, weights=ecdf_weight_list, k=1)[0]
+            
+            # if this transcript was previously associated with the currect KDE sample
+            if ref_trx in trx_sampled:
+                # draw a new sample from the KDE
+                sampled_2d_lengths = get_length_kde(kde_aligned_2d, num_simulate, False, False)
+                
+                # track a new set of transcript IDs
+                trx_sampled = set()
 
             if model_ir:
                 if ref_trx in dict_ref_structure:
@@ -1009,6 +1041,13 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                 ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
                 if ref_len_aligned < ref_trx_len:
                     break
+        
+        # associate the transcript ID to the KDE sample
+        trx_sampled.add(ref_trx)
+               
+        trx_has_polya = polya and ref_trx in trx_with_polya     
+        is_reversed = random.random() > strandness_rate
+            
         if per:
             with total_simulated.get_lock():
                 sequence_index = total_simulated.value
@@ -1025,7 +1064,21 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
 
             head = 0
             tail = 0
-
+            
+            if is_reversed:
+                new_read_name += "_R"
+            else:
+                new_read_name += "_F"
+            
+            if retain_polya:
+                polya_len = get_polya_len()
+                if polya_len > 0:
+                    read_mutated += "A" * polya_len
+            else:
+                polya_len = 0
+                        
+            new_read_name += "_0_" + str(ref_len_aligned) + "_" + str(polya_len)
+            
         else:
             middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
                                                                           match_ht_list, error_par, trans_error_pr,
@@ -1076,11 +1129,16 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                 new_read_name += "_RetainedIntron_"
                 for ir_tuple in ir_list:
                     new_read_name += '-'.join(str(x) for x in ir_tuple) + ';'
-
+            
+            if is_reversed:
+                new_read_name += "_R"
+            else:
+                new_read_name += "_F"
+            
             # start HD len simulation
-            remainder = int(remainder_l[remaining_reads])
-            head_vs_ht_ratio = head_vs_ht_ratio_l[remaining_reads]
-
+            remainder = int(remainder_l[simulated])
+            head_vs_ht_ratio = head_vs_ht_ratio_l[simulated]
+            
             if remainder == 0:
                 head = 0
                 tail = 0
@@ -1088,22 +1146,26 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                 head = int(round(remainder * head_vs_ht_ratio))
                 tail = remainder - head
             # end HD len simulation
-
+            
+            if retain_polya:
+                polya_len = get_polya_len()
+            else:
+                polya_len = 0
+            
+            
+            new_read_name += "_" + str(head) + \
+                             "_" + str(middle_ref) + \
+                             "_" + str(tail + polya_len)
+            
             # Mutate read
             new_read = case_convert(new_read)
             read_mutated, base_quals = mutate_read(new_read, new_read_name, out_error, error_dict, error_count,
                                                    basecaller, read_type, fastq, kmer_bias)
             if kmer_bias:
                 read_mutated, base_quals = mutate_homo(read_mutated, base_quals, kmer_bias, basecaller, read_type)
-
-        if retain_polya:
-            if basecaller == "albacore":
-                polya_len = int(scipy.stats.expon.rvs(loc=2.0, scale=2.409858743694814))
-            else:  # guppy
-                polya_len = int(scipy.stats.expon.rvs(loc=2.0, scale=4.168299657168961))
-            read_mutated += "A" * polya_len
-        else:
-            polya_len = 0
+            
+            if polya_len > 0:
+                read_mutated += "A" * polya_len
 
         if fastq:  # Get head/tail qualities
             ht_quals = mm.trunc_lognorm_rvs("ht", read_type, basecaller, head + tail + polya_len).tolist()
@@ -1115,19 +1177,11 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
         read_mutated = ''.join(np.random.choice(BASES, head)) + read_mutated + ''.join(np.random.choice(BASES, tail))
         
         # Reverse complement according to strandness rate
-        p = random.random()
-        if p > strandness_rate:
+        if is_reversed:
             read_mutated = reverse_complement(read_mutated)
-            new_read_name += "_R"
             base_quals.reverse()
-        else:
-            new_read_name += "_F"
 
-        if per:
-            out_reads.write(id_begin + new_read_name + "_0_" + str(ref_len_aligned + polya_len) + "_0" + '\n')
-        else:
-            out_reads.write(id_begin + new_read_name + "_" + str(head) + "_" + str(middle_ref) + "_" +
-                            str(tail + polya_len) + '\n')
+        out_reads.write(id_begin + new_read_name + '\n')
 
         if uracil:
             read_mutated = read_mutated.translate(trantab)
@@ -1139,13 +1193,9 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
             out_quals = "".join([chr(qual + 33) for qual in base_quals])
             out_reads.write(out_quals + "\n")
 
-        if (sequence_index + 1) % 100 == 0:
-            sys.stdout.write(strftime("%Y-%m-%d %H:%M:%S") + ": Number of reads simulated >> " +
-                             str(sequence_index + 1) + "\r")
-            # +1 is just to ignore the zero index by python
-            sys.stdout.flush()
+        check_print_progress(sequence_index)
 
-        remaining_reads += 1
+        simulated += 1
 
     sys.stdout.write('\n')
     out_reads.close()
@@ -1201,6 +1251,8 @@ def simulation_aligned_genome(dna_type, min_l, max_l, median_l, sd_l, out_reads,
             ref_length_list = [int(ref_lengths[seg_pointer + x]) for x in range(segments)]
             gap_length_list = [int(gap_lengths[gap_pointer + x]) for x in range(segments - 1)]
 
+            is_reversed = random.random() > strandness_rate
+
             if per:
                 seg_pointer += 1
                 gap_pointer += 1
@@ -1224,7 +1276,14 @@ def simulation_aligned_genome(dna_type, min_l, max_l, median_l, sd_l, out_reads,
 
                 head = 0
                 tail = 0
-
+                
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                new_read_name += "_0_" + str(sum(ref_length_list)) + "_0"
+                
             else:
                 gap_list = []
                 gap_base_qual_list = []
@@ -1265,29 +1324,43 @@ def simulation_aligned_genome(dna_type, min_l, max_l, median_l, sd_l, out_reads,
                     tail = remainder - head
 
                 # Extract middle region from reference genome
+                num_seg = len(seg_length_list)
+                new_seg_list = [None] * num_seg
+                read_name_components = [None] * num_seg
+                for seg_idx in range(num_seg):
+                    new_seg_list[seg_idx], read_name_components[seg_idx] = extract_read(dna_type, seg_length_list[seg_idx])
+                new_read_name = ';'.join(read_name_components) + "_aligned_" + str(sequence_index)
+                
+                if num_seg > 1:
+                    new_read_name += "_chimeric"
+                
+                if is_reversed:
+                    new_read_name += "_R"
+                else:
+                    new_read_name += "_F"
+                
+                new_read_name += "_" + str(head) + \
+                                 "_" + ";".join(str(x) for x in seg_length_list) + \
+                                 "_" + str(tail)
+                
                 read_mutated = ""
-                new_read_name = ""
                 base_quals = []
-                for seg_idx in range(len(seg_length_list)):
-                    new_seg, new_seg_name = extract_read(dna_type, seg_length_list[seg_idx])
+                for seg_idx in range(num_seg):
                     # Mutate read
-                    new_seg = case_convert(new_seg)
+                    new_seg = case_convert(new_seg_list[seg_idx])
                     seg_mutated, seg_base_quals = \
-                        mutate_read(new_seg, new_seg_name, out_error, seg_error_dict_list[seg_idx],
+                        mutate_read(new_seg, new_read_name, out_error, seg_error_dict_list[seg_idx],
                                     seg_error_count_list[seg_idx], basecaller, read_type, fastq, kmer_bias)
 
                     if kmer_bias:
                         seg_mutated, seg_base_quals = mutate_homo(seg_mutated, seg_base_quals, kmer_bias, basecaller,
                                                                   None)
-                    new_read_name += new_seg_name + ';'
                     read_mutated += seg_mutated
                     base_quals.extend(seg_base_quals)
                     if seg_idx < len(gap_list):
                         read_mutated += gap_list[seg_idx]
                         base_quals.extend(gap_base_qual_list[seg_idx])
-                new_read_name = new_read_name + "aligned_" + str(sequence_index)
-                if len(seg_length_list) > 1:
-                    new_read_name += "_chimeric"
+
                 if fastq:  # Get head/tail qualities and add to base_quals
                     ht_quals = mm.trunc_lognorm_rvs("ht", read_type, basecaller, head + tail).tolist()
                     base_quals = ht_quals[:head] + base_quals + ht_quals[head:]
@@ -1297,19 +1370,11 @@ def simulation_aligned_genome(dna_type, min_l, max_l, median_l, sd_l, out_reads,
                            ''.join(np.random.choice(BASES, tail))
 
             # Reverse complement half of the reads
-            p = random.random()
-            if p > strandness_rate:
+            if is_reversed:
                 read_mutated = reverse_complement(read_mutated)
-                new_read_name += "_R"
                 base_quals.reverse()
-            else:
-                new_read_name += "_F"
 
-            if per:
-                out_reads.write(id_begin + new_read_name + "_0_" + str(sum(ref_length_list)) + "_0" + '\n')
-            else:
-                out_reads.write(id_begin + new_read_name + "_" + str(head) + "_" +
-                                ";".join(str(x) for x in seg_length_list) + "_" + str(tail) + '\n')
+            out_reads.write(id_begin + new_read_name + '\n')
             out_reads.write(read_mutated + '\n')
 
             if fastq:
@@ -1317,11 +1382,7 @@ def simulation_aligned_genome(dna_type, min_l, max_l, median_l, sd_l, out_reads,
                 out_quals = "".join([chr(qual + 33) for qual in base_quals])
                 out_reads.write(out_quals + "\n")
 
-            if (sequence_index + 1) % 100 == 0:
-                sys.stdout.write(strftime("%Y-%m-%d %H:%M:%S") + ": Number of reads simulated >> " +
-                                 str(sequence_index + 1) + "\r")
-                # +1 is just to ignore the zero index by python
-                sys.stdout.flush()
+            check_print_progress(sequence_index)
 
             passed += 1
 
@@ -1386,7 +1447,7 @@ def simulation_unaligned(dna_type, min_l, max_l, median_l, sd_l, out_reads, base
 
             out_reads.write(id_begin + new_read_name + "_0_" + str(middle_ref) + "_0" + '\n')
             if uracil:
-                read_mutated = read_mutated.translate(trantab)
+                read_mutated = read_mutated.traslate(trantab)
             out_reads.write(read_mutated + "\n")
 
             if fastq:
@@ -1394,11 +1455,8 @@ def simulation_unaligned(dna_type, min_l, max_l, median_l, sd_l, out_reads, base
                 out_quals = "".join([chr(qual + 33) for qual in base_quals])
                 out_reads.write(out_quals + "\n")
 
-            if (sequence_index + 1) % 100 == 0:
-                sys.stdout.write(strftime("%Y-%m-%d %H:%M:%S") + ": Number of reads simulated >> " +
-                                 str(sequence_index + 1) + "\r")
-                # +1 is just to ignore the zero index by python
-                sys.stdout.flush()
+            check_print_progress(sequence_index)
+            
             passed += 1
 
         remaining_reads = num_simulate - passed
