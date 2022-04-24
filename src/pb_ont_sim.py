@@ -217,7 +217,7 @@ def ont_simulation(args):
         "-o",
         os.path.join(args.dir, "ONT_simulated"),
         "-n",
-        str(args.long_count*2),
+        str(args.long_count),
         "-r",
         r_type,
         "-b",

@@ -1043,6 +1043,7 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
     for ref_trx, ref_trx_len in ecdf_length_list: # Simulate x reads for each trans (Modified for SQANTI-SIM)
         trans_n_reads = int(round((dict_exp[ref_trx]*num_simulate)/1000000))
         for i in range(trans_n_reads):
+            tries = 0
             while True:            
                 # select a random reference transcript
                 #ref_trx, ref_trx_len = random.choices(ecdf_length_list, weights=ecdf_weight_list, k=1)[0]
@@ -1066,6 +1067,12 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                     ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
                     if ref_len_aligned < ref_trx_len:
                         break
+                    elif tries >= 10: # If more than 10 tries, get all the transcript length (Modified SQANTI-SIM)
+                        ref_len_aligned = ref_trx_len
+                        break
+                    else:
+                        trx_sampled.add(ref_trx) # Sample again from the length kde (Modified SQANTI-SIM)
+                        tries += 1
             
             # associate the transcript ID to the KDE sample
             trx_sampled.add(ref_trx)
