@@ -7,7 +7,6 @@
 </p>
 
 <p align="center">
-  <br>
   <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki2.md">Installation</a>
   ·
   <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki1.md">Documentation</a>

@@ -8,7 +8,13 @@ The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a contr
 
 SQANTI-SIM transcript classification is based on the structural categories defined by SQANTI3. A detailed explanation of the SQANTI3 structural categories can be found in the [SQANTI3 wiki](). As a brief summary, degradated transcripts which have fewer 5' start and/or 3' end exons are classified as an *Incomplete Splice Match* (ISM). On the other hand, novel isoforms are mainly classified as *Novel In Catalog* (NIC) or *Novel Not in Catalog* (NNC). NIC isoforms use a new combination of known donor/acceptor sites, while NNC isoforms have at least one donor or acceptor site that is not annotated. With SQANTI-SIM we are also able to simulate all the rest structural categories defined by SQANTI3.
 
-<figure><img src="https://github.com/FJPardoPalacios/public_figures/blob/master/figuras_class_SQ3.png" alt="Trulli" style="width:100%"><figcaption align = "center"><b>Figure taken from the SQANTI3 wiki</b></figcaption></figure>
+<p align = "center">
+<img src="https://github.com/FJPardoPalacios/public_figures/blob/master/figuras_class_SQ3.png" alt="Trulli" style="width:100%">
+</p>
+
+<p align = "center">
+Figure taken from the SQANTI3 wiki
+</p>
 
 ### How it works?
 
