@@ -138,7 +138,7 @@ def ont_simulation(args):
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",
     )
-    requested_counts = defaultdict(lambda: 0)
+    requested_tpm = defaultdict(lambda: 0)
     n = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
@@ -153,7 +153,7 @@ def ont_simulation(args):
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
             n += int(line[i])
-            requested_counts[line[0]] = line[j]
+            requested_tpm[line[0]] = line[j]
     idx.close()
     f_out.close()
 
@@ -161,8 +161,9 @@ def ont_simulation(args):
         args.long_count = n
     
     mill_reads = args.long_count/1000000
-    for i in requested_counts:
-        requested_counts[i] = int(round(mill_reads * float(requested_counts[i])))
+    requested_counts = defaultdict(lambda: 0)
+    for i in requested_tpm:
+        requested_counts[i] = int(round(mill_reads * float(requested_tpm[i])))
 
     if os.path.isdir(args.dir):
         print("WARNING: output direcory already exists. Overwritting!")

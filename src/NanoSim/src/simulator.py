@@ -1115,9 +1115,15 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                 middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
                                                                             match_ht_list, error_par, trans_error_pr,
                                                                             fastq)
-
-                if middle_ref > ref_trx_len:
+                '''
+                if middle_ref > ref_trx_len: # Modified for SQANTI-SIM
                     continue
+                '''
+
+                while middle_ref > ref_trx_len:
+                    middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
+                                                                                  match_ht_list, error_par, trans_error_pr,
+                                                                                  fastq)
 
                 with total_simulated.get_lock():
                     sequence_index = total_simulated.value
