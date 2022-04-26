@@ -138,7 +138,6 @@ def ont_simulation(args):
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",
     )
-    requested_tpm = defaultdict(lambda: 0)
     n = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
@@ -153,17 +152,11 @@ def ont_simulation(args):
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
             n += int(line[i])
-            requested_tpm[line[0]] = line[j]
     idx.close()
     f_out.close()
 
     if not args.long_count:
         args.long_count = n
-    
-    mill_reads = args.long_count/1000000
-    requested_counts = defaultdict(lambda: 0)
-    for i in requested_tpm:
-        requested_counts[i] = int(round(mill_reads * float(requested_tpm[i])))
 
     if os.path.isdir(args.dir):
         print("WARNING: output direcory already exists. Overwritting!")
@@ -203,7 +196,6 @@ def ont_simulation(args):
 
     print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
     
-    # WARNING: NanoSim does not simulate exactly the TPMs you ask for. str(args.long_count*2) to oversimulate and sample after the requested number of reads
     cmd = [
         nanosim,
         "transcriptome",
@@ -269,10 +261,8 @@ def ont_simulation(args):
     f_name = os.path.join(args.dir, "ONT_simulated.fastq")
     f_out = open(f_name, "w")
 
-    # Sample from the oversimulated reads and rename reads
     for f in fastqs:
         f_in = open(f, "r")
-        write_seq = True
         for line in f_in:
             if line.startswith("@"):
                 line = line.lstrip("@")
@@ -286,19 +276,13 @@ def ont_simulation(args):
                 else:
                     trans_id = ref_dict[trans_id]
 
-                if requested_counts[trans_id] > 0:
-                    id_counts[trans_id] += 1
-                    read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
-                    n_read += 1
-                    pair_id.append((read_id, trans_id))
+                read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
+                n_read += 1
+                pair_id.append((read_id, trans_id))
 
-                    f_out.write("@{}\n".format(read_id))
+                f_out.write("@{}\n".format(read_id))
 
-                    requested_counts[trans_id] -= 1
-                    write_seq = True
-                else:
-                    write_seq = False
-            elif write_seq:
+            else:
                 f_out.write(line)
     f_in.close()
     f_out.close()
