@@ -194,13 +194,26 @@ def ont_simulation(args):
                 "Unpacking NanoSim pre-trained model failed", file=sys.stderr
             )
 
+    # Extract fasta transcripts
+    print("[SQANTI-SIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
+    if os.path.exists(ref_t):
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+
+    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
+    cmd = " ".join(cmd)
+    sys.stdout.flush()
+    if subprocess.check_call(cmd, shell=True) != 0:
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        sys.exit(1)
+
     print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
     
     cmd = [
         nanosim,
         "transcriptome",
         "-rt",
-        str(args.rt),
+        str(ref_t),
         "-rg",
         str(args.genome),
         "-e",
@@ -310,7 +323,19 @@ def illumina_simulation(args):
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
-    print("[SQANTI-SIM] Simulating Illumina reads")
+    # Extract fasta transcripts
+    print("[SQANTI-SIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
+    if os.path.exists(ref_t):
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+
+    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
+    cmd = " ".join(cmd)
+    sys.stdout.flush()
+    if subprocess.check_call(cmd, shell=True) != 0:
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        sys.exit(1)
+
     print("[SQANTI-SIM] Preparing expression matrix")
 
     count_d = defaultdict(float)
@@ -336,7 +361,7 @@ def illumina_simulation(args):
 
     expr_f = os.path.join(args.dir, "tmp_expression.tsv")
     f_out = open(expr_f, "w")
-    with open(args.rt, "r") as rt:
+    with open(ref_t, "r") as rt:
         for line in rt:
             if line.startswith(">"):
                 line = line[1:].strip()
@@ -349,13 +374,13 @@ def illumina_simulation(args):
     rt.close()
     f_out.close()
 
-    print("[SQANTI-SIM] Simulating with Polyester")
+    print("[SQANTI-SIM] Simulating Illumina reads with Polyester")
     src_dir = os.path.dirname(os.path.realpath(__file__))
 
     cmd = [
         "Rscript",
         os.path.join(src_dir, "polyester_sim.R"),
-        args.rt,
+        ref_t,
         expr_f,
         args.dir,
         str(args.seed),

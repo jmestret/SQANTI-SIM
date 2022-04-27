@@ -17,6 +17,7 @@ import subprocess
 import sys
 from collections import defaultdict
 
+MIN_SIM_LEN = 200 # Minimum length of transcripts to simulate
 
 def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
     """
@@ -51,6 +52,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
     # Build a dict with all transcripts classified in each structural category
     with open(f_idx, "r") as cat:
         col_names = cat.readline()
+        col_names = col_names.split()
         for line in cat:
             line_split = line.split()
             gene = line_split[1]
@@ -73,6 +75,11 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
                 SC = trans[2]
                 ref_g = trans[3]
                 ref_t = trans[4]
+                TSS = int(trans[col_names.index("TSS_genomic_coord")])
+                TTS = int(trans[col_names.index("TTS_genomic_coord")])
+
+                if abs(TSS - TTS) <= MIN_SIM_LEN: # Dont simulate small transcripts
+                    continue
 
                 if (
                     SC in ["full-splice_match", "incomplete-splice_match"]
@@ -427,6 +434,17 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             coverage = 0
         return coverage
 
+    # Extract fasta transcripts
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
+    if os.path.exists(ref_t):
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+
+    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
+    cmd = " ".join(cmd)
+    sys.stdout.flush()
+    if subprocess.check_call(cmd, shell=True) != 0:
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        sys.exit(1)
 
     # Align with minimap
     sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
@@ -434,7 +452,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     if tech == "pb":
         cmd = [
             "minimap2",
-            args.rt,
+            ref_t,
             args.pb_reads,
             "-x",
             "map-pb",
@@ -446,7 +464,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     elif tech == "ont":
         cmd = [
             "minimap2",
-            args.rt,
+            ref_t,
             args.ont_reads,
             "-x",
             "map-ont",
@@ -459,7 +477,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     cmd = " ".join(cmd)
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTI-SIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
     # Count only primary alignments
@@ -477,6 +495,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 continue
             trans_counts[trans_id] += 1
     os.remove(sam_file)
+    os.remove(ref_t)
 
     # Get expression distribution
     expr_distr = list(trans_counts.values())

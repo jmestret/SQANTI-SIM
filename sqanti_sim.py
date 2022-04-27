@@ -117,7 +117,6 @@ def preparatory(input: list):
     parser_s.add_argument( "-o", "--output", default=str(), help="\t\tPrefix for output files" )
     parser_s.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser_s.add_argument( "-nt", "--trans_number", default=None, type=int, help="\t\tNumber of different transcripts to simulate", )
-    parser_s.add_argument( "--rt", default=str(), type=str, help="\t\tReference transcripts in FASTA format", )
     group = parser_s.add_mutually_exclusive_group()
     group.add_argument( "--pb_reads", default=str(), type=str, help="\t\tInput PacBio reads for quantification", )
     group.add_argument( "--ont_reads", default=str(), type=str, help="\t\tInput ONT reads for quantification", )
@@ -164,7 +163,6 @@ def preparatory(input: list):
 
     elif args.mode == "sample":
         print("[SQANTI-SIM] -Mode: sample")
-        print("[SQANTI-SIM] -Reference transcriptome: %s" %(args.rt))
         if args.pb_reads:
             print("[SQANTI-SIM] -PacBio reads: %s" %(args.pb_reads))
         else:
@@ -228,7 +226,6 @@ def sim(input: list):
     parser = argparse.ArgumentParser( prog="sqanti_sim.py sim", description="sqanti_sim.py sim parse options" )
     parser.add_argument( "--gtf", type=str, help="\t\tReference annotation in GTF format", required=True, )
     parser.add_argument( "--genome", default=False, help="\t\tReference genome FASTA", required=True, )
-    parser.add_argument( "--rt", default=str(), type=str, help="\t\tReference transcripts in FASTA format (required for simulating ONT or Illumina reads)", )
     parser.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
     parser.add_argument( "--read_type", default="dRNA", type=str, help="\t\tRead type for NanoSim simulation", )
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
@@ -249,13 +246,6 @@ def sim(input: list):
             "[SQANTI-SIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
             file=sys.stderr,
         )
-
-    if (args.ont or args.illumina) and not args.rt:
-        print(
-            "[SQANTI-SIM] sqanti_sim.py sim ERROR: the following arguments are required when using --ont or --illumina: --rt",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     # Simulation with IsoSeqSim, NanoSim and/or Polyester
     random.seed(args.seed)
