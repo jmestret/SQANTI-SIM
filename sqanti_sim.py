@@ -6,7 +6,7 @@ Wrapper for long-read RNA-seq simulators (NanoSim and IsoSeqSim) to simulate
 controlled novelty and degradation of transcripts based on SQANTI3 structural
 categories
 
-@author Jorge Martinez Tomas (jormart2@alumni.uv.es)
+@author Jorge Mestre Tomas (jormart2@alumni.uv.es)
 @date 19/01/2022
 """
 
@@ -27,8 +27,8 @@ from src import sqanti3_stats
 def classif(input: list):
     """Classify transcripts in SQANTI3 structural categories
 
-    Given a GTF annotation generates an index file with the SQANTI3 structural
-    category to simulate of each transcript
+    Given a GTF annotation generates an index file with the potential SQANTI3
+    structural category of each transcript
 
     Args:
         input (list): arguments to parse
@@ -50,7 +50,13 @@ def classif(input: list):
             file=sys.stderr,
         )
 
-    # Classify GTF transcripts in SQANTI3 structural categories
+    print("[SQANTI-SIM] Running with the following parameters:")
+    print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+    print("[SQANTI-SIM] - Out prefix:", str(args.output))
+    print("[SQANTI-SIM] - Out dir:", str(args.dir))
+    print("[SQANTI-SIM] - Nº threads:", str(args.cores))
+
+    print("[SQANTI-SIM] Classifying transcripts in structural categories\n")
     trans_info = classif_gtf.classify_gtf(args)
     
     print("[SQANTI-SIM] Summary table from categorization\n")
@@ -147,26 +153,45 @@ def preparatory(input: list):
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir)
 
-    print("[SQANTI-SIM] Parameters for expression file:")
+    print("[SQANTI-SIM] Running with the following parameters:")
     if args.mode == "equal":
         print("[SQANTI-SIM] -Mode: equal")
-        print("[SQANTI-SIM] -Nº transcripts: %s" %(args.trans_number))
-        print("[SQANTI-SIM] -Nº reads: %s" %(args.read_count))
+        print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+        print("[SQANTI-SIM] - Out prefix:", str(args.output))
+        print("[SQANTI-SIM] - Out dir:", str(args.dir))
+        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
+        print("[SQANTI-SIM] - Nº reads:", str(args.read_count))
 
     elif args.mode == "custom":
         print("[SQANTI-SIM] -Mode: custom")
-        print("[SQANTI-SIM] -Nº transcripts: %s" %(args.trans_number))
-        print("[SQANTI-SIM] -Known NB mean count: %s" %(args.nbn_known))
-        print("[SQANTI-SIM] -Known NB probability: %s" %(args.nbp_known))
-        print("[SQANTI-SIM] -novel NB mean count: %s" %(args.nbn_novel))
-        print("[SQANTI-SIM] -novel NB probability: %s" %(args.nbp_novel))
+        print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+        print("[SQANTI-SIM] - Out prefix:", str(args.output))
+        print("[SQANTI-SIM] - Out dir:", str(args.dir))
+        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
+        print("[SQANTI-SIM] - Known NB mean count:", str(args.nbn_known))
+        print("[SQANTI-SIM] - Known NB probability:", str(args.nbp_known))
+        print("[SQANTI-SIM] - Novel NB mean count:", str(args.nbn_novel))
+        print("[SQANTI-SIM] - Novel NB probability:", str(args.nbp_novel))
 
     elif args.mode == "sample":
         print("[SQANTI-SIM] -Mode: sample")
+        print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+        print("[SQANTI-SIM] - Out prefix:", str(args.output))
+        print("[SQANTI-SIM] - Out dir:", str(args.dir))
+        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
         if args.pb_reads:
-            print("[SQANTI-SIM] -PacBio reads: %s" %(args.pb_reads))
+            print("[SQANTI-SIM] -PacBio reads:", str(args.pb_reads))
         else:
-            print("[SQANTI-SIM] -ONT reads: %s" %(args.ont_reads))
+            print("[SQANTI-SIM] -ONT reads:", str(args.ont_reads))
+
+    print("[SQANTI-SIM] - Nº threads:", str(args.cores))
+    print("[SQANTI-SIM] - Seed:", str(args.seed))
+
+    print("[SQANTI-SIM]\tISM\tNIC\tNNC\tFusion\tAntisense\tGG\tGI\tIntergenic")
+    print("[SQANTI-SIM]\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" %(
+        str(args.ISM), str(args.NIC), str(args.NNC), str(args.Fusion),
+        str(args.Antisense), str(args.GG), str(args.GI), str(args.Intergenic)
+    ))
 
     if not args.output:
         output = os.path.basename(args.trans_index).split("_")
