@@ -15,36 +15,26 @@ def main(args):
 	bp5_list,pro5_list,bp3_list,pro3_list = extract_read_completeness(args.cpt_5end,args.cpt_3end)
 	input_gpd_fl = args.input_gpd
 	#output_gpd_fl = args.output
-	output_fasta = open(args.output + ".fasta", "w")
-	#output_read_info = open(args.output + ".read_to_isoform.tsv", "w")
+	output_fasta_fl = open(args.output + ".fasta", "w")
 	dic_iso_seq,iso_list = parse_transcriptome_fa(args.input_fa)
 	p = Pool(processes=args.cpu)
 	csize = 100
 	results = p.imap(func=generate_simulated_reads,iterable=generate_tx(input_gpd_fl,dic_iso_seq,iso_list,error_type,error_prob,bp5_list,pro5_list,bp3_list,pro3_list),chunksize=csize)
 	
-	read_counter = 0
-	#isoform_counts = defaultdict(lambda: int())
+	# Write in fasta format (Modified for SQANTI-SIM)
+	n_reads = 0
 	for res in results:
 		if not res: continue
-		#output_gpd_fl.write(res+"\n")
+			#output_gpd_fl.write(res+"\n")
 	#output_gpd_fl.close()
 		for read in res:
-			read_seq = read[0]
-			isoform_id = read[1]
-			read_id = isoform_id + '_PacBio_simulated_read_' + str(read_counter)
-			#read_id = "PacBio_simulated_read_" + str(read_counter)
-			read_counter += 1
-			output_fasta.write(">" + read_id + "\n" + read_seq + "\n")
-			#output_read_info.write(read_id + "\t" + isoform_id + "\n")
-			#isoform_counts[isoform_id] += 1
+			seq = str(read[0])
+			id = str(read[1])
+			id = id + '_PacBio_simulated_read_' + str(n_reads)
+			output_fasta_fl.write(">" + id + "\n" + seq + "\n")
+			n_reads += 1
 
-	#output_counts = open(args.output + ".isoform_counts.tsv", "w")
-	#for isoform_id in isoform_counts:
-	#	output_counts.write(isoform_id + "\t" + str(isoform_counts[isoform_id]) + "\n")
-		
-	#output_counts.close()
-	output_fasta.close()
-	#output_read_info.close()
+	output_fasta_fl.close()
 	
 	sys.stdout.write("Finish analysis: " + time.strftime("%a,%d %b %Y %H:%M:%S") + "\n")
 	sys.stdout.flush()
@@ -144,31 +134,30 @@ def generate_simulated_reads(inputs):
 	if int(read_count) != 0:
 		read_seq = dic_iso_seq[iso]
 		#simu_fa_all_lines_list = []
-		generated_reads = []
+		sim_reads = []
 		for i in range(0,int(read_count)):
 			simu_fa_seq_line_list = []
-			read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
-			read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
+			read_seq_muta = mutate_read(read_seq,error_type,error_prob)
 			read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
-			if read_seq_muta_end == "":
-				tries = 0
-				while read_seq_muta_end == "" and tries < 10:
-					read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
-					read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
-					read_seq_muta_end = mutate_read_ends(read_seq_muta,bp5_list,pro5_list,bp3_list,pro3_list)
-					tries += 1
-			if read_seq_muta_end == "":
-				read_seq_polya = read_seq + 'A' * np.random.randint(20, 101) # Add polyA tale before mutate
-				read_seq_muta = mutate_read(read_seq_polya,error_type,error_prob)
+
+			if read_seq_muta_end == "": # If mutating start/end deletes read, sim whole transcript (Modified for SQANTI-SIM)
+				read_seq_muta_end = read_seq_muta
+
 			if read_seq_muta_end != "":
 				lr_idx += 1
+				#simu_fa_name_line = ">LR" + str(iso_list.index(iso)+1) + "." + str(lr_idx) + " " + iso + "\n"
 				for j in range(0,len(read_seq_muta_end),80):
 					simu_fa_seq_line_list.append(read_seq_muta_end[j:j+80])
-					
+				#simu_fa_line = simu_fa_name_line + "\n".join(simu_fa_seq_line_list)
+				#simu_fa_all_lines_list.append(simu_fa_line)
 				simu_fa_line = "\n".join(simu_fa_seq_line_list)
-				generated_reads.append((simu_fa_line, iso))
-		if generated_reads != []:
-			return generated_reads
+				sim_reads.append((simu_fa_line, iso))
+
+		#if simu_fa_all_lines_list != []:
+			#simu_fa_all_lines = "\n".join(simu_fa_all_lines_list)
+			#return simu_fa_all_lines
+		if sim_reads != []:
+			return sim_reads		
 		else:
 			return None
 	else:

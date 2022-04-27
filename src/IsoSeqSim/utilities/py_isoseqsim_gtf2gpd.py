@@ -3,9 +3,7 @@
 # NOTE: this file was modified to fit the SQANTI-SIM pipeline
 # Contributor: Jorge Mestre
 
-import sys
-import time
-import argparse
+import sys,time,argparse
 
 
 def main(args):
@@ -15,7 +13,6 @@ def main(args):
 	output_gpd(dic_iso_info,args.output)
 	sys.stdout.write("Finish analysis: " + time.strftime("%a,%d %b %Y %H:%M:%S") + "\n")
 	sys.stdout.flush()
-
 	
 def extract_iso_info(gtf_file): # extract the exonic regions for each isoform
 	dic_iso_info = {}
@@ -41,9 +38,9 @@ def extract_iso_info(gtf_file): # extract the exonic regions for each isoform
 					dic_iso_info[chr_strand][transcript_id]["exon_end"] = []
 				dic_iso_info[chr_strand][transcript_id]["exon_start"].append(int(start)-1)
 				dic_iso_info[chr_strand][transcript_id]["exon_end"].append(int(end))
+	
 	gtf_file.close()
 	return dic_iso_info
-	
 
 def output_gpd(dic_iso_info,gpd_file): # print each isoform by gpd format
 	for chr_strand in dic_iso_info.keys():
@@ -62,17 +59,17 @@ def output_gpd(dic_iso_info,gpd_file): # print each isoform by gpd format
 
 def do_inputs():
 	output_gpd_format = '''
-		1. gene id
-		2. isoform id
-		3. chromosome id
-		4. strand
-		5. TSS
-		6. TTS
-		7. .
-		8. .
-		9. exon count
-		10. exon start set
-		11. exon end set'''
+1. gene id
+2. isoform id
+3. chromosome id
+4. strand
+5. TSS
+6. TTS
+7. .
+8. .
+9. exon count
+10. exon start set
+11. exon end set'''
 	parser = argparse.ArgumentParser(description="Convert gtf to gpd. Note: considering gene duplication, wherein multiple genic loci (from same/different chromosome) use same isoform ID (e.g. RefSeq annotation library), make sure the isoform ID is unique for differet genic locus. For human, suggest to use Ensembl or GENCODE annotation library.",formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-i','--input',type=argparse.FileType('r'),required=True,help="Input: gtf file")
 	parser.add_argument('-o','--output',type=argparse.FileType('w'),required=True,help="Output: gpd file")
