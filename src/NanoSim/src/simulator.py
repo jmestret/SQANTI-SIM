@@ -6,6 +6,7 @@ Last modified: 26/04/2022 by Jorge Mestre SQANTI-SIM (
     fix: str.traslate to str.translate method line 1456,
     adapt: only sim aligned reads line 519,
     adapt: sim for each transcript (tpm*total_reads_to_sim)/1000000 reads
+    adapt: get full trans id instead of splitting
 )
 """
 
@@ -347,8 +348,10 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
             for seqN, seqS, seqQ in readfq(infile):
                 info = re.split(r'[_\s]\s*', seqN)
                 chr_name = "-".join(info)
-                seq_dict[chr_name.split(".")[0]] = seqS
-                seq_len[chr_name.split(".")[0]] = len(seqS)
+                #seq_dict[chr_name.split(".")[0]] = seqS
+                #seq_len[chr_name.split(".")[0]] = len(seqS)
+                seq_dict[seqN] = seqS
+                seq_len[seqN] = len(seqS)
                 if len(seqS) > max_chrom:
                     max_chrom = len(seqS)
 
@@ -394,7 +397,8 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
                 if len(parts) < 3:
                     sys.stderr.write("Expression profile must contain 3 columns: ID, count, TPM \n")
                     sys.exit(1)
-                transcript_id = parts[0].split(".")[0]
+                #transcript_id = parts[0].split(".")[0]
+                transcript_id = parts[0]
                 tpm = float(parts[2])
                 if tpm > 0:
                     dict_exp[transcript_id] = tpm
@@ -997,7 +1001,8 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
             if len(parts) < 3:
                 sys.stderr.write("Expression profile must contain 3 columns: ID, count, TPM \n")
                 sys.exit(1)
-            transcript_id = parts[0].split(".")[0]
+            #transcript_id = parts[0].split(".")[0]
+            transcript_id = parts[0]
             tpm = float(parts[2])
             if tpm > 0:
                 dict_exp[transcript_id] = tpm
