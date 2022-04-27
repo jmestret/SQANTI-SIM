@@ -77,6 +77,7 @@ def sqanti3_stats(args: list):
         "--min_ref_len",
         str(min_ref_len),
         "--force_id_ignore",
+        "--skipORF",
     ]
 
     if args.cage_peak:
