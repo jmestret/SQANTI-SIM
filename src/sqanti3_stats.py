@@ -14,6 +14,8 @@ import sys
 from collections import defaultdict
 from src.SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS
 from src.SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
+from time import strftime
+
 
 
 def sqanti3_stats(args: list):
@@ -58,7 +60,7 @@ def sqanti3_stats(args: list):
                 min_cov = total_coverage_unique
         return min_cov
 
-    print("[SQANTI-SIM] Running SQANTI3")
+    print("[SQANTI-SIM][%s] Running SQANTI3" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, "SQANTI3/sqanti3_qc.py")
 
@@ -87,10 +89,6 @@ def sqanti3_stats(args: list):
     if args.short_reads:
         cmd.append("--short_reads")
         cmd.append(args.short_reads)
-    
-    if args.STAR_index:
-        cmd.append("--STAR_index")
-        cmd.append(args.STAR_index)
 
     cmd = " ".join(cmd)
     sys.stdout.flush()
@@ -100,7 +98,7 @@ def sqanti3_stats(args: list):
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
     if args.cage_peak:
-        print("[SQANTI-SIM] Parsing CAGE Peak data")
+        print("[SQANTI-SIM][%s] Parsing CAGE Peak data" %(strftime("%d-%m-%Y %H:%M:%S")))
         cage_peak_data = CAGEPeak(args.cage_peak)
 
         within_cage_dict = defaultdict(lambda: False)
@@ -129,12 +127,9 @@ def sqanti3_stats(args: list):
         )
 
     if args.short_reads:
-        print("[SQANTI-SIM] Parsing Short Read data")
+        print("[SQANTI-SIM][%s] Parsing Short Read data" %(strftime("%d-%m-%Y %H:%M:%S")))
         star_out = os.path.join(args.dir, "STAR_mapping/")
-        if args.STAR_index:
-            star_index = args.STAR_index
-        else:
-            star_index = os.path.join(args.dir, "STAR_index/")
+        star_index = os.path.join(args.dir, "STAR_index/")
 
         # Short Read Coverage
         SJcovNames, SJcovInfo = STARcov_parser(star_out)
@@ -156,7 +151,7 @@ def sqanti3_stats(args: list):
         args.trans_index, sep="\t", na_rep="NA", header=True, index=False
     )
 
-    print("[SQANTI-SIM] Generating SQANTI-SIM report")
+    print("[SQANTI-SIM][%s] Generating SQANTI-SIM report" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
     classification_file = os.path.join(
         args.dir, (args.output + "_classification.txt")

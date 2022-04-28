@@ -22,6 +22,7 @@ from src import classif_gtf
 from src import pb_ont_sim
 from src import sim_preparatory
 from src import sqanti3_stats
+from time import strftime
 
 
 def classif(input: list):
@@ -50,19 +51,19 @@ def classif(input: list):
             file=sys.stderr,
         )
 
-    print("[SQANTI-SIM] Running with the following parameters:")
+    print("\n[SQANTI-SIM] Running with the following parameters:")
     print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
     print("[SQANTI-SIM] - Out prefix:", str(args.output))
     print("[SQANTI-SIM] - Out dir:", str(args.dir))
-    print("[SQANTI-SIM] - Nº threads:", str(args.cores))
+    print("[SQANTI-SIM] - N threads:", str(args.cores))
 
-    print("[SQANTI-SIM] Classifying transcripts in structural categories\n")
+    print("[SQANTI-SIM][%s] Classifying transcripts in structural categories" %(strftime("%d-%m-%Y %H:%M:%S")))
     trans_info = classif_gtf.classify_gtf(args)
     
-    print("[SQANTI-SIM] Summary table from categorization\n")
+    print("[SQANTI-SIM] Summary table from categorization")
     classif_gtf.summary_table_cat(trans_info)
 
-    print("[SQANTI-SIM] classif step finished succesfully")
+    print("[SQANTI-SIM][%s] classif step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
 
 def preparatory(input: list):
@@ -123,6 +124,7 @@ def preparatory(input: list):
     parser_s.add_argument( "-o", "--output", default=str(), help="\t\tPrefix for output files" )
     parser_s.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser_s.add_argument( "-nt", "--trans_number", default=None, type=int, help="\t\tNumber of different transcripts to simulate", )
+    parser_s.add_argument( "--genome", default=str(), type=str, help="\t\tReference genome FASTA", required=True, )
     group = parser_s.add_mutually_exclusive_group()
     group.add_argument( "--pb_reads", default=str(), type=str, help="\t\tInput PacBio reads for quantification", )
     group.add_argument( "--ont_reads", default=str(), type=str, help="\t\tInput ONT reads for quantification", )
@@ -153,41 +155,42 @@ def preparatory(input: list):
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir)
 
-    print("[SQANTI-SIM] Running with the following parameters:")
+    print("\n[SQANTI-SIM] Running with the following parameters:")
     if args.mode == "equal":
-        print("[SQANTI-SIM] -Mode: equal")
+        print("[SQANTI-SIM] - Mode: equal")
         print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
         print("[SQANTI-SIM] - Out prefix:", str(args.output))
         print("[SQANTI-SIM] - Out dir:", str(args.dir))
-        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
-        print("[SQANTI-SIM] - Nº reads:", str(args.read_count))
+        print("[SQANTI-SIM] - N transcripts:", str(args.trans_number))
+        print("[SQANTI-SIM] - N reads:", str(args.read_count))
 
     elif args.mode == "custom":
-        print("[SQANTI-SIM] -Mode: custom")
+        print("[SQANTI-SIM] - Mode: custom")
         print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
         print("[SQANTI-SIM] - Out prefix:", str(args.output))
         print("[SQANTI-SIM] - Out dir:", str(args.dir))
-        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
+        print("[SQANTI-SIM] - N transcripts:", str(args.trans_number))
         print("[SQANTI-SIM] - Known NB mean count:", str(args.nbn_known))
         print("[SQANTI-SIM] - Known NB probability:", str(args.nbp_known))
         print("[SQANTI-SIM] - Novel NB mean count:", str(args.nbn_novel))
         print("[SQANTI-SIM] - Novel NB probability:", str(args.nbp_novel))
 
     elif args.mode == "sample":
-        print("[SQANTI-SIM] -Mode: sample")
+        print("[SQANTI-SIM] - Mode: sample")
         print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+        print("[SQANTI-SIM] - Ref genome:", str(args.genome))
         print("[SQANTI-SIM] - Out prefix:", str(args.output))
         print("[SQANTI-SIM] - Out dir:", str(args.dir))
-        print("[SQANTI-SIM] - Nº transcripts:", str(args.trans_number))
+        print("[SQANTI-SIM] - N transcripts:", str(args.trans_number))
         if args.pb_reads:
-            print("[SQANTI-SIM] -PacBio reads:", str(args.pb_reads))
+            print("[SQANTI-SIM] - PacBio reads:", str(args.pb_reads))
         else:
-            print("[SQANTI-SIM] -ONT reads:", str(args.ont_reads))
+            print("[SQANTI-SIM] - ONT reads:", str(args.ont_reads))
 
-    print("[SQANTI-SIM] - Nº threads:", str(args.cores))
+    print("[SQANTI-SIM] - N threads:", str(args.cores))
     print("[SQANTI-SIM] - Seed:", str(args.seed))
 
-    print("[SQANTI-SIM]\tISM\tNIC\tNNC\tFusion\tAntisense\tGG\tGI\tIntergenic")
+    print("[SQANTI-SIM]\tISM\tNIC\tNNC\tFusion\tAS\tGG\tGI\tIntergenic")
     print("[SQANTI-SIM]\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" %(
         str(args.ISM), str(args.NIC), str(args.NNC), str(args.Fusion),
         str(args.Antisense), str(args.GG), str(args.GI), str(args.Intergenic)
@@ -198,11 +201,12 @@ def preparatory(input: list):
         args.output = "_".join(output[:-1])
 
     # Modify GTF
+    print("[SQANTI-SIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
     random.seed(args.seed)
     numpy.random.seed(args.seed)
     counts_end = sim_preparatory.simulate_gtf(args)
 
-    print("[SQANTI-SIM] Deleted transcripts from GTF\n")
+    print("[SQANTI-SIM] Deleted transcripts from GTF")
     counts_ini = defaultdict(
         lambda: 0,
         {
@@ -220,7 +224,7 @@ def preparatory(input: list):
     sim_preparatory.summary_table_del(counts_ini, counts_end)
 
     # Generate expression matrix
-    print("[SQANTI-SIM] Generating expression matrix\n")
+    print("[SQANTI-SIM][%s] Generating expression matrix" %(strftime("%d-%m-%Y %H:%M:%S")))
     index_file = os.path.join(args.dir, (args.output + "_index.tsv"))
 
     if args.mode == "equal":
@@ -235,7 +239,7 @@ def preparatory(input: list):
         else:
             sim_preparatory.create_expr_file_sample(index_file, args, "ont")
 
-    print("[SQANTI-SIM] preparatory step finished succesfully")
+    print("[SQANTI-SIM][%s] preparatory step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
     
 
 def sim(input: list):
@@ -255,13 +259,12 @@ def sim(input: list):
     parser.add_argument( "--read_type", default="dRNA", type=str, help="\t\tRead type for NanoSim simulation", )
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
-    group = parser.add_mutually_exclusive_group()
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument( "--pb", action="store_true", help="\t\tIf used the program will simulate PacBio reads with IsoSeqSim", )
     group.add_argument( "--ont", action="store_true", help="\t\tIf used the program will simulate ONT reads with NanoSim", )
     parser.add_argument( "--illumina", action="store_true", help="\t\tIf used the program will simulate Illumina reads with RSEM", )
     parser.add_argument( "--long_count", default=None, type=int, help="\t\tNumber of long reads to simulate (if not given it will use the counts of the given expression file)", )
     parser.add_argument( "--short_count", default=None, type=int, help="\t\tNumber of short reads to simulate (if not given it will use the counts of the given expression file)", )
-    parser.add_argument( "--min_support", default=3, type=int, help="\t\tMinimum number of supporting reads for an isoform", )
     parser.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
 
     args, unknown = parser.parse_known_args(input)
@@ -271,19 +274,49 @@ def sim(input: list):
             "[SQANTI-SIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
             file=sys.stderr,
         )
+    
+    print("\n[SQANTI-SIM] Running with the following parameters:")
+    print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
+    print("[SQANTI-SIM] - Ref genome:", str(args.genome))
+    print("[SQANTI-SIM] - Index file:", str(args.trans_index))
+    print("[SQANTI-SIM] - Out dir:", str(args.dir))
+
+    if args.ont:
+        print("[SQANTI-SIM] - Platform: ONT")
+        print("[SQANTI-SIM] - Read type:", str(args.read_type))
+    else:
+        print("[SQANTI-SIM] - Platform: PacBio")
+    
+    if args.long_count:
+        print("[SQANTI-SIM] - Long reads:", str(args.long_count))
+    else:
+        print("[SQANTI-SIM] - Long reads: requested_counts from index file")
+    
+    if args.illumina:
+        print("[SQANTI-SIM] - Platform: Illumina")
+        if args.short_count:
+            print("[SQANTI-SIM] - Short reads:", str(args.short_count))
+        else:
+            print("[SQANTI-SIM] - Short reads: requested_counts from index file")
+
+    print("[SQANTI-SIM] - N threads:", str(args.cores))
+    print("[SQANTI-SIM] - Seed:", str(args.seed))
 
     # Simulation with IsoSeqSim, NanoSim and/or Polyester
     random.seed(args.seed)
     numpy.random.seed(args.seed)
 
     if args.pb:
+        print("[SQANTI-SIM][%s] Simulating PacBio reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.pb_simulation(args)
     if args.ont:
+        print("[SQANTI-SIM][%s] Simulating ONT reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.ont_simulation(args)
     if args.illumina:
+        print("[SQANTI-SIM][%s] Simulating Illumina reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.illumina_simulation(args)
 
-    print("[SQANTI-SIM] sim step finished succesfully")
+    print("[SQANTI-SIM][%s] sim step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
 
 def eval(input: list):
@@ -303,9 +336,9 @@ def eval(input: list):
     parser.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
     parser.add_argument( "-o", "--output", default="sqanti_sim", help="\t\tPrefix for output files", )
     parser.add_argument( "-d", "--dir", default=".", help="\t\tDirectory for output files (default: .)", )
-    parser.add_argument( "--short_reads", help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
-    parser.add_argument( "--cage_peak", help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
-    parser.add_argument('--STAR_index' , help='\t\t Directory of indexed genome by STAR', required=False)
+    parser.add_argument( "--short_reads", default=None, help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
+    parser.add_argument( "--cage_peak", default=None,help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
+    parser.add_argument( "--min_support", default=3, type=int, help="\t\tMinimum number of supporting reads for an isoform", )
     parser.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
 
     args, unknown = parser.parse_known_args(input)
@@ -316,9 +349,25 @@ def eval(input: list):
             file=sys.stderr,
         )
 
+    print("\n[SQANTI-SIM] Running with the following parameters:")
+    print("[SQANTI-SIM] - Reconstructed transcripts:", str(args.isoforms))
+    print("[SQANTI-SIM] - Modified ref GTF:", str(args.gtf))
+    print("[SQANTI-SIM] - Ref genome:", str(args.genome))
+    print("[SQANTI-SIM] - Index file:", str(args.trans_index))
+    print("[SQANTI-SIM] - Out prefix:", str(args.output))
+    print("[SQANTI-SIM] - Out dir:", str(args.dir))
+
+    if args.short_reads:
+        print("[SQANTI-SIM] - Short reads:", str(args.short_reads))
+    if args.cage_peak:
+        print("[SQANTI-SIM] - CAGE Peak:", str(args.cage_peak))
+    
+    print("[SQANTI-SIM] - Min support:", str(args.min_support))
+    print("[SQANTI-SIM] - N threads:", str(args.cores))
+
     sqanti3_stats.sqanti3_stats(args)
 
-    print("[SQANTI-SIM] eval step finished succesfully")
+    print("[SQANTI-SIM][%s] eval step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
 
 #####################################

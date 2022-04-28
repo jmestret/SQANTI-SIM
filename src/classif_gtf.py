@@ -1081,6 +1081,29 @@ def novelIsoformsKnownGenes(
                 isoforms_hit.subtype = "combination_of_known_junctions"
             else:
                 isoforms_hit.subtype = "combination_of_known_splicesites"
+                # For NIC the splice site can come from different ref genes
+                # Add those to ref
+                st_other_gene = []
+                other_ref_genes = set()
+                gene_st = [st for sj in junctions_by_gene[ref_genes[0]] for st in sj]
+                for d, a in trec.junctions:
+                    if d not in gene_st:
+                        st_other_gene.append(d)
+                    if a not in gene_st:
+                        st_other_gene.append(a)
+                
+                for g in junctions_by_gene:
+                    gene_st = [st for sj in junctions_by_gene[g] for st in sj]
+                    for st in gene_st:
+                        if st in st_other_gene:
+                            other_ref_genes.add(g)
+                            st_other_gene.remove(st)
+                    if len(st_other_gene) == 0:
+                        break
+                
+                for g in other_ref_genes:
+                    isoforms_hit.genes.append(g)
+          
         else:
             isoforms_hit.str_class = "novel_not_in_catalog"
             isoforms_hit.subtype = "at_least_one_novel_splicesite"
