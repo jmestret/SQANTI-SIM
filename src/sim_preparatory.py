@@ -8,6 +8,7 @@ Modifies index file and add expression values for the simulation step
 @date 03/03/2022
 """
 
+from unicodedata import category
 import numpy
 import os
 import pandas
@@ -65,84 +66,91 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
 
     # Select randomly the transcripts of each SC that are going to be deleted
     # It's important to make sure you don't delete its reference trans or gene
-    for SC in counts:
-        if counts[SC] > 0:
-            SCtrans = trans_by_SC[SC]
-            random.Random(seed).shuffle(SCtrans)
-            for trans in SCtrans:
-                trans_id = trans[0]
-                gene_id = trans[1]
-                SC = trans[2]
-                ref_g = trans[3]
-                ref_t = trans[4]
-                TSS = int(trans[col_names.index("TSS_genomic_coord")])
-                TTS = int(trans[col_names.index("TTS_genomic_coord")])
+    categories = list(counts.keys())
+    weight_list = []
+    for SC in categories:
+        weight_list.append(len(trans_by_SC[SC]))
+        random.shuffle(trans_by_SC[SC])
 
-                if abs(TSS - TTS) <= MIN_SIM_LEN: # Dont simulate small transcripts
-                    continue
+    while categories:
+        SC = random.choices(categories, weights=weight_list, k=1)
+        SC = SC[0]
+        if counts[SC] <= 0 or len(trans_by_SC[SC]) == 0:
+            i = categories.index(SC)
+            del categories[i]
+            del weight_list[i]
+        else:
+            trans = trans_by_SC[SC].pop()
+            trans_id = trans[0]
+            gene_id = trans[1]
+            SC = trans[2]
+            ref_g = trans[3]
+            ref_t = trans[4]
+            TSS = int(trans[col_names.index("TSS_genomic_coord")])
+            TTS = int(trans[col_names.index("TTS_genomic_coord")])
 
+            if abs(TSS - TTS) <= MIN_SIM_LEN: # Dont simulate small transcripts
+                continue
+
+            if (
+                SC in ["full-splice_match", "incomplete-splice_match"]
+                and counts[SC] > 0
+            ):
                 if (
-                    SC in ["full-splice_match", "incomplete-splice_match"]
-                    and counts[SC] > 0
+                    trans_id not in ref_trans
+                    and gene_id not in ref_genes
+                    and ref_t not in target_trans
                 ):
-                    if (
-                        trans_id not in ref_trans
-                        and gene_id not in ref_genes
-                        and ref_t not in target_trans
-                    ):
+                    target_trans.add(trans_id)
+                    target_genes.add(gene_id)
+                    ref_trans.add(ref_t)
+                    counts[SC] -= 1
+
+            elif (
+                SC
+                in [
+                    "novel_not_in_catalog",
+                    "genic_intron",
+                ]
+                and counts[SC] > 0
+            ):
+                if (
+                    trans_id not in ref_trans
+                    and gene_id not in ref_genes
+                    and gene_id not in target_genes
+                    and ref_g not in target_genes
+                ):
+                    target_trans.add(trans_id)
+                    target_genes.add(gene_id)
+                    ref_genes.add(ref_g)
+                    counts[SC] -= 1
+
+            elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"] and counts[SC] > 0:
+                if (
+                    trans_id not in ref_trans
+                    and gene_id not in ref_genes
+                    and gene_id not in target_genes
+                ):
+                    ref_g = trans[3].split("_")
+                    for i in ref_g:
+                        if i in target_genes:
+                            break
+                    else:
                         target_trans.add(trans_id)
                         target_genes.add(gene_id)
-                        ref_trans.add(ref_t)
-                        counts[SC] -= 1
-
-                elif (
-                    SC
-                    in [
-                        "novel_not_in_catalog",
-                        "genic_intron",
-                    ]
-                    and counts[SC] > 0
-                ):
-                    if (
-                        trans_id not in ref_trans
-                        and gene_id not in ref_genes
-                        and gene_id not in target_genes
-                        and ref_g not in target_genes
-                    ):
-                        target_trans.add(trans_id)
-                        target_genes.add(gene_id)
-                        ref_genes.add(ref_g)
-                        counts[SC] -= 1
-
-                elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"] and counts[SC] > 0:
-                    if (
-                        trans_id not in ref_trans
-                        and gene_id not in ref_genes
-                        and gene_id not in target_genes
-                    ):
-                        ref_g = trans[3].split("_")
                         for i in ref_g:
-                            if i in target_genes:
-                                break
-                        else:
-                            target_trans.add(trans_id)
-                            target_genes.add(gene_id)
-                            for i in ref_g:
-                                ref_genes.add(i)
-                            counts[SC] -= 1
-
-                elif SC == "intergenic" and counts[SC] > 0:
-                    if (
-                        trans_id not in ref_trans
-                        and gene_id not in ref_genes
-                        and gene_id not in target_genes
-                    ):
-                        target_trans.add(trans_id)
-                        target_genes.add(gene_id)
+                            ref_genes.add(i)
                         counts[SC] -= 1
 
-                if counts[SC] <= 0:
-                    break
+            elif SC == "intergenic" and counts[SC] > 0:
+                if (
+                    trans_id not in ref_trans
+                    and gene_id not in ref_genes
+                    and gene_id not in target_genes
+                ):
+                    target_trans.add(trans_id)
+                    target_genes.add(gene_id)
+                    counts[SC] -= 1
 
     final_target = target_trans
     for gene in trans_by_gene:
@@ -233,7 +241,7 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
 def simulate_gtf(args):
     """Generates the modified reference annotation"""
 
-    print("[SQANTI-SIM] Writting modified GTF\n")
+    print("[SQANTI-SIM] Writting modified GTF")
     counts = defaultdict(
         lambda: 0,
         {
@@ -276,7 +284,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
     print("\033[94m_" * 79 + "\033[0m")
     print("\033[92mS Q A N T I - S I M\033[0m \U0001F4CA")
     print()
-    print("GTF modification summary Table \U0001F50E")
+    print("Deleted transcripts from GTF \U0001F50E")
     print("\033[94m_" * 79 + "\033[0m")
     for k, v in counts_ini.items():
         print("\033[92m|\033[0m " + k + ": " + str(v))
@@ -321,7 +329,7 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
     tot_trans = len(novel_trans) + len(known_trans)
     if tot_trans != args.trans_number:
         print(
-            "Warning: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
+            "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (tot_trans)
         )
 
@@ -436,7 +444,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Extract fasta transcripts
     ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
     if os.path.exists(ref_t):
-        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+        print("[SQANTI-SIM] WARNING: %s already exists. Overwritting!" %(ref_t))
 
     cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
     cmd = " ".join(cmd)
@@ -591,5 +599,5 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("[SQANTI-SIM] -Nº transcripts: %s" %(len(expr_distr)))
-    print("[SQANTI-SIM] -Nº reads: %s" %(n_reads))
+    print("[SQANTI-SIM] Mapped transcripts: %s" %(len(expr_distr)))
+    print("[SQANTI-SIM] Mapped reads: %s" %(n_reads))

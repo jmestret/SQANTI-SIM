@@ -141,6 +141,7 @@ def ont_simulation(args):
     n = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
+    ref_trans = set()
     with open(args.trans_index, "r") as idx:
         header_names = idx.readline()
         header_names = header_names.split()
@@ -148,6 +149,7 @@ def ont_simulation(args):
         j = header_names.index("requested_tpm")
         for line in idx:
             line = line.split()
+            ref_trans.add(line[0])
             if int(line[i]) == 0:
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
@@ -244,25 +246,8 @@ def ont_simulation(args):
         sys.exit(1)
 
     os.remove(expr_f)
-    # Change short transcript id from NanoSim to original transcript id from the annotation
-    print("[SQANTI-SIM] Renaming and counting ONT reads")
-    ref_trans = set()
-    ref_dict = defaultdict(lambda: str())
-    with open(args.gtf, "r") as f_in:
-        for line in f_in:
-            if not line.startswith("#"):
-                line_split = line.split()
-                feature = line_split[2]
-                if feature == "exon":
-                    trans_id = line_split[
-                        line_split.index("transcript_id") + 1
-                    ]
-                    trans_id = trans_id.replace(";", "").replace('"', "")
-                    short_id = trans_id.split(".")[0]
-                    ref_trans.add(short_id)
-                    ref_dict[short_id] = trans_id
-    f_in.close()
 
+    print("[SQANTI-SIM] Renaming ONT reads")
     fastqs = [
         os.path.join(args.dir, "ONT_simulated_aligned_reads.fastq"),
         os.path.join(args.dir, "ONT_simulated_unaligned_reads.fastq"),
@@ -286,9 +271,8 @@ def ont_simulation(args):
                         "%s was not found in the annotation" % (trans_id),
                         file=sys.stderr,
                     )
-                else:
-                    trans_id = ref_dict[trans_id]
 
+                id_counts[trans_id] += 1
                 read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
                 n_read += 1
                 pair_id.append((read_id, trans_id))

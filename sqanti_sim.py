@@ -57,7 +57,7 @@ def classif(input: list):
     print("[SQANTI-SIM] - Out dir:", str(args.dir))
     print("[SQANTI-SIM] - N threads:", str(args.cores))
 
-    print("[SQANTI-SIM][%s] Classifying transcripts in structural categories" %(strftime("%d-%m-%Y %H:%M:%S")))
+    print("\n[SQANTI-SIM][%s] Classifying transcripts in structural categories" %(strftime("%d-%m-%Y %H:%M:%S")))
     trans_info = classif_gtf.classify_gtf(args)
     
     print("[SQANTI-SIM] Summary table from categorization")
@@ -201,12 +201,11 @@ def preparatory(input: list):
         args.output = "_".join(output[:-1])
 
     # Modify GTF
-    print("[SQANTI-SIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
+    print("\n[SQANTI-SIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
     random.seed(args.seed)
     numpy.random.seed(args.seed)
     counts_end = sim_preparatory.simulate_gtf(args)
 
-    print("[SQANTI-SIM] Deleted transcripts from GTF")
     counts_ini = defaultdict(
         lambda: 0,
         {
@@ -307,13 +306,13 @@ def sim(input: list):
     numpy.random.seed(args.seed)
 
     if args.pb:
-        print("[SQANTI-SIM][%s] Simulating PacBio reads" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("\n[SQANTI-SIM][%s] Simulating PacBio reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.pb_simulation(args)
     if args.ont:
-        print("[SQANTI-SIM][%s] Simulating ONT reads" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("\n[SQANTI-SIM][%s] Simulating ONT reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.ont_simulation(args)
     if args.illumina:
-        print("[SQANTI-SIM][%s] Simulating Illumina reads" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("\n[SQANTI-SIM][%s] Simulating Illumina reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.illumina_simulation(args)
 
     print("[SQANTI-SIM][%s] sim step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
@@ -364,6 +363,7 @@ def eval(input: list):
     
     print("[SQANTI-SIM] - Min support:", str(args.min_support))
     print("[SQANTI-SIM] - N threads:", str(args.cores))
+    print()
 
     sqanti3_stats.sqanti3_stats(args)
 
