@@ -98,7 +98,6 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
                 elif (
                     SC
                     in [
-                        "novel_in_catalog",
                         "novel_not_in_catalog",
                         "genic_intron",
                     ]
@@ -115,7 +114,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
                         ref_genes.add(ref_g)
                         counts[SC] -= 1
 
-                elif SC in ["fusion", "antisense", "genic"] and counts[SC] > 0:
+                elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"] and counts[SC] > 0:
                     if (
                         trans_id not in ref_trans
                         and gene_id not in ref_genes
