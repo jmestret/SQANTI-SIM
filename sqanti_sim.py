@@ -95,7 +95,7 @@ def preparatory(input: list):
     parser_e.add_argument( "--GI", default=0, type=int, help="\t\tNumber of Genic-intron to delete", )
     parser_e.add_argument( "--Intergenic", default=0, type=int, help="\t\tNumber of Intergenic to delete", )
     parser_e.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
-    parser_e.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
+    parser_e.add_argument( "-s", "--seed", help="\t\tRandomizer seed", default=None, type=int )
 
     parser_c = subparsers.add_parser("custom", help="\t\tRun in custom mode")
     parser_c.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
@@ -116,7 +116,7 @@ def preparatory(input: list):
     parser_c.add_argument( "--GI", default=0, type=int, help="\t\tNumber of Genic-intron to delete", )
     parser_c.add_argument( "--Intergenic", default=0, type=int, help="\t\tNumber of Intergenic to delete", )
     parser_c.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
-    parser_c.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
+    parser_c.add_argument( "-s", "--seed", help="\t\tRandomizer seed", default=None, type=int )
 
     parser_s = subparsers.add_parser("sample", help="\t\tRun in sample mode")
     parser_s.add_argument( "-i", "--trans_index", type=str, help="\t\tFile with transcript information generated with SQANTI-SIM", required=True, )
@@ -140,7 +140,7 @@ def preparatory(input: list):
     parser_s.add_argument( "--GI", default=0, type=int, help="\t\tNumber of Genic-intron to delete", )
     parser_s.add_argument( "--Intergenic", default=0, type=int, help="\t\tNumber of Intergenic to delete", )
     parser_s.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
-    parser_s.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
+    parser_s.add_argument( "-s", "--seed", help="\t\tRandomizer seed", default=None, type=int )
     
     args, unknown = parser.parse_known_args(input)
 
@@ -188,6 +188,11 @@ def preparatory(input: list):
             print("[SQANTI-SIM] - ONT reads:", str(args.ont_reads))
 
     print("[SQANTI-SIM] - N threads:", str(args.cores))
+
+    if not args.seed():
+        args.seed = int.from_bytes(os.urandom(4), 'big')
+    random.seed(args.seed)
+    numpy.random.seed(args.seed)
     print("[SQANTI-SIM] - Seed:", str(args.seed))
 
     print("[SQANTI-SIM]\tISM\tNIC\tNNC\tFusion\tAS\tGG\tGI\tIntergenic")
@@ -202,8 +207,6 @@ def preparatory(input: list):
 
     # Modify GTF
     print("\n[SQANTI-SIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
-    random.seed(args.seed)
-    numpy.random.seed(args.seed)
     counts_end = sim_preparatory.simulate_gtf(args)
 
     counts_ini = defaultdict(
@@ -264,7 +267,7 @@ def sim(input: list):
     parser.add_argument( "--illumina", action="store_true", help="\t\tIf used the program will simulate Illumina reads with RSEM", )
     parser.add_argument( "--long_count", default=None, type=int, help="\t\tNumber of long reads to simulate (if not given it will use the counts of the given expression file)", )
     parser.add_argument( "--short_count", default=None, type=int, help="\t\tNumber of short reads to simulate (if not given it will use the counts of the given expression file)", )
-    parser.add_argument( "-s", "--seed", help="\t\tRandomizer seed [123]", default=123, type=int )
+    parser.add_argument( "-s", "--seed", help="\t\tRandomizer seed", default=None, type=int )
 
     args, unknown = parser.parse_known_args(input)
 
@@ -299,12 +302,14 @@ def sim(input: list):
             print("[SQANTI-SIM] - Short reads: requested_counts from index file")
 
     print("[SQANTI-SIM] - N threads:", str(args.cores))
+
+    if not args.seed:
+        args.seed = int.from_bytes(os.urandom(4), 'big')
+    random.seed(args.seed)
+    numpy.random.seed(args.seed)
     print("[SQANTI-SIM] - Seed:", str(args.seed))
 
     # Simulation with IsoSeqSim, NanoSim and/or Polyester
-    random.seed(args.seed)
-    numpy.random.seed(args.seed)
-
     if args.pb:
         print("\n[SQANTI-SIM][%s] Simulating PacBio reads" %(strftime("%d-%m-%Y %H:%M:%S")))
         pb_ont_sim.pb_simulation(args)

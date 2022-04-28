@@ -3,11 +3,18 @@
 # NOTE: this file was modified to fit the SQANTI-SIM pipeline
 # Contributor: Jorge Mestre
 
+import numpy
+import random
 import argparse, sys, os, time
 from subprocess import call
 
 def main():
 	args = do_inputs()
+
+	# Seed for reproducibility (SQANTI-SIM)
+	random.seed(args.seed)
+	numpy.random.seed(args.seed)
+
 	tempdir = setup_tempdir(args.tempdir)
 	udir = os.path.dirname(os.path.realpath(__file__)) + "/../utilities"
 	sys.stdout.write("### Start analysis at " + time.strftime("%a,%d %b %Y %H:%M:%S") + "\n")
@@ -164,6 +171,7 @@ def do_inputs():
 	
 	# Added to fit the SQANTI-SIM
 	parser.add_argument('--number', '-n', help='number of reads to generate', default=20000, type=int)
+	parser.add_argument('--seed', help='Randomizer seed', default=123, type=int)
 	group1.add_argument('--expr', type=str, default=None, help="Expression file")
 	
 	group2 = parser.add_argument_group('Fusion mode options')

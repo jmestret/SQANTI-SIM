@@ -20,7 +20,7 @@ from collections import defaultdict
 
 MIN_SIM_LEN = 200 # Minimum length of transcripts to simulate
 
-def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
+def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
     """
     Choose those transcripts that will be deleted from the original GTF
     to generate the modified file that will be used as the reference annotation
@@ -30,8 +30,6 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict, seed: int) -> tuple:
         f_idx_out (str): name of the output transcript index file
         counts (dict): dictinary with the number of transcripts of each
                        structural category to be deleted
-        seed (int): Randomizer seed
-
     Returns:
         final_target (set): all transcripts to be simulated (deleted from GTF)
     """
@@ -260,7 +258,7 @@ def simulate_gtf(args):
     gtf_modif = os.path.join(args.dir, (args.output + "_modified.gtf"))
     f_idx_out = os.path.join(args.dir, (args.output + "_index.tsv"))
 
-    target = target_trans(args.trans_index, f_idx_out, counts, args.seed)
+    target = target_trans(args.trans_index, f_idx_out, counts)
     modifyGTF(args.gtf, gtf_modif, target)
 
     return counts

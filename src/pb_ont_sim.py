@@ -92,6 +92,8 @@ def pb_simulation(args):
         str(args.cores),
         "--tempdir",
         os.path.join(args.dir, "temp_isoseqsim"),
+        "--seed",
+        str(args.seed),
     ]
 
     cmd = " ".join(cmd)
@@ -232,6 +234,8 @@ def ont_simulation(args):
         "guppy",
         "-t",
         str(args.cores),
+        "--seed",
+        str(args.seed),
         "--fastq",
         "--no_model_ir",
     ]
