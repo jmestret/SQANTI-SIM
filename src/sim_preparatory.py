@@ -465,6 +465,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             "--secondary=no",
             "-o",
             sam_file,
+            "-t",
+            str(args.cores),
         ]
     elif tech == "ont":
         cmd = [
@@ -477,6 +479,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             "--secondary=no",
             "-o",
             sam_file,
+            "-t",
+            str(args.cores),
         ]
 
     cmd = " ".join(cmd)

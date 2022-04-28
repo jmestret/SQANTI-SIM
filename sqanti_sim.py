@@ -139,7 +139,7 @@ def preparatory(input: list):
     parser_s.add_argument( "--GG", default=0, type=int, help="\t\tNumber of Genic-genomic to delete", )
     parser_s.add_argument( "--GI", default=0, type=int, help="\t\tNumber of Genic-intron to delete", )
     parser_s.add_argument( "--Intergenic", default=0, type=int, help="\t\tNumber of Intergenic to delete", )
-    parser_s.add_argument( "-k", "--cores", default=1, type=int, help="\t\tNumber of cores to run in parallel", )
+    parser_s.add_argument( "-k", "--cores", default=3, type=int, help="\t\tNumber of cores to run in parallel", )
     parser_s.add_argument( "-s", "--seed", help="\t\tRandomizer seed", default=None, type=int )
     
     args, unknown = parser.parse_known_args(input)
@@ -186,8 +186,7 @@ def preparatory(input: list):
             print("[SQANTI-SIM] - PacBio reads:", str(args.pb_reads))
         else:
             print("[SQANTI-SIM] - ONT reads:", str(args.ont_reads))
-
-    print("[SQANTI-SIM] - N threads:", str(args.cores))
+        print("[SQANTI-SIM] - N threads:", str(args.cores))
 
     if not args.seed():
         args.seed = int.from_bytes(os.urandom(4), 'big')
