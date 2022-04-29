@@ -353,10 +353,6 @@ def illumina_simulation(args):
         for line in rt:
             if line.startswith(">"):
                 line = line[1:].strip()
-                line = line.split(
-                    "|"
-                )  # TODO: this is a quick patch for encode ref
-                line = line[0]  # TODO: this is a quick patch for encode ref
                 f_out.write(str(count_d[line]) + "\n")
 
     rt.close()
@@ -402,10 +398,6 @@ def illumina_simulation(args):
                 line = line[1:].strip()
                 line = line.split("/")
                 line = line[1]
-                line = line.split(
-                    "|"
-                )  # TODO: this is a quick patch for encode ref
-                line = line[0]  # TODO: this is a quick patch for encode ref
                 id_counts[line] += 1
     illumina_sim.close()
 
