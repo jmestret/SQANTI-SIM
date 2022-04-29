@@ -96,7 +96,7 @@ def sqanti3_stats(args: list):
         print("[SQANTI-SIM] ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
         #sys.exit(1)
 
-    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
+    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     if args.cage_peak:
         print("[SQANTI-SIM][%s] Parsing CAGE Peak data" %(strftime("%d-%m-%Y %H:%M:%S")))
         cage_peak_data = CAGEPeak(args.cage_peak)

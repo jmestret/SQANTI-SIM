@@ -158,7 +158,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                 if len(trans_by_gene[gene]) == 0:
                     final_target.add(gene)
 
-    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
+    trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     trans_index["sim_type"] = trans_index.apply(pick_sim_type, axis=1)
     trans_index["sim_type"] = trans_index["sim_type"].fillna("NA")
     trans_index.to_csv(
@@ -337,7 +337,7 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
         coverage * args.trans_number
     )  # Not taking into account transcript length
 
-    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
+    trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     trans_index["requested_counts"] = trans_index.apply(fixed_coverage, axis=1)
     trans_index["requested_tpm"] = round(
         (
@@ -406,7 +406,7 @@ def create_expr_file_nbinom(f_idx: str, args: list):
     ]  # minimum one count per transcript
     n_reads = sum(nb_known) + sum(nb_novel)
 
-    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
+    trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     trans_index["requested_counts"] = trans_index.apply(
         nbinom_coverage, axis=1
     )
@@ -540,7 +540,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             -n_trans,
         ]
 
-    trans_index = pandas.read_csv(f_idx, sep="\t", header=0)
+    trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     if args.diff_exp:
         # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
         prob = numpy.linspace(

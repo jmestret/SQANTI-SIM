@@ -121,7 +121,7 @@ def pb_simulation(args):
     sim_fasta.close()
     output_read_info.close()
 
-    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
+    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
@@ -296,7 +296,7 @@ def ont_simulation(args):
         f_out.write(str(pair[0]) + "\t" + str(pair[1]) + "\n")
     f_out.close()
 
-    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
+    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(
@@ -401,7 +401,7 @@ def illumina_simulation(args):
                 id_counts[line] += 1
     illumina_sim.close()
 
-    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0)
+    trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     trans_index["illumina_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["illumina_counts"] = trans_index["illumina_counts"].fillna(0)
     trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")

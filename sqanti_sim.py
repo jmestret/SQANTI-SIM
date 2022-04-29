@@ -188,7 +188,7 @@ def preparatory(input: list):
             print("[SQANTI-SIM] - ONT reads:", str(args.ont_reads))
         print("[SQANTI-SIM] - N threads:", str(args.cores))
 
-    if not args.seed():
+    if not args.seed:
         args.seed = int.from_bytes(os.urandom(4), 'big')
     random.seed(args.seed)
     numpy.random.seed(args.seed)
