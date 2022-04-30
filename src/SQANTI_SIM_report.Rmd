@@ -22,10 +22,10 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 ## Summary
 
 ```{r, results='asis'}
-n.sim.trans <- nrow(data.known) +  nrow(data.novel)
-n.known.trans <- nrow(data.known)
-n.novel.trans <- nrow(data.novel)
-n.class.trans <- nrow(data.query)
+n.sim.trans <- nrow(res.full$data.known) +  nrow(res.full$data.novel)
+n.known.trans <- nrow(res.full$data.known)
+n.novel.trans <- nrow(res.full$data.novel)
+n.class.trans <- nrow(res.full$data.query)
 
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
 cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
@@ -61,7 +61,9 @@ Simulated transcript were grouped in know simulated transcripts which appear in 
 - **Positive Detection Rate**: (TP + PTP)/Number of simulated transcripts
 - **False Detection Rate**: FP/Detected isoforms
 
-### Stats for known transcripts
+### Full results
+
+#### Stats for known transcripts
 
 ```{r}
 t1
@@ -71,7 +73,7 @@ t1
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
                 "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
                 "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
-known.metrics.t <- as.data.frame(t(as.matrix(known.metrics)))
+known.metrics.t <- as.data.frame(t(as.matrix(res.full$known.metrics)))
 known.metrics.t[is.na(known.metrics.t)] <- NA
 known.metrics.t <-known.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
 known.metrics.t <- rbind(1, 0, known.metrics.t)
@@ -92,7 +94,7 @@ for (i in 1:(nrow(known.metrics.t)-2)){
 }
 ```
 
-### Stats for novel transcripts
+#### Stats for novel transcripts
 
 ```{r}
 t2
@@ -102,7 +104,7 @@ t2
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
                 "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
                 "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
-novel.metrics.t <- as.data.frame(t(as.matrix(novel.metrics)))
+novel.metrics.t <- as.data.frame(t(as.matrix(res.full$novel.metrics)))
 novel.metrics.t[is.na(novel.metrics.t)] <- NA
 novel.metrics.t <-novel.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
 novel.metrics.t <- rbind(1, 0, novel.metrics.t)
@@ -123,35 +125,118 @@ for (i in 1:(nrow(novel.metrics.t)-2)){
 }
 ```
 
-## Number of exons
+#### Number of exons
+
+```{r}
+p3
+```
+
+#### Canonical Junctions
 
 ```{r}
 p4
 ```
 
-## Canonical Junctions
+```{r, results='asis'}
+if ('within_cage_peak' %in% colnames(data.index)){
+  cat('\n\n#### CAGE Peak Support\n\n')
+  print(p5)
+  print(p6)
+}
+
+if ('min_cov' %in% colnames(data.index)){
+  cat('\n\n#### Short Reads Support\n\n')
+  print(p7)
+  print(p8)
+}
+```
+
+### Above min_supp results
+
+#### Stats for known transcripts
 
 ```{r}
-p5
+t1.min
+```
+
+```{r, results = 'hide'}
+radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
+                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+known.metrics.t <- as.data.frame(t(as.matrix(res.min$known.metrics)))
+known.metrics.t[is.na(known.metrics.t)] <- NA
+known.metrics.t <-known.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
+known.metrics.t <- rbind(1, 0, known.metrics.t)
+
+par(mar=c(1,1,1,1), mfrow=c(2,ceiling((nrow(known.metrics.t)-2)/2)))
+for (i in 1:(nrow(known.metrics.t)-2)){
+  radarchart(
+  known.metrics.t[c(1, 2, i+2),], axistype = 1,
+  pcol = radar.palette[[rownames(known.metrics.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(known.metrics.t)[i+2]]], 0.5), plwd = 2, plty = 1,
+  # Customize the grid
+  cglcol = "grey", cglty = 1, cglwd = 0.8,
+  # Customize the axis
+  axislabcol = "grey", 
+  # Variable labels
+  vlcex = 0.7, vlabels = colnames(known.metrics.t[c(1, 2, i+2),]),
+  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(known.metrics.t)[i+2]
+)
+}
+```
+
+#### Stats for novel transcripts
+
+```{r}
+t2.min
+```
+
+```{r, results = 'hide'}
+radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
+                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+novel.metrics.t <- as.data.frame(t(as.matrix(res.min$novel.metrics)))
+novel.metrics.t[is.na(novel.metrics.t)] <- NA
+novel.metrics.t <-novel.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
+novel.metrics.t <- rbind(1, 0, novel.metrics.t)
+
+par(mar=c(1,1,1,1), mfrow=c(2,ceiling((nrow(novel.metrics.t)-2)/2)))
+for (i in 1:(nrow(novel.metrics.t)-2)){
+  radarchart(
+  novel.metrics.t[c(1, 2, i+2),], axistype = 1,
+  pcol = radar.palette[[rownames(novel.metrics.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(novel.metrics.t)[i+2]]], 0.5), plwd = 2, plty = 1,
+  # Customize the grid
+  cglcol = "grey", cglty = 1, cglwd = 0.8,
+  # Customize the axis
+  axislabcol = "grey", 
+  # Variable labels
+  vlcex = 0.7, vlabels = colnames(novel.metrics.t[c(1, 2, i+2),]),
+  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(novel.metrics.t)[i+2]
+)
+}
+```
+
+#### Number of exons
+
+```{r}
+p3.min
+```
+
+#### Canonical Junctions
+
+```{r}
+p4.min
 ```
 
 ```{r, results='asis'}
 if ('within_cage_peak' %in% colnames(data.index)){
-  cat('\n\n## CAGE Peak Support\n\n')
-  print(p6)
-  print(p7)
+  cat('\n\n#### CAGE Peak Support\n\n')
+  print(p5.min)
+  print(p6.min)
 }
 
 if ('min_cov' %in% colnames(data.index)){
-  cat('\n\n## Short Reads Support\n\n')
-  print(p8)
-  print(p9)
+  cat('\n\n#### Short Reads Support\n\n')
+  print(p7.min)
+  print(p8.min)
 }
-```
-
-## Sensitivity deppending on the number of annotated transcripts per gene
-
-```{r}
-p3.1
-p3.2
 ```

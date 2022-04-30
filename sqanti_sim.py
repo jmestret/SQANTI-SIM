@@ -189,7 +189,7 @@ def preparatory(input: list):
         print("[SQANTI-SIM] - N threads:", str(args.cores))
 
     if not args.seed:
-        args.seed = int.from_bytes(os.urandom(4), 'big')
+        args.seed = int.from_bytes(os.urandom(1), 'big')
     random.seed(args.seed)
     numpy.random.seed(args.seed)
     print("[SQANTI-SIM] - Seed:", str(args.seed))
@@ -303,7 +303,7 @@ def sim(input: list):
     print("[SQANTI-SIM] - N threads:", str(args.cores))
 
     if not args.seed:
-        args.seed = int.from_bytes(os.urandom(4), 'big')
+        args.seed = int.from_bytes(os.urandom(1), 'big')
     random.seed(args.seed)
     numpy.random.seed(args.seed)
     print("[SQANTI-SIM] - Seed:", str(args.seed))

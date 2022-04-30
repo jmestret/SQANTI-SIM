@@ -4,8 +4,8 @@
 #                                     #
 #######################################
 
-# Author: Jorge Martinez
-# Last modified: 18/03/2022 by Jorge Martinez
+# Author: Jorge Mestre
+# Last modified: 18/03/2022 by Jorge Mestre
 
 suppressMessages(library(polyester))
 suppressMessages(library(Biostrings))
