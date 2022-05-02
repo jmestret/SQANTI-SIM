@@ -2,13 +2,12 @@
 """
 sim_preparatory.py
 
-Modifies index file and add expression values for the simulation step
+Modifies GTF reference annotation and generate expression values for 
+the simulation step
 
-@author Jorge Mestre Tomas (jormart2@alumni.uv.es)
-@date 03/03/2022
+Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
-from unicodedata import category
 import numpy
 import os
 import pandas
@@ -90,10 +89,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
             if abs(TSS - TTS) <= MIN_SIM_LEN: # Dont simulate small transcripts
                 continue
 
-            if (
-                SC in ["full-splice_match", "incomplete-splice_match"]
-                and counts[SC] > 0
-            ):
+            if SC in ["full-splice_match", "incomplete-splice_match"]:
                 if (
                     trans_id not in ref_trans
                     and gene_id not in ref_genes
@@ -104,14 +100,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                     ref_trans.add(ref_t)
                     counts[SC] -= 1
 
-            elif (
-                SC
-                in [
-                    "novel_not_in_catalog",
-                    "genic_intron",
-                ]
-                and counts[SC] > 0
-            ):
+            elif SC in [ "novel_not_in_catalog", "genic_intron"]:
                 if (
                     trans_id not in ref_trans
                     and gene_id not in ref_genes
@@ -123,7 +112,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                     ref_genes.add(ref_g)
                     counts[SC] -= 1
 
-            elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"] and counts[SC] > 0:
+            elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"]:
                 if (
                     trans_id not in ref_trans
                     and gene_id not in ref_genes
@@ -140,7 +129,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                             ref_genes.add(i)
                         counts[SC] -= 1
 
-            elif SC == "intergenic" and counts[SC] > 0:
+            elif SC == "intergenic":
                 if (
                     trans_id not in ref_trans
                     and gene_id not in ref_genes
@@ -150,6 +139,8 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                     target_genes.add(gene_id)
                     counts[SC] -= 1
 
+    # List of transcript and genes that will be deleted from reference
+    # if all transcripts from a gene are being deleted the gene will be deleted too
     final_target = target_trans
     for gene in trans_by_gene:
         for trans in trans_by_gene[gene]:
@@ -214,7 +205,6 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
         f_name_in (str) file name of the reference annotation GTF
         f_name_out (str) file name of the modified GTF generated
         target_trans (list) list of transcripts that will be deleted
-        ref_genes (list) list of genes that can't be deleted
     """
 
     f_out = open(f_name_out, "w")
@@ -321,21 +311,19 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
                 known_trans.append(line[j])
     f_in.close()
 
-    random.shuffle(known_trans)
-    known_trans = known_trans[: (args.trans_number - len(novel_trans))]
-
     tot_trans = len(novel_trans) + len(known_trans)
-    if tot_trans != args.trans_number:
+    if args.trans_number > tot_trans:
         print(
             "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (tot_trans)
         )
+        args.trans_number = tot_trans
+
+    random.shuffle(known_trans)
+    known_trans = known_trans[: (args.trans_number - len(novel_trans))]
 
     tot_trans = novel_trans + known_trans
     coverage = args.read_count // args.trans_number
-    tpm = (1000000.0 * coverage) / (
-        coverage * args.trans_number
-    )  # Not taking into account transcript length
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     trans_index["requested_counts"] = trans_index.apply(fixed_coverage, axis=1)
@@ -345,7 +333,7 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
             / (trans_index["requested_counts"] * args.trans_number)
         ),
         2,
-    )
+    ) # Not taking into account transcript length
     trans_index["requested_counts"] = trans_index["requested_counts"].fillna(0)
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
