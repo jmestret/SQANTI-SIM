@@ -4,11 +4,10 @@ sqanti3_sim.py
 
 Given a GTF file as input, determine its potential SQANTI3 structural
 category not taking into account itself in the reference.
-The classification step is adapted from the original SQANTI3 v4.2.
+The classification step is adapted from the original SQANTI3 QC v4.2.
 (sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 
-@author Jorge Martinez Tomas (jormart2@alumni.uv.es)
-@date: 19/01/2021
+Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
 import os
@@ -350,12 +349,7 @@ def transcript_classification(trans_by_region: list) -> dict:
     return dict(res)
 
 
-def transcriptsKnownSpliceSites(
-    trec: genePredRecord,
-    ref_chr: list,
-    start_ends_by_gene: dict,
-    min_ref_len: int,
-) -> myQueryTranscripts:
+def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_by_gene: dict, min_ref_len: int) -> myQueryTranscripts:
     """Find best reference hit for the query transcript
 
     Checks for full-splice-match, incomplete-splice-match, anyKnownJunction,
@@ -531,7 +525,7 @@ def transcriptsKnownSpliceSites(
         for ref in ref_chr:
             if trec.id == ref.id or ref.length < min_ref_len:
                 continue  # cannot use itself as reference
-            # if hits_exon(trec, ref):
+
             if trec.txStart <= ref.txEnd and ref.txStart <= trec.txEnd:
                 hits_by_gene[ref.gene].append(ref)
 
@@ -814,9 +808,7 @@ def transcriptsKnownSpliceSites(
                                 tts=trec.txEnd,
                             )
 
-                        if (
-                            isoform_hit.str_class == ""
-                        ):  # still not hit yet, check exonic overlap
+                        if isoform_hit.str_class == "":  # still not hit yet, check exonic overlap
                             if (
                                 cat_ranking[isoform_hit.str_class]
                                 < cat_ranking["geneOverlap"]
@@ -936,10 +928,7 @@ def transcriptsKnownSpliceSites(
                         tss=trec.txStart,
                         tts=trec.txEnd,
                     )
-                elif (
-                    abs(diff_tss) + abs(diff_tts)
-                    < isoform_hit.get_total_diff()
-                ):
+                elif abs(diff_tss) + abs(diff_tts) < isoform_hit.get_total_diff():
                     isoform_hit.modify(
                         ref.id,
                         ref.gene,
@@ -1291,9 +1280,7 @@ def write_category_file(data: dict, out_name: str):
     """
 
     f_out = open(out_name, "w")
-    f_out.write(
-        "transcript_id\tgene_id\tstructural_category\tassociated_gene\tassociated_trans\tchrom\tstrand\texons\tdonors\tacceptors\tTSS_genomic_coord\tTTS_genomic_coord\n"
-    )
+    f_out.write("transcript_id\tgene_id\tstructural_category\tassociated_gene\tassociated_trans\tchrom\tstrand\texons\tdonors\tacceptors\tTSS_genomic_coord\tTTS_genomic_coord\n")
 
     for chrom in data.values():
         for trans in chrom:
@@ -1308,7 +1295,7 @@ def write_category_file(data: dict, out_name: str):
             else:
                 donors = [str(d) for d in donors]
                 acceptors = [str(a + 1) for a in acceptors]  # Change to 1-based exon start
-            trans.tss += 1  # Change to 1-based exon start
+            trans.tss += 1  # Change to 1-based transcript start
             if trans.str_class == "intergenic":
                 f_out.write(
                     "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
@@ -1360,17 +1347,14 @@ def classify_gtf(args):
 
     def initializer():
         global min_ref_len
-        # min_ref_len = args.min_ref_len
         min_ref_len = 0
 
     # parsing transcripts from GTF
-    print("[SQANTI-SIM] Parsing transcripts from GTF reference annotation file\n")
+    print("[SQANTI-SIM] Parsing transcripts from GTF reference annotation file")
     trans_by_chr = gtf_parser(args.gtf)
 
     # classify transcripts
-    print(
-        "[SQANTI-SIM] Classifying transcripts according to its SQANTI3 structural category\n"
-    )
+    print("[SQANTI-SIM] Classifying transcripts according to its SQANTI3 structural category")
     trans_info = defaultdict(lambda: [])
 
     if args.cores <= 1:
@@ -1395,7 +1379,7 @@ def classify_gtf(args):
                 trans_info[k].extend(v)
 
     # Write category file
-    print("[SQANTI-SIM] Writting structural category file\n")
+    print("[SQANTI-SIM] Writting structural category file")
     cat_out = os.path.join(args.dir, (args.output + "_index.tsv"))
     write_category_file(trans_info, cat_out)
 

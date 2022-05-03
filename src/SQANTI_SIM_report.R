@@ -4,9 +4,7 @@
 #                                     #
 #######################################
 
-# Author: Jorge Mestre
-# Last modified: 03/02/2022 by Jorge Mestre
-
+# Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 
 #######################################
 #                                     #
@@ -39,7 +37,9 @@ get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, mi
   data.known <- data.index[which(data.index$sim_type == 'known'),]
   sim.sc <- unique(data.novel$structural_category)
 
-  # Matches between simulated and reconstructed (first look for SJ and then distance to TSS and TTS)
+  # Matches between simulated and reconstructed transcripts:
+  # First all splice-junctions must be identical
+  # Second, difference between the annotated and reconstructed TSS and TTS must be smaller than MAX_TSS_TTS_DIFF
   known.matches <- inner_join(data.query, data.known, by=c('junctions', 'chrom')) %>%
     mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
     arrange(difftot) %>%
@@ -259,7 +259,12 @@ res.min <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min
 # p1: simulated expression profile
 # p2: structural classification
 # p3: novel TP vs FN - mono/multi-exon
-# p5: radar chart
+# p4: canonical juncs
+# p5: within cage peak
+# p6: distance to cage peak
+# p7: min SJ cov by short reads
+# p8: ratio TSS
+# px: radar chart from perfomance metrics
 
 print("***Generating plots for the report")
 
@@ -416,6 +421,7 @@ if ('min_cov' %in% colnames(data.index)) {
     ggtitle('Splice Junctions Short Reads Coverage') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
+  # PLOT 8: ratio TSS
   p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
                   p5.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
                   p5.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])

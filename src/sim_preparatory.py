@@ -477,7 +477,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         print("[SQANTI-SIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
-    # Count only primary alignments
+    # Raw counts -> Count only primary alignments
     trans_counts = defaultdict(lambda: 0)
 
     with pysam.AlignmentFile(sam_file, "r") as sam_file_in:
@@ -494,7 +494,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     os.remove(sam_file)
     os.remove(ref_t)
 
-    # Get expression distribution
+    # Empirical expression values
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
 
@@ -503,6 +503,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         n_trans = args.trans_number
     else:
         n_trans = len(expr_distr)
+
     novel_trans = []
     known_trans = []
     with open(f_idx, "r") as f_in:
@@ -519,18 +520,25 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 known_trans.append(line[j])
     f_in.close()
 
-    # TODO add warnings n_trans
+    if n_trans < len(novel_trans):
+        print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
+        sys.exit(1)
+    
+
+    if n_trans > (len(novel_trans) + len(known_trans)):
+        n_trans = (len(novel_trans) + len(known_trans))
+        print(
+            "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
+            % (n_trans)
+        )
+        expr_distr = expr_distr[-n_trans,]
+
     random.shuffle(known_trans)
     known_trans = known_trans[: (n_trans - len(novel_trans))]
-    if (len(novel_trans) + len(known_trans)) < n_trans:
-        n_trans = len(novel_trans) + len(known_trans)
-        expr_distr = expr_distr[
-            -n_trans,
-        ]
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     if args.diff_exp:
-        # Generate a vector of inverse probabilities to assign lower values of the eCDF to novel transcripts and higher to known transcripts
+        # Generate a vector of inverse probabilities to assign lower TPM values to novel transcripts and higher to known transcripts
         prob = numpy.linspace(
             start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr))
         )
@@ -554,8 +562,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             if r < prob[(s - min_expr)]:
                 known_expr.append(s)
                 n_known += 1
-
-        #n_reads = sum(novel_expr) + sum(known_expr)
 
         trans_index["requested_counts"] = trans_index.apply(
             sample_coverage, axis=1

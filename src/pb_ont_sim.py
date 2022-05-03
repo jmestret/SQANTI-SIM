@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 pb_ont_sim.py
-Simulation step
 
-@author Jorge Mestre Tomas (jormart2@alumni.uv.es)
-@date 20/02/2022
+Simulate reads from different sequencing platforms: PacBio (IsoSeqSim), ONT
+(NanoSim) and Illumina (Polyester)
+
+Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
-from urllib import request
 import numpy
 import os
 import pandas
@@ -23,14 +23,13 @@ def pb_simulation(args):
 
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
-
     
     # Generate IsoSeqSim template expression file
     expr_f = os.path.join(
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",
     )
-    n = 0
+    index_file_requested_counts = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
     with open(args.trans_index, "r") as idx:
@@ -43,12 +42,12 @@ def pb_simulation(args):
             if int(line[i]) == 0:
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
-            n += int(line[i])
+            index_file_requested_counts += int(line[i])
     idx.close()
     f_out.close()
 
     if not args.long_count:
-        args.long_count = n
+        args.long_count = index_file_requested_counts
 
     if os.path.isdir(args.dir):
         print(
@@ -58,6 +57,7 @@ def pb_simulation(args):
     else:
         os.makedirs(args.dir)
 
+    # PacBio Sequel simulation -> error rates from IsoSeqSim GitHub
     print("[SQANTI-SIM] Simulating PacBio reads with IsoSeqSim")
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, "IsoSeqSim/bin/isoseqsim")
@@ -101,16 +101,14 @@ def pb_simulation(args):
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running IsoSeqSim: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
-
     os.remove(expr_f)
+
     print("[SQANTI-SIM] Counting PacBio reads")
-    output_read_info = open(
-        os.path.join(args.dir, "PacBio_simulated.read_to_isoform.tsv"), "w"
-    )
+    read_to_iso = os.path.join(args.dir, "PacBio_simulated.read_to_isoform.tsv")
+    output_read_info = open(read_to_iso, "w")
     id_counts = defaultdict(lambda: 0)
-    with open(
-        os.path.join(args.dir, "PacBio_simulated.fasta"), "r"
-    ) as sim_fasta:
+    isoseqsim_fasta = os.path.join(args.dir, "PacBio_simulated.fasta")
+    with open(isoseqsim_fasta, "r") as sim_fasta:
         for line in sim_fasta:
             if line.startswith(">"):
                 line = line.lstrip(">")
@@ -133,17 +131,19 @@ def pb_simulation(args):
 
 
 def ont_simulation(args):
+    """Simulate ONT reads using the NanoSim pipeline"""
+
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
+    # Generate NanoSim template expression file
     expr_f = os.path.join(
         os.path.dirname(os.path.abspath(args.trans_index)),
         "tmp_expression.tsv",
     )
-    n = 0
+    index_file_requested_counts = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
-    ref_trans = set()
     with open(args.trans_index, "r") as idx:
         header_names = idx.readline()
         header_names = header_names.split()
@@ -151,16 +151,15 @@ def ont_simulation(args):
         j = header_names.index("requested_tpm")
         for line in idx:
             line = line.split()
-            ref_trans.add(line[0])
             if int(line[i]) == 0:
                 continue
             f_out.write(line[0] + "\t" + line[i] + "\t" + line[j] + "\n")
-            n += int(line[i])
+            index_file_requested_counts += int(line[i])
     idx.close()
     f_out.close()
 
     if not args.long_count:
-        args.long_count = n
+        args.long_count = index_file_requested_counts
 
     if os.path.isdir(args.dir):
         print("WARNING: output direcory already exists. Overwritting!")
@@ -186,6 +185,7 @@ def ont_simulation(args):
     nanosim = os.path.join(src_dir, "NanoSim/src/simulator.py")
     models = os.path.join(src_dir, "NanoSim/pre-trained_models/")
     model_dir = models + model_name + "/"
+
     if not os.path.exists(model_dir):
         print("[SQANTI-SIM] Untar NanoSim model")
         cwd = os.getcwd()
@@ -212,7 +212,6 @@ def ont_simulation(args):
         sys.exit(1)
 
     print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
-    
     cmd = [
         nanosim,
         "transcriptome",
@@ -248,10 +247,9 @@ def ont_simulation(args):
     if subprocess.check_call(cmd, shell=True) != 0:
         print("ERROR running NanoSim: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
-
     os.remove(expr_f)
 
-    print("[SQANTI-SIM] Renaming ONT reads")
+    print("[SQANTI-SIM] Counting and renaming ONT reads")
     fastqs = [
         os.path.join(args.dir, "ONT_simulated_aligned_reads.fastq"),
         os.path.join(args.dir, "ONT_simulated_unaligned_reads.fastq"),
@@ -269,13 +267,6 @@ def ont_simulation(args):
             if line.startswith("@"):
                 line = line.lstrip("@")
                 trans_id = line.split("_")[0]
-
-                if trans_id not in ref_trans:
-                    print(
-                        "%s was not found in the annotation" % (trans_id),
-                        file=sys.stderr,
-                    )
-
                 id_counts[trans_id] += 1
                 read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
                 n_read += 1
@@ -288,10 +279,9 @@ def ont_simulation(args):
     f_in.close()
     f_out.close()
 
-    print("[SQANTI-SIM] Saving counts and read-to-isoform files")
+    # Saving counts and read-to-isoform files
     f_name = os.path.join(args.dir, "ONT_simulated.read_to_isoform.tsv")
     f_out = open(f_name, "w")
-
     for pair in pair_id:
         f_out.write(str(pair[0]) + "\t" + str(pair[1]) + "\n")
     f_out.close()
@@ -308,24 +298,12 @@ def ont_simulation(args):
 
 
 def illumina_simulation(args):
+    """Simulate Illumina reads using the Polyester pipeline"""
+
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
-    # Extract fasta transcripts
-    print("[SQANTI-SIM] Extracting transcript sequences")
-    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
-    if os.path.exists(ref_t):
-        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
-
-    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
-    cmd = " ".join(cmd)
-    sys.stdout.flush()
-    if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
-        sys.exit(1)
-
-    print("[SQANTI-SIM] Preparing expression matrix")
-
+    # Generate Polyester template expression file
     count_d = defaultdict(float)
     n = 0
     with open(args.trans_index, "r") as idx:
@@ -354,9 +332,21 @@ def illumina_simulation(args):
             if line.startswith(">"):
                 line = line[1:].strip()
                 f_out.write(str(count_d[line]) + "\n")
-
     rt.close()
     f_out.close()
+
+    # Extract fasta transcripts
+    print("[SQANTI-SIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
+    if os.path.exists(ref_t):
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+
+    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
+    cmd = " ".join(cmd)
+    sys.stdout.flush()
+    if subprocess.check_call(cmd, shell=True) != 0:
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        sys.exit(1)
 
     print("[SQANTI-SIM] Simulating Illumina reads with Polyester")
     src_dir = os.path.dirname(os.path.realpath(__file__))

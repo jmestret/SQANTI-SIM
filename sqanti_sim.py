@@ -126,7 +126,7 @@ def preparatory(input: list):
     parser_s.add_argument("-o", "--output", type=str, default=str(), help="\t\tPrefix for output files" )
     parser_s.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser_s.add_argument("-nt", "--trans_number", type=int, default=None, help="\t\tNumber of different transcripts to simulate", )
-    parser_s.add_argument("--genome", type=str, default=str(), help="\t\tReference genome FASTA", required=True, )
+    parser_s.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     group = parser_s.add_mutually_exclusive_group()
     group.add_argument("--pb_reads", type=str, default=str(), help="\t\tInput PacBio reads for quantification", )
     group.add_argument("--ont_reads", type=str, default=str(), help="\t\tInput ONT reads for quantification", )
@@ -155,7 +155,7 @@ def preparatory(input: list):
         )
 
     total_novel = sum([args.ISM, args.NIC, args.NNC, args.Fusion, args.Antisense, args.GG, args.GI, args.Intergenic])
-    if total_novel > args.trans_number:
+    if args.trans_number is not None and total_novel > args.trans_number:
         print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
         sys.exit(1)
 
@@ -262,7 +262,7 @@ def sim(input: list):
 
     parser = argparse.ArgumentParser( prog="sqanti_sim.py sim", description="sqanti_sim.py sim parse options" )
     parser.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
-    parser.add_argument("--genome", default=False, required=True, help="\t\tReference genome FASTA", )
+    parser.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     parser.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTI-SIM", )
     parser.add_argument("--read_type", type=str, default="dRNA", help="\t\tRead type for NanoSim simulation", )
     parser.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )

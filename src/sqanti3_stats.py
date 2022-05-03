@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 sqanti3_stats.py
-Generates SQANTI-SIM report and metrics
 
-@author Jorge Martinez Tomas (jormart2@alumni.uv.es)
-@date 20/02/2022
+Generate SQANTI-SIM report and metrics
+
+Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
 import os
@@ -17,8 +17,7 @@ from src.SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
 from time import strftime
 
 
-
-def sqanti3_stats(args: list):
+def sqanti3_stats(args):
     """Runs SQANTI3 and generates SQANTI-SIM report
 
     Given the reconstructed transcripts in GTF format it runs the SQANTI3
@@ -64,7 +63,7 @@ def sqanti3_stats(args: list):
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, "SQANTI3/sqanti3_qc.py")
 
-    min_ref_len = 0
+    MIN_REF_LEN = 0
     cmd = [
         sqanti3,
         args.isoforms,
@@ -77,7 +76,7 @@ def sqanti3_stats(args: list):
         "--cpus",
         str(args.cores),
         "--min_ref_len",
-        str(min_ref_len),
+        str(MIN_REF_LEN),
         "--force_id_ignore",
         "--skipORF",
     ]
@@ -109,7 +108,7 @@ def sqanti3_stats(args: list):
             id_pos = header_names.index("transcript_id")
             chrom_pos = header_names.index("chrom")
             strand_pos = header_names.index("strand")
-            start_pos = header_names.index("TSS_genomic_coord")  # start and end coordinates already swapped in the index file for negative strand
+            start_pos = header_names.index("TSS_genomic_coord") # No need to swap start and end coordinates -> already swapped in the index file for negative strand
             for line in index_file:
                 line = line.split()
                 within_cage, dist_cage = cage_peak_data.find(

@@ -50,7 +50,9 @@ R --version
 
 The recommended way to install all SQANTI-SIM dependencies is via Anaconda. [Here](https://docs.anaconda.com/anaconda/install/) is an explanation on how to install Anaconda. Installation is only necessary onece. Please follow the steps below to avoid errors during installation.
 
-**(1)** Make sure you have Anaconda installed and updated. In case Anaconda is not installed, please refer to its [documentation](https://docs.anaconda.com/anaconda/install/).
+#### 1. Install and update Anaconda
+
+Make sure you have Anaconda installed and updated. In case Anaconda is not installed, please refer to its [documentation](https://docs.anaconda.com/anaconda/install/).
 
 ```
 export PATH=$HOME/anacondaPy37/bin:$PATH
@@ -58,7 +60,9 @@ conda -V
 conda update conda
 ```
 
-**(2)** Clone the [GitHub repository](https://github.com/jorgemt98/SQANTI-SIM) and create the conda enviroment with the dependencies.
+#### 2. Download and set up SQANTI-SIM
+
+Clone the [GitHub repository](https://github.com/jorgemt98/SQANTI-SIM) and create the conda enviroment with the dependencies.
 
 ```
 git clone https://github.com/jorgemt98/SQANTI-SIM
@@ -67,7 +71,9 @@ conda env create -f SQANTI_SIM.conda_env.yml
 source activate SQANTI-SIM.env
 ```
 
-**(3)** SQANTI-SIM makes use of cDNA_Cupcake which cannot be automatically installed with Anaconda. If you don't have [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake) installed, first activate the SQANTI-SIM enviroment and then follow the next commands:
+#### 3. Install cDNA_Cupcake
+
+SQANTI-SIM makes use of cDNA_Cupcake which cannot be automatically installed with Anaconda. If you don't have [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake) installed, first activate the SQANTI-SIM enviroment and then follow the next commands:
 
 ```
 (SQANTI-SIM.env)$ git clone https://github.com/Magdoll/cDNA_Cupcake.git
