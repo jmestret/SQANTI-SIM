@@ -24,7 +24,7 @@ The SQANTI-SIM pipeline consists mainly in 3 different steps: (i) simulate data,
 
 This is the first step of the workflow. In this step the SQANTI3 structural category decision tree is used to classify all the annotated transcripts from a given GTF reference annotation in its potential SQANTI3 structural categories, that is assigning the query transcript a SQANTI3 structural category assuming it cannot match as a FSM with itself. This will generate an index tab-separated file with all the structural annotation of each transcript from the reference GTF and its potential SQANTI3 structural category.
 
-Information about how to run the classification step can be found at [*SQANTI-SIM: classif*]().
+Information about how to run the classification step can be found at [*SQANTI-SIM: classif*](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki5.md).
 
 **2. Simulation experiment design**
 
