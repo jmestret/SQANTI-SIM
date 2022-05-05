@@ -172,6 +172,13 @@ def preparatory(input: list):
         print("[SQANTI-SIM] - N reads:", str(args.read_count))
 
     elif args.mode == "custom":
+        if args.nbn_known < 0 or args.nbn_novel < 0:
+            print("[SQANTI-SIM] ERROR: --nbn_known and --nbn_novel must be greater than 0")
+            sys.exit(1)
+        if args.nbp_known < 0 or args.nbp_known > 1 or args.nbp_novel < 0 or args.nbp_novel > 1:
+            print("[SQANTI-SIM] ERROR: --nbp_known and --nbp_novel must be in the interval [0,1]")
+            sys.exit(1)
+
         print("[SQANTI-SIM] - Mode: custom")
         print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
         print("[SQANTI-SIM] - Out prefix:", str(args.output))
@@ -183,6 +190,10 @@ def preparatory(input: list):
         print("[SQANTI-SIM] - Novel NB probability:", str(args.nbp_novel))
 
     elif args.mode == "sample":
+        if args.low_prob < 0 or args.low_prob > 1 or args.high_prob < 0 or args.high_prob > 1:
+            print("[SQANTI-SIM] ERROR: --low_prob and --high_prob must be in the interval [0,1]")
+            sys.exit(1)
+
         print("[SQANTI-SIM] - Mode: sample")
         print("[SQANTI-SIM] - Ref GTF:", str(args.gtf))
         print("[SQANTI-SIM] - Ref genome:", str(args.genome))
