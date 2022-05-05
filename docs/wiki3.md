@@ -73,6 +73,7 @@ In this mode you have three different sub modes which share some common argument
 | --gtf | T | Reference annotationg in GTF format | |
 | --genome | T | str | Reference genome FASTA | |
 | --pb/--ont | T | | Choose to simulate ONT or PacBio reads | |
+| --read_type| F | str | Read type for NanoSim simulation. Choose between "cDNA" or "dRNA" | dRNA |
 | --illumina | F | | If used it will simulate Illumina reads too | |
 | --long_count | F | int | Number of long reads to simulate (if not given it will use the requested counts of the given expression file) | |
 | --short_count | F | int | Number of short reads to simulate (if not given it will use the requested counts of the given expression file) | |
