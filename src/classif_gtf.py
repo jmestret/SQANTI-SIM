@@ -526,7 +526,7 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
             if trec.id == ref.id or ref.length < min_ref_len:
                 continue  # cannot use itself as reference
 
-            if trec.txStart <= ref.txEnd and ref.txStart <= trec.txEnd:
+            if trec.txStart < ref.txEnd and ref.txStart < trec.txEnd: # It is < and not <= because start is 0-based and end 1-based
                 hits_by_gene[ref.gene].append(ref)
 
         if len(hits_by_gene) == 0:
@@ -897,8 +897,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                 continue  # cannot use itself as reference
             # if hits_exon(trec, ref) and ref.exonCount == 1:
             if (
-                trec.txStart <= ref.txEnd
-                and ref.txStart <= trec.txEnd
+                trec.txStart < ref.txEnd
+                and ref.txStart < trec.txEnd
                 and ref.exonCount == 1
             ):
                 if ref.strand != trec.strand:
@@ -944,8 +944,8 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                     continue  # to not match with itself
                 # if hits_exon(trec, ref) and ref.exonCount >= 2:
                 if (
-                    trec.txStart <= ref.txEnd
-                    and ref.txStart <= trec.txEnd
+                    trec.txStart < ref.txEnd
+                    and ref.txStart < trec.txEnd
                     and ref.exonCount >= 2
                 ):
                     if (
