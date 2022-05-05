@@ -23,32 +23,21 @@ from tqdm import tqdm
 try:
     from bx.intervals import Interval, IntervalTree
 except ImportError:
-    print(
-        "Unable to import bx-python! Please make sure bx-python is installed.",
-        file=sys.stderr,
-    )
+    print("Unable to import bx-python! Please make sure bx-python is installed.", file=sys.stderr)
     sys.exit(-1)
 
 try:
     from cupcake.tofu.compare_junctions import compare_junctions
 except ImportError:
-    print(
-        "Unable to import cupcake.tofu! Please make sure you install cupcake.",
-        file=sys.stderr,
-    )
+    print("Unable to import cupcake.tofu! Please make sure you install cupcake.", file=sys.stderr)
     sys.exit(-1)
 
 
-utilitiesPath = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "SQANTI3/utilities"
-)
+utilitiesPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "SQANTI3/utilities")
 GTF2GENEPRED_PROG = os.path.join(utilitiesPath, "gtfToGenePred")
 
 if distutils.spawn.find_executable(GTF2GENEPRED_PROG) is None:
-    print(
-        "Cannot find executable {0}. Abort!".format(GTF2GENEPRED_PROG),
-        file=sys.stderr,
-    )
+    print("Cannot find executable {0}. Abort!".format(GTF2GENEPRED_PROG), file=sys.stderr)
     sys.exit(-1)
 
 
@@ -77,20 +66,7 @@ class genePredReader(object):
 class genePredRecord(object):
     """Saves the features of each transcript read by gtfTogenePred"""
 
-    def __init__(
-        self,
-        id,
-        chrom,
-        strand,
-        txStart,
-        txEnd,
-        cdsStart,
-        cdsEnd,
-        exonCount,
-        exonStarts,
-        exonEnds,
-        gene=None,
-    ):
+    def __init__(self, id, chrom, strand, txStart, txEnd, cdsStart, cdsEnd, exonCount, exonStarts, exonEnds, gene=None):
         self.id = id
         self.chrom = chrom
         self.strand = strand
@@ -145,30 +121,11 @@ class genePredRecord(object):
 class myQueryTranscripts:
     """Features of the query transcript and its associated reference"""
 
-    def __init__(
-        self,
-        id,
-        gene_id,
-        tss_diff,
-        tts_diff,
-        num_exons,
-        length,
-        str_class,
-        subtype=None,
-        genes=None,
-        transcripts=None,
-        chrom=None,
-        strand=None,
-        refLen="NA",
-        refExons="NA",
-        refStart="NA",
-        refEnd="NA",
-        q_splicesite_hit=0,
-        q_exon_overlap=0,
-        junctions=None,
-        tss=None,
-        tts=None,
-    ):
+    def __init__(self, id, gene_id, tss_diff, tts_diff, num_exons, length,
+                 str_class, subtype=None, genes=None, transcripts=None,
+                 chrom=None, strand=None, refLen="NA",refExons="NA",
+                 refStart="NA", refEnd="NA", q_splicesite_hit=0,
+                 q_exon_overlap=0,junctions=None, tss=None, tts=None):
 
         self.id = id
         self.gene_id = gene_id  # gene where this transcript cames from
@@ -198,9 +155,7 @@ class myQueryTranscripts:
     def get_total_diff(self):
         return abs(self.tss_diff) + abs(self.tts_diff)
 
-    def modify(
-        self, ref_transcript, ref_gene, tss_diff, tts_diff, refLen, refExons
-    ):
+    def modify(self, ref_transcript, ref_gene, tss_diff, tts_diff, refLen, refExons):
         self.transcripts = [ref_transcript]
         self.genes = [ref_gene]
         self.tss_diff = tss_diff
@@ -259,11 +214,7 @@ def gtf_parser(gtf_name: str) -> defaultdict:
                     isoform_list_by_reg[chrom][k][2].append(t)
                     break
             else:
-                isoform_list_by_reg[chrom][chrom + str(c)] = [
-                    t.txStart,
-                    t.txEnd,
-                    [t],
-                ]
+                isoform_list_by_reg[chrom][chrom + str(c)] = [t.txStart, t.txEnd, [t]]
                 c += 1
 
     isoforms_list = defaultdict(lambda: [])
@@ -448,9 +399,7 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
                 else "NA"
             )
 
-    def categorize_incomplete_matches(
-        trec: genePredRecord, ref: genePredRecord
-    ) -> str:
+    def categorize_incomplete_matches(trec: genePredRecord, ref: genePredRecord)-> str:
         """Returns the subcategory of incomplete splice matches
 
         intron_retention --- at least one trec exon covers at least two adjacent ref exons
