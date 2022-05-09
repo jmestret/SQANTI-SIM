@@ -8,6 +8,9 @@ the simulation step
 Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
+from bisect import bisect_left
+from calendar import c
+from email.policy import default
 import numpy
 import os
 import pandas
@@ -15,6 +18,7 @@ import pysam
 import random
 import subprocess
 import sys
+from bisect import bisect_left
 from collections import defaultdict
 
 MIN_SIM_LEN = 200 # Minimum length of transcripts to simulate
@@ -278,6 +282,29 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         print("\033[92m|\033[0m " + k + ": " + str(v))
 
 
+def take_closest(my_list: list, number: int, bias: str)-> int:
+    """Finds the clossest bottom value
+
+    Given a list it finds the clossest value to the query interger always
+    givin clossest LOWER or equal position, never a higher number (unless there
+    is no lower value). Assumes list is sorted!
+
+    Args:
+        my_list (list) list with integers
+        number (int) query integer
+        bias (str) get higher "high" or lower "low" value
+    
+    Returns:
+        pos (int) index of the clossest value
+    """
+
+    pos = bisect_left(my_list, number)
+    if pos == 0 or pos == len(my_list):
+        return pos
+    if bias == "high":
+        return pos
+    return pos-1 # return the value before
+
 def create_expr_file_fixed_count(f_idx: str, args: list):
     """ Expression matrix - equal mode
 
@@ -439,6 +466,28 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
+    # Read transcripts from index file
+    novel_trans = []
+    known_trans = []
+    trans_to_gene = defaultdict(lambda: str())
+    trans_by_gene = defaultdict(lambda: [])
+    with open(f_idx, "r") as f_in:
+        skip = f_in.readline()
+        skip = skip.split()
+        i = skip.index("sim_type")
+        j = skip.index("transcript_id")
+        k = skip.index("gene_id")
+        for line in f_in:
+            line = line.split()
+            sim_type = line[i]
+            if sim_type == "novel":
+                novel_trans.append(line[j])
+            else:
+                known_trans.append(line[j])
+            trans_to_gene[line[j]] = line[k]
+            trans_by_gene[line[k]].append(line[j])
+    f_in.close()
+
     # Align with minimap
     sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
 
@@ -479,7 +528,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
     # Raw counts -> Count only primary alignments
     trans_counts = defaultdict(lambda: 0)
-
+    gene_isoforms_counts = defaultdict(lambda: 0)
     with pysam.AlignmentFile(sam_file, "r") as sam_file_in:
         for align in sam_file_in:
             trans_id = align.reference_name
@@ -491,6 +540,11 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             ):
                 continue
             trans_counts[trans_id] += 1
+            gene_id = trans_to_gene[trans_id]
+            if gene_id:
+                gene_isoforms_counts[gene_id] += 1
+            else:
+                print("[SQANTI-SIM] WARNING: %s is not in the index file" %(trans_id))
     os.remove(sam_file)
     os.remove(ref_t)
 
@@ -498,27 +552,10 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
 
-    # Read transcripts from index file
     if args.trans_number:
         n_trans = args.trans_number
     else:
         n_trans = len(expr_distr)
-
-    novel_trans = []
-    known_trans = []
-    with open(f_idx, "r") as f_in:
-        skip = f_in.readline()
-        skip = skip.split()
-        i = skip.index("sim_type")
-        j = skip.index("transcript_id")
-        for line in f_in:
-            line = line.split()
-            sim_type = line[i]
-            if sim_type == "novel":
-                novel_trans.append(line[j])
-            else:
-                known_trans.append(line[j])
-    f_in.close()
 
     if n_trans < len(novel_trans):
         print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
@@ -533,8 +570,61 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         )
         expr_distr = expr_distr[-n_trans,]
 
-    random.shuffle(known_trans)
-    known_trans = known_trans[: (n_trans - len(novel_trans))]
+    if args.iso_complex:
+        known_trans = []
+        already_scaned = []
+        complex_distr = list(gene_isoforms_counts.values())
+        complex_distr.sort()
+        for trans_id in novel_trans:
+            gene_id = trans_to_gene[trans_id]
+            if gene_id in already_scaned:
+                continue
+            n = len(trans_by_gene[gene_id])
+            pos = take_closest(complex_distr, n, "low")
+            diff_isos = complex_distr.pop(pos)
+            for i in range(diff_isos):
+                curr_trans = trans_by_gene[gene_id][i]
+                if trans_id in novel_trans:
+                    continue
+                else:
+                    known_trans.append(curr_trans)
+            del trans_by_gene[gene_id]
+            already_scaned.append(gene_id)
+            if len(complex_distr) <= 0:
+                complex_distr = list(gene_isoforms_counts.values())
+
+        counts_to_gene = defaultdict(lambda: [])
+        for i in trans_by_gene:
+            counts_to_gene[len(trans_by_gene[i])].append(i)
+    
+        random.shuffle(complex_distr)
+        while n_trans > (len(novel_trans) + len(known_trans)) and len(complex_distr) > 0:
+            diff_isos = complex_distr.pop()
+            pos = take_closest(list(counts_to_gene.keys()), diff_isos, "high")
+            if counts_to_gene[pos]:
+                gene_id = counts_to_gene[pos].pop()
+                if pos > diff_isos:
+                    for i in range(diff_isos):
+                        curr_trans = trans_by_gene[gene_id][i]
+                        known_trans.append(curr_trans)
+                else:
+                    for i in range(pos):
+                        curr_trans = trans_by_gene[gene_id][i]
+                        known_trans.append(curr_trans)
+                del trans_by_gene[gene_id]
+            
+                if len(counts_to_gene[pos]) == 0:
+                    del counts_to_gene[pos]
+            if len(complex_distr) <= 0:
+                complex_distr = list(gene_isoforms_counts.values())
+                random.shuffle(complex_distr)
+
+        if n_trans < (len(novel_trans) + len(known_trans)):
+            known_trans[:n_trans]
+
+    else:
+        random.shuffle(known_trans)
+        known_trans = known_trans[: (n_trans - len(novel_trans))]
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     if args.diff_exp:

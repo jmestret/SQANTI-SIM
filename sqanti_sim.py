@@ -130,6 +130,7 @@ def preparatory(input: list):
     group = parser_s.add_mutually_exclusive_group()
     group.add_argument("--pb_reads", type=str, default=str(), help="\t\tInput PacBio reads for quantification", )
     group.add_argument("--ont_reads", type=str, default=str(), help="\t\tInput ONT reads for quantification", )
+    parser_s.add_argument("--iso_complex", action="store_true", help="\t\tIf used the program will simulate the expressed isoform complexity (number of isoforms per gene)", )
     parser_s.add_argument("--diff_exp", action="store_true", help="\t\tIf used the program will simulate different expression values for novel and known transcripts", )
     parser_s.add_argument("--low_prob", type=float, default=0.25, help="\t\tLow value of prob vector (if --diff_exp)", )
     parser_s.add_argument("--high_prob", type=float, default=0.75, help="\t\tHigh value of prob vector (if --diff_exp)", )
