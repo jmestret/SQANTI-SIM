@@ -299,8 +299,10 @@ def take_closest(my_list: list, number: int, bias: str)-> int:
     """
 
     pos = bisect_left(my_list, number)
-    if pos == 0 or pos == len(my_list):
+    if pos == 0:
         return pos
+    if pos == len(my_list):
+        return -1
     if bias == "high":
         return pos
     return pos-1 # return the value before
@@ -528,7 +530,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
     # Raw counts -> Count only primary alignments
     trans_counts = defaultdict(lambda: 0)
-    gene_isoforms_counts = defaultdict(lambda: 0)
     with pysam.AlignmentFile(sam_file, "r") as sam_file_in:
         for align in sam_file_in:
             trans_id = align.reference_name
@@ -540,11 +541,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             ):
                 continue
             trans_counts[trans_id] += 1
-            gene_id = trans_to_gene[trans_id]
-            if gene_id:
-                gene_isoforms_counts[gene_id] += 1
-            else:
-                print("[SQANTI-SIM] WARNING: %s is not in the index file" %(trans_id))
     os.remove(sam_file)
     os.remove(ref_t)
 
@@ -571,6 +567,11 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         expr_distr = expr_distr[-n_trans,]
 
     if args.iso_complex:
+        gene_isoforms_counts = defaultdict(lambda: 0)
+        for i in trans_counts:
+            gene_id = trans_to_gene[i]
+            if gene_id:
+                gene_isoforms_counts[gene_id] += 1
         known_trans = []
         already_scaned = []
         complex_distr = list(gene_isoforms_counts.values())
@@ -582,6 +583,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             n = len(trans_by_gene[gene_id])
             pos = take_closest(complex_distr, n, "low")
             diff_isos = complex_distr.pop(pos)
+            if diff_isos > n:
+                diff_isos = n
             for i in range(diff_isos):
                 curr_trans = trans_by_gene[gene_id][i]
                 if trans_id in novel_trans:
