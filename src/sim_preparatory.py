@@ -623,7 +623,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 random.shuffle(complex_distr)
 
         if n_trans < (len(novel_trans) + len(known_trans)):
-            known_trans[:n_trans]
+            known_trans[:(n_trans - len(novel_trans))]
 
     else:
         random.shuffle(known_trans)
