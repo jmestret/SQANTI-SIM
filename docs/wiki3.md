@@ -61,7 +61,8 @@ In this mode you have three different sub modes which share some common argument
 | --- | :---: | :---: | --- | :---: |
 | --genome | T | str | Reference genome FASTA | |
 | --pb_reads/--ont_reads | T | str | Input PacBio or ONT reads for quantification | |
-| --diff_exp | F | | If used the program will simulate different expression values for novel and known transcripts | F |
+| --iso_complex | F | | If used the program will simulate the expressed isoform complexity (number of isoforms per gene) | |
+| --diff_exp | F | | If used the program will simulate different expression values for novel and known transcripts | |
 | --low_prob | F | float | Low value of prob vector (used if --diff_exp) | 0.25 |
 | --high_prob | F | float | High value of prob vector (used if --diff_exp) | 0.75 |
 

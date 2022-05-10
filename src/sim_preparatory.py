@@ -468,28 +468,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
-    # Read transcripts from index file
-    novel_trans = []
-    known_trans = []
-    trans_to_gene = defaultdict(lambda: str())
-    trans_by_gene = defaultdict(lambda: [])
-    with open(f_idx, "r") as f_in:
-        skip = f_in.readline()
-        skip = skip.split()
-        i = skip.index("sim_type")
-        j = skip.index("transcript_id")
-        k = skip.index("gene_id")
-        for line in f_in:
-            line = line.split()
-            sim_type = line[i]
-            if sim_type == "novel":
-                novel_trans.append(line[j])
-            else:
-                known_trans.append(line[j])
-            trans_to_gene[line[j]] = line[k]
-            trans_by_gene[line[k]].append(line[j])
-    f_in.close()
-
     # Align with minimap
     sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
 
@@ -547,16 +525,36 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Empirical expression values
     expr_distr = list(trans_counts.values())
     expr_distr.sort()
-
     if args.trans_number:
         n_trans = args.trans_number
     else:
         n_trans = len(expr_distr)
 
+    # Read transcripts from index file
+    novel_trans = []
+    known_trans = []
+    trans_to_gene = defaultdict(lambda: str())
+    trans_by_gene = defaultdict(lambda: [])
+    with open(f_idx, "r") as f_in:
+        skip = f_in.readline()
+        skip = skip.split()
+        i = skip.index("sim_type")
+        j = skip.index("transcript_id")
+        k = skip.index("gene_id")
+        for line in f_in:
+            line = line.split()
+            sim_type = line[i]
+            if sim_type == "novel":
+                novel_trans.append(line[j])
+            else:
+                known_trans.append(line[j])
+            trans_to_gene[line[j]] = line[k]
+            trans_by_gene[line[k]].append(line[j])
+    f_in.close()
+
     if n_trans < len(novel_trans):
         print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
         sys.exit(1)
-    
 
     if n_trans > (len(novel_trans) + len(known_trans)):
         n_trans = (len(novel_trans) + len(known_trans))
@@ -566,16 +564,21 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         )
         expr_distr = expr_distr[-n_trans,]
 
+    # Simulate also the number of different isoforms simulated for the same gene
+    # If not iso_complex the known transcripts to simulate are chosen randomly
     if args.iso_complex:
+        # Analyze the isoform complexity of expressed genes (dif expressed transcript per gene)
         gene_isoforms_counts = defaultdict(lambda: 0)
         for i in trans_counts:
             gene_id = trans_to_gene[i]
             if gene_id:
                 gene_isoforms_counts[gene_id] += 1
-        known_trans = []
-        already_scaned = []
         complex_distr = list(gene_isoforms_counts.values())
         complex_distr.sort()
+
+        # Decide which known transcripts to simulate -> take closest lower value from iso_complex distribution
+        known_trans = []
+        already_scaned = []
         for trans_id in novel_trans:
             gene_id = trans_to_gene[trans_id]
             if gene_id in already_scaned:
@@ -596,6 +599,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             if len(complex_distr) <= 0:
                 complex_distr = list(gene_isoforms_counts.values())
 
+        # Keep choosing known transcripts following the iso_complex distribution till required n_trans is satisfied
         counts_to_gene = defaultdict(lambda: [])
         for i in trans_by_gene:
             counts_to_gene[len(trans_by_gene[i])].append(i)
@@ -625,11 +629,12 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         if n_trans < (len(novel_trans) + len(known_trans)):
             known_trans[:(n_trans - len(novel_trans))]
 
-    else:
+    else: # Choose randomly
         random.shuffle(known_trans)
         known_trans = known_trans[: (n_trans - len(novel_trans))]
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
+    # Give same or different expression to novel and known transcripts
     if args.diff_exp:
         # Generate a vector of inverse probabilities to assign lower TPM values to novel transcripts and higher to known transcripts
         prob = numpy.linspace(
