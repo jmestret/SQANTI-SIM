@@ -299,7 +299,7 @@ def take_closest(my_list: list, number: int, bias: str)-> int:
     """
 
     pos = bisect_left(my_list, number)
-    if pos == 0:
+    if pos == 0 or my_list[pos] == number:
         return pos
     if pos == len(my_list):
         return -1
@@ -605,23 +605,27 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             counts_to_gene[len(trans_by_gene[i])].append(i)
     
         random.shuffle(complex_distr)
+        ctg_keys = list(counts_to_gene.keys())
+        ctg_keys.sort()
         while n_trans > (len(novel_trans) + len(known_trans)) and len(complex_distr) > 0:
             diff_isos = complex_distr.pop()
-            pos = take_closest(list(counts_to_gene.keys()), diff_isos, "high")
-            if counts_to_gene[pos]:
-                gene_id = counts_to_gene[pos].pop()
-                if pos > diff_isos:
+            pos = take_closest(ctg_keys, diff_isos, "high")
+            pos_count = ctg_keys[pos]
+            if counts_to_gene[pos_count]:
+                gene_id = counts_to_gene[pos_count].pop()
+                if pos_count > diff_isos:
                     for i in range(diff_isos):
                         curr_trans = trans_by_gene[gene_id][i]
                         known_trans.append(curr_trans)
                 else:
-                    for i in range(pos):
+                    for i in range(pos_count):
                         curr_trans = trans_by_gene[gene_id][i]
                         known_trans.append(curr_trans)
                 del trans_by_gene[gene_id]
             
-                if len(counts_to_gene[pos]) == 0:
-                    del counts_to_gene[pos]
+                if len(counts_to_gene[pos_count]) == 0:
+                    del counts_to_gene[pos_count]
+                    ctg_keys.remove(pos_count)
             if len(complex_distr) <= 0:
                 complex_distr = list(gene_isoforms_counts.values())
                 random.shuffle(complex_distr)
