@@ -8,9 +8,6 @@ the simulation step
 Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
 
-from bisect import bisect_left
-from calendar import c
-from email.policy import default
 import numpy
 import os
 import pandas
@@ -534,6 +531,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
     # Read transcripts from index file
     novel_trans = []
+    novel_genes = set()
     known_trans = []
     trans_to_gene = defaultdict(lambda: str())
     trans_by_gene = defaultdict(lambda: [])
@@ -548,11 +546,13 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             sim_type = line[i]
             if sim_type == "novel":
                 novel_trans.append(line[j])
+                novel_genes.add(line[k])
             else:
                 known_trans.append(line[j])
             trans_to_gene[line[j]] = line[k]
             trans_by_gene[line[k]].append(line[j])
     f_in.close()
+    fsm_genes = [g for g in trans_by_gene if g not in novel_genes]
 
     if n_trans < len(novel_trans):
         print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
@@ -576,7 +576,60 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             if gene_id:
                 gene_isoforms_counts[gene_id] += 1
         complex_distr = list(gene_isoforms_counts.values())
-        complex_distr.sort()
+
+        """
+        sim_complex_distr = []
+        for i in range(len(novel_genes)):
+            sim_complex_distr.append(random.sample(complex_distr, 1)[0])
+        
+        while sum(sim_complex_distr) < n_trans:
+            sim_complex_distr.append(random.sample(complex_distr, 1)[0])
+
+        sim_complex_distr.sort(reverse=True)
+
+        novel_counts_to_gene = defaultdict(lambda: [])
+        known_counts_to_gene = defaultdict(lambda: [])
+        for i in trans_by_gene:
+            if i in novel_genes:
+                novel_counts_to_gene[len(trans_by_gene[i])].append(i)
+            else:
+                known_counts_to_gene[len(trans_by_gene[i])].append(i)
+        novel_ctg_keys = list(novel_counts_to_gene.keys())
+        novel_ctg_keys.sort()
+        known_ctg_keys = list(known_counts_to_gene.keys())
+        known_ctg_keys.sort()
+
+        known_trans = []
+        for i in range(len(sim_complex_distr)):
+            diff_isos = sim_complex_distr[i]
+            if len(novel_ctg_keys) > 0 and diff_isos <= novel_ctg_keys[-1]:
+                pos = novel_ctg_keys[-1]
+                gene_id = novel_counts_to_gene[pos].pop()
+                for i in range(diff_isos):
+                    curr_trans = trans_by_gene[gene_id][i]
+                    if curr_trans not in novel_trans:
+                        known_trans.append(curr_trans)
+
+                if len(novel_counts_to_gene[pos]) == 0:
+                    del novel_counts_to_gene[pos]
+                    novel_ctg_keys.remove(pos)
+
+            elif len(novel_ctg_keys) > 0 and diff_isos <= known_ctg_keys[-1]:
+                pos = known_ctg_keys[-1]
+                gene_id = known_counts_to_gene[pos].pop()
+                for i in range(diff_isos):
+                    curr_trans = trans_by_gene[gene_id][i]
+                    if curr_trans not in novel_trans:
+                        known_trans.append(curr_trans)
+
+                if len(known_counts_to_gene[pos]) == 0:
+                    del known_counts_to_gene[pos]
+                    known_ctg_keys.remove(pos)
+            
+            else:
+                print("Me cago en la leche Merche", diff_isos)
+        """
+
 
         # Decide which known transcripts to simulate -> take closest lower value from iso_complex distribution
         known_trans = []
@@ -592,7 +645,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 diff_isos = n
             for i in range(diff_isos):
                 curr_trans = trans_by_gene[gene_id][i]
-                if trans_id in novel_trans:
+                if curr_trans in novel_trans:
                     continue
                 else:
                     known_trans.append(curr_trans)
@@ -605,13 +658,13 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         counts_to_gene = defaultdict(lambda: [])
         for i in trans_by_gene:
             counts_to_gene[len(trans_by_gene[i])].append(i)
-    
-        random.shuffle(complex_distr)
         ctg_keys = list(counts_to_gene.keys())
         ctg_keys.sort()
+
+        random.shuffle(complex_distr)
         while n_trans > (len(novel_trans) + len(known_trans)) and len(complex_distr) > 0:
             diff_isos = complex_distr.pop()
-            pos = take_closest(ctg_keys, diff_isos, "high")
+            pos = take_closest(ctg_keys, diff_isos)
             pos_count = ctg_keys[pos]
             if counts_to_gene[pos_count]:
                 gene_id = counts_to_gene[pos_count].pop()
