@@ -282,7 +282,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         print("\033[92m|\033[0m " + k + ": " + str(v))
 
 
-def take_closest(my_list: list, number: int, bias: str)-> int:
+def take_closest(my_list: list, number: int)-> int:
     """Finds the clossest bottom value
 
     Given a list it finds the clossest value to the query interger always
@@ -292,20 +292,22 @@ def take_closest(my_list: list, number: int, bias: str)-> int:
     Args:
         my_list (list) list with integers
         number (int) query integer
-        bias (str) get higher "high" or lower "low" value
     
     Returns:
         pos (int) index of the clossest value
     """
 
     pos = bisect_left(my_list, number)
-    if pos == 0 or my_list[pos] == number:
-        return pos
     if pos == len(my_list):
         return -1
-    if bias == "high":
+    if pos == 0:
         return pos
-    return pos-1 # return the value before
+    high = my_list[pos]
+    low = my_list[pos-1]
+    if abs(low - number) <= abs(high - number):
+        return pos-1
+    else:
+        return pos
 
 def create_expr_file_fixed_count(f_idx: str, args: list):
     """ Expression matrix - equal mode
@@ -584,7 +586,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             if gene_id in already_scaned:
                 continue
             n = len(trans_by_gene[gene_id])
-            pos = take_closest(complex_distr, n, "low")
+            pos = take_closest(complex_distr, n)
             diff_isos = complex_distr.pop(pos)
             if diff_isos > n:
                 diff_isos = n
@@ -641,9 +643,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Give same or different expression to novel and known transcripts
     if args.diff_exp:
         # Generate a vector of inverse probabilities to assign lower TPM values to novel transcripts and higher to known transcripts
-        prob = numpy.linspace(
-            start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr))
-        )
+        #prob = numpy.linspace(start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr)))
+        prob = numpy.geomspace(start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr)))
 
         # Choose expression values for novel and known transcripts
         min_expr = min(expr_distr)
