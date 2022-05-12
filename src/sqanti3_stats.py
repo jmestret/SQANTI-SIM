@@ -58,6 +58,11 @@ def sqanti3_stats(args):
             if min_cov == "NA" or min_cov > total_coverage_unique:
                 min_cov = total_coverage_unique
         return min_cov
+    
+    def write_TSS(row):
+        return trans_start_end[row["isoform"]][0]
+    def write_TTS(row):
+        return trans_start_end[row["isoform"]][1]
 
     print("[SQANTI-SIM][%s] Running SQANTI3" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -82,7 +87,7 @@ def sqanti3_stats(args):
     ]
 
     if args.cage_peak:
-        cmd.append("--cage_peak")
+        cmd.append("--CAGE_peak")
         cmd.append(args.cage_peak)
 
     if args.short_reads:
@@ -152,11 +157,33 @@ def sqanti3_stats(args):
 
     print("[SQANTI-SIM][%s] Generating SQANTI-SIM report" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
-    classification_file = os.path.join(
-        args.dir, (args.output + "_classification.txt")
-    )
+    classification_file = os.path.join(args.dir, (args.output + "_classification.txt"))
     junctions_file = os.path.join(args.dir, (args.output + "_junctions.txt"))
+    corrected_genePred = os.path.join(args.dir, (args.output + "_corrected.genePred"))
 
+    # Add TSS and TTS genomic coords to classification file
+    # GenePred format -> https://genome.ucsc.edu/FAQ/FAQformat.html#format9
+    trans_start_end = defaultdict(lambda: [None, None])
+    with open(corrected_genePred, "r") as gp_file:
+        for line in corrected_genePred:
+            line = line.split()
+            name = line[0]
+            strand = line[2]
+            if strand == "+":
+                txStart = int(line[3]) + 1 # Turn genePred 0-based start to 1-based 
+                txEnd = line[4]
+            else:
+                txStart = line[4]
+                txEnd = int(line[3]) + 1
+
+            trans_start_end[name] = [txStart, txEnd]
+
+    classif_f = pandas.read_csv(classification_file, sep="\t", header=0, dtype={"chrom":str})
+    classif_f["TSS_genomic_coord"] = trans_index.apply(write_TSS, axis=1)
+    classif_f["TTS_genomic_coord"] = trans_index.apply(write_TTS, axis=1)
+    classif_f.to_csv(classification_file, sep="\t", header=True, index=False, na_rep="NA")
+
+    # Generate SQANTI-SIM report
     cmd = [
         "Rscript",
         os.path.join(src_dir, "SQANTI_SIM_report.R"),

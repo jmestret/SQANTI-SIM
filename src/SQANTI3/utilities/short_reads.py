@@ -1,4 +1,3 @@
-# This file was modified by Jorge Martinez to adapt it to the SQANTI-SIM pipeline
 import os, subprocess, sys
 import pandas
 import pybedtools
@@ -41,12 +40,9 @@ def star_mapping(index_dir, SR_fofn, output_dir, cpus): #added cpus argument for
                         subprocess.call(['STAR', '--runThreadN', str(cpus), '--genomeDir', index_dir, '--readFilesIn', files[0], files[1], '--outFileNamePrefix', sample_prefix,'--alignSJoverhangMin', '8', '--alignSJDBoverhangMin', '1', '--outFilterType', 'BySJout', '--outSAMunmapped', 'Within', '--outFilterMultimapNmax', '20', '--outFilterMismatchNoverLmax', '0.04', '--outFilterMismatchNmax', '999', '--alignIntronMin', '20', '--alignIntronMax', '1000000', '--alignMatesGapMax', '1000000', '--sjdbScore', '1', '--genomeLoad', 'NoSharedMemory', '--outSAMtype', 'BAM', 'SortedByCoordinate', '--readFilesCommand', 'zcat', '--twopassMode', 'Basic'])
 
 
-def star(genome, SR_fofn, output_dir, cpus, star_index=None):
+def star(genome, SR_fofn, output_dir, cpus):
     fasta_genome = genome #Fasta Format already checked
-    if star_index is not None: # Added by Jorge Martinez (SQANTI-SIM modified)
-        index_dir = star_index
-    else:
-        index_dir = output_dir + '/STAR_index/'
+    index_dir = output_dir + '/STAR_index/'
     index_dir_tmp = index_dir + '/_STARtmp/'
     index_dir_o = index_dir + 'SAindex' 
     mapping_dir = output_dir + '/STAR_mapping/'
@@ -164,7 +160,7 @@ def get_bam_header(bam):
 
 def get_ratio_TSS(inside_bed, outside_bed, replicates, chr_order): 
 ## the idea would be to first calculate the average coverage per sample for in and out beds. Calculate each ratio
-## average all the ratios and return it as a dictionary
+## get the maximum the ratios across replicates and return it as a dictionary
     print('BAM files identified: '+str(replicates))
     out_TSS_file = os.path.dirname(inside_bed) + "/mean_ratio_TSS.tsv"
     in_bed = pybedtools.BedTool(inside_bed)
@@ -175,16 +171,19 @@ def get_ratio_TSS(inside_bed, outside_bed, replicates, chr_order):
         out_cov = out_bed.coverage(bam_file, sorted=True, g=chr_order)
         inside_df = pandas.DataFrame(columns=['id','inside'])
         for entry in in_cov:
-            inside_df = inside_df.append([{'id' : entry.name , 'inside' : float(entry[6])}], ignore_index=True)
+            new_entry = pandas.DataFrame({'id' : [entry.name] , 'inside' : [float(entry[6])]})
+            inside_df = pandas.concat([inside_df,new_entry], ignore_index=True)
         outside_df = pandas.DataFrame(columns=['id','outside'])
         for entry in out_cov:
-            outside_df = outside_df.append([{'id' : entry.name , 'outside' : float(entry[6])}], ignore_index=True)
+            new_entry = pandas.DataFrame({'id' : [entry.name] , 'outside' : [float(entry[6])]})
+            outside_df = pandas.concat([outside_df, new_entry], ignore_index=True)
         merged = pandas.merge(inside_df, outside_df, on="id")
         merged['ratio_TSS'] = (merged['inside']+0.01)/(merged['outside']+0.01)
+        merged['ratio_TSS'] = pandas.to_numeric(merged['ratio_TSS'])
         if b == 0 :
             ratio_rep_df = merged['id']
         ratio_rep_df = pandas.merge(ratio_rep_df, merged[['id','ratio_TSS']], on='id')
-    ratio_rep_df['max_ratio_TSS']=ratio_rep_df.max(axis=1)
+    ratio_rep_df['max_ratio_TSS']=ratio_rep_df.max(axis=1, numeric_only=True)
     ratio_rep_df = ratio_rep_df[['id','max_ratio_TSS']]
     ratio_rep_dict = ratio_rep_df.set_index('id').T.to_dict()
     os.system('rm {i} {o}'.format(i=inside_bed, o=outside_bed))

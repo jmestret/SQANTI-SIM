@@ -215,7 +215,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 # Combine class and junc
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord', 'all_canonical', 'dist_to_cage_peak', 'within_cage_peak', 'min_cov', 'ratio_TSS')]
+data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord', 'all_canonical', 'dist_to_CAGE_peak', 'within_CAGE_peak', 'min_cov', 'ratio_TSS')]
 
 # Read index file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -227,7 +227,7 @@ data.index$acceptors <- lapply(data.index$acceptors, function(x){
 })
 data.index$junctions <- paste(data.index$donors, data.index$acceptors, sep=',')
 data.index$junctions[which(data.index$junctions == ',')] <- ''
-data.index$TSS_genomic_coord  <- data.index$TSS_genomic_coord - 1
+#data.index$TSS_genomic_coord  <- data.index$TSS_genomic_coord - 1
 data.index$structural_category = factor(data.index$structural_category,
                                       labels = xaxislabelsF1,
                                       levels = xaxislevelsF1,
@@ -363,7 +363,7 @@ p4 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   ggtitle('Canonical Junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
-if ('within_cage_peak' %in% colnames(data.index)){
+if ('within_CAGE_peak' %in% colnames(data.index)){
   # PLOT 5: within cage peak
   data.query$match_type <- 'FP'
   data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'novel_TP'
@@ -372,15 +372,15 @@ if ('within_cage_peak' %in% colnames(data.index)){
   p5.known_FN$match_type <- 'known_FN'
   p5.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.novel$transcript_id & !(data.index$transcript_id %in% res.full$novel.perfect.matches$transcript_id)),]
   p5.novel_FN$match_type <- 'novel_FN'
-  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')])
+  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p5.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p5.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
   
-  p5 <- p5.all[which(!is.na(p5.all$within_cage_peak)),] %>%
-    group_by(match_type, within_cage_peak) %>%
+  p5 <- p5.all[which(!is.na(p5.all$within_CAGE_peak)),] %>%
+    group_by(match_type, within_CAGE_peak) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
-    geom_bar(aes(y=value, fill=within_cage_peak), position="fill", stat="identity") +
+    geom_bar(aes(y=value, fill=within_CAGE_peak), position="fill", stat="identity") +
     scale_fill_manual(values=two_col, name='CagePeak') +
     mytheme +
     ylab('Percentage %') +
@@ -389,8 +389,8 @@ if ('within_cage_peak' %in% colnames(data.index)){
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
   # PLOT 6: distance to cage peak
-  p6 <- p5.all[which(!is.na(p5.all$dist_to_cage_peak)),] %>%
-    ggplot(aes(x=dist_to_cage_peak, color=match_type, fill=match_type)) +
+  p6 <- p5.all[which(!is.na(p5.all$dist_to_CAGE_peak)),] %>%
+    ggplot(aes(x=dist_to_CAGE_peak, color=match_type, fill=match_type)) +
     geom_density(alpha=.3) +
     scale_color_manual(values = myPalette) +
     scale_fill_manual(values = myPalette) +
@@ -471,7 +471,7 @@ p4.min <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   ggtitle('Canonical Junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
-if ('within_cage_peak' %in% colnames(data.index)){
+if ('within_CAGE_peak' %in% colnames(data.index)){
   # PLOT 5: within cage peak
   data.query$match_type <- 'FP'
   data.query$match_type[which(data.query$isoform %in% res.min$novel.perfect.matches$isoform)] <- 'novel_TP'
@@ -480,15 +480,15 @@ if ('within_cage_peak' %in% colnames(data.index)){
   p5.known_FN$match_type <- 'known_FN'
   p5.novel_FN <- data.index[which(data.index$transcript_id %in% res.min$data.novel$transcript_id & !(data.index$transcript_id %in% res.min$novel.perfect.matches$transcript_id)),]
   p5.novel_FN$match_type <- 'novel_FN'
-  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'within_cage_peak', 'dist_to_cage_peak')])
+  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p5.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p5.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
   
-  p5.min <- p5.all[which(!is.na(p5.all$within_cage_peak)),] %>%
-    group_by(match_type, within_cage_peak) %>%
+  p5.min <- p5.all[which(!is.na(p5.all$within_CAGE_peak)),] %>%
+    group_by(match_type, within_CAGE_peak) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
-    geom_bar(aes(y=value, fill=within_cage_peak), position="fill", stat="identity") +
+    geom_bar(aes(y=value, fill=within_CAGE_peak), position="fill", stat="identity") +
     scale_fill_manual(values=two_col, name='CagePeak') +
     mytheme +
     ylab('Percentage %') +
@@ -497,8 +497,8 @@ if ('within_cage_peak' %in% colnames(data.index)){
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
   # PLOT 6: distance to cage peak
-  p6.min <- p5.all[which(!is.na(p5.all$dist_to_cage_peak)),] %>%
-    ggplot(aes(x=dist_to_cage_peak, color=match_type, fill=match_type)) +
+  p6.min <- p5.all[which(!is.na(p5.all$dist_to_CAGE_peak)),] %>%
+    ggplot(aes(x=dist_to_CAGE_peak, color=match_type, fill=match_type)) +
     geom_density(alpha=.3) +
     scale_color_manual(values = myPalette) +
     scale_fill_manual(values = myPalette) +

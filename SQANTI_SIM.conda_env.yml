@@ -12,6 +12,7 @@ dependencies:
   - bioconductor-noiseq
   - bioconductor-polyester
   - bx-python
+  - cython
   - desalt
   - genometools-genometools
   - gffread
@@ -26,6 +27,7 @@ dependencies:
   - openssl
   - pandoc
   - perl
+  - pip
   - psutil
   - pybedtools
   - pysam
@@ -33,6 +35,8 @@ dependencies:
   - r>=3.6.0
   - r-biocmanager
   - r-dplyr
+  - r-dt
+  - r-devtools
   - r-fmsb
   - r-ggplot2
   - r-ggplotify
