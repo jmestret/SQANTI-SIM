@@ -531,8 +531,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
     # Read transcripts from index file
     novel_trans = []
-    novel_genes = set()
     known_trans = []
+    novel_genes = set()
     trans_to_gene = defaultdict(lambda: str())
     trans_by_gene = defaultdict(lambda: [])
     with open(f_idx, "r") as f_in:
@@ -552,7 +552,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             trans_to_gene[line[j]] = line[k]
             trans_by_gene[line[k]].append(line[j])
     f_in.close()
-    fsm_genes = [g for g in trans_by_gene if g not in novel_genes]
 
     if n_trans < len(novel_trans):
         print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
@@ -564,7 +563,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (n_trans)
         )
-        expr_distr = expr_distr[-n_trans,]
 
     # Simulate also the number of different isoforms simulated for the same gene
     # If not iso_complex the known transcripts to simulate are chosen randomly
@@ -577,16 +575,17 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 gene_isoforms_counts[gene_id] += 1
         complex_distr = list(gene_isoforms_counts.values())
 
-        """
+        # Sample random values from empirical distribution:
+        # (1) Minimum get one for each novel gene to simulate
+        # (2) Keep taking from known transcript till args.trans_number is satisfied
         sim_complex_distr = []
         for i in range(len(novel_genes)):
-            sim_complex_distr.append(random.sample(complex_distr, 1)[0])
-        
+            sim_complex_distr.append(random.choice(complex_distr))
         while sum(sim_complex_distr) < n_trans:
-            sim_complex_distr.append(random.sample(complex_distr, 1)[0])
-
+            sim_complex_distr.append(random.choice(complex_distr))
         sim_complex_distr.sort(reverse=True)
 
+        # Dictionary of how many transcripts has annotated each gene (novel and known)
         novel_counts_to_gene = defaultdict(lambda: [])
         known_counts_to_gene = defaultdict(lambda: [])
         for i in trans_by_gene:
@@ -599,99 +598,53 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         known_ctg_keys = list(known_counts_to_gene.keys())
         known_ctg_keys.sort()
 
+        # Assign higher values to those genes with more transcripts annotated
         known_trans = []
         for i in range(len(sim_complex_distr)):
             diff_isos = sim_complex_distr[i]
             if len(novel_ctg_keys) > 0 and diff_isos <= novel_ctg_keys[-1]:
                 pos = novel_ctg_keys[-1]
                 gene_id = novel_counts_to_gene[pos].pop()
-                for i in range(diff_isos):
-                    curr_trans = trans_by_gene[gene_id][i]
-                    if curr_trans not in novel_trans:
-                        known_trans.append(curr_trans)
-
                 if len(novel_counts_to_gene[pos]) == 0:
                     del novel_counts_to_gene[pos]
                     novel_ctg_keys.remove(pos)
 
-            elif len(novel_ctg_keys) > 0 and diff_isos <= known_ctg_keys[-1]:
+            elif len(known_ctg_keys) > 0 and diff_isos <= known_ctg_keys[-1]:
                 pos = known_ctg_keys[-1]
                 gene_id = known_counts_to_gene[pos].pop()
-                for i in range(diff_isos):
-                    curr_trans = trans_by_gene[gene_id][i]
-                    if curr_trans not in novel_trans:
-                        known_trans.append(curr_trans)
-
                 if len(known_counts_to_gene[pos]) == 0:
                     del known_counts_to_gene[pos]
                     known_ctg_keys.remove(pos)
             
-            else:
-                print("Me cago en la leche Merche", diff_isos)
-        """
+            elif len(novel_ctg_keys) > 0 and novel_ctg_keys[-1] > known_ctg_keys[-1]:
+                pos = novel_ctg_keys[-1]
+                gene_id = novel_counts_to_gene[pos].pop()
+                diff_isos = pos
+                if len(novel_counts_to_gene[pos]) == 0:
+                    del novel_counts_to_gene[pos]
+                    novel_ctg_keys.remove(pos)
 
-
-        # Decide which known transcripts to simulate -> take closest lower value from iso_complex distribution
-        known_trans = []
-        already_scaned = []
-        for trans_id in novel_trans:
-            gene_id = trans_to_gene[trans_id]
-            if gene_id in already_scaned:
-                continue
-            n = len(trans_by_gene[gene_id])
-            pos = take_closest(complex_distr, n)
-            diff_isos = complex_distr.pop(pos)
-            if diff_isos > n:
-                diff_isos = n
-            for i in range(diff_isos):
-                curr_trans = trans_by_gene[gene_id][i]
-                if curr_trans in novel_trans:
-                    continue
-                else:
-                    known_trans.append(curr_trans)
-            del trans_by_gene[gene_id]
-            already_scaned.append(gene_id)
-            if len(complex_distr) <= 0:
-                complex_distr = list(gene_isoforms_counts.values())
-
-        # Keep choosing known transcripts following the iso_complex distribution till required n_trans is satisfied
-        counts_to_gene = defaultdict(lambda: [])
-        for i in trans_by_gene:
-            counts_to_gene[len(trans_by_gene[i])].append(i)
-        ctg_keys = list(counts_to_gene.keys())
-        ctg_keys.sort()
-
-        random.shuffle(complex_distr)
-        while n_trans > (len(novel_trans) + len(known_trans)) and len(complex_distr) > 0:
-            diff_isos = complex_distr.pop()
-            pos = take_closest(ctg_keys, diff_isos)
-            pos_count = ctg_keys[pos]
-            if counts_to_gene[pos_count]:
-                gene_id = counts_to_gene[pos_count].pop()
-                if pos_count > diff_isos:
-                    for i in range(diff_isos):
-                        curr_trans = trans_by_gene[gene_id][i]
-                        known_trans.append(curr_trans)
-                else:
-                    for i in range(pos_count):
-                        curr_trans = trans_by_gene[gene_id][i]
-                        known_trans.append(curr_trans)
-                del trans_by_gene[gene_id]
+            elif len(known_ctg_keys) > 0:
+                pos = known_ctg_keys[-1]
+                gene_id = known_counts_to_gene[pos].pop()
+                diff_isos = pos
+                if len(known_counts_to_gene[pos]) == 0:
+                    del known_counts_to_gene[pos]
+                    known_ctg_keys.remove(pos)
             
-                if len(counts_to_gene[pos_count]) == 0:
-                    del counts_to_gene[pos_count]
-                    ctg_keys.remove(pos_count)
-            if len(complex_distr) <= 0:
-                complex_distr = list(gene_isoforms_counts.values())
-                random.shuffle(complex_distr)
+            for i in range(diff_isos):
+                    curr_trans = trans_by_gene[gene_id][i]
+                    if curr_trans not in novel_trans:
+                        known_trans.append(curr_trans)
 
-        if n_trans < (len(novel_trans) + len(known_trans)):
-            known_trans[:(n_trans - len(novel_trans))]
+        #if n_trans < (len(novel_trans) + len(known_trans)):
+        #    known_trans[:(n_trans - len(novel_trans))]
+        n_trans = (len(novel_trans) + len(known_trans))
 
     else: # Choose randomly
         random.shuffle(known_trans)
         known_trans = known_trans[: (n_trans - len(novel_trans))]
-
+    
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
     # Give same or different expression to novel and known transcripts
     if args.diff_exp:
@@ -742,7 +695,6 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             sample_coverage, axis=1
         )
 
-        
     n_reads = trans_index["requested_counts"].sum()
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
@@ -751,5 +703,5 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("[SQANTI-SIM] Mapped transcripts: %s" %(len(expr_distr)))
-    print("[SQANTI-SIM] Mapped reads: %s" %(n_reads))
+    print("[SQANTI-SIM] Requested transcripts: %s" %(n_trans))
+    print("[SQANTI-SIM] Requested reads: %s" %(n_reads))
