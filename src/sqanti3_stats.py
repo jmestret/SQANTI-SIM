@@ -86,13 +86,18 @@ def sqanti3_stats(args):
         "--skipORF",
     ]
 
-    if args.cage_peak:
+    if args.CAGE_peak:
         cmd.append("--CAGE_peak")
-        cmd.append(args.cage_peak)
+        cmd.append(args.CAGE_peak)
 
     if args.short_reads:
         cmd.append("--short_reads")
         cmd.append(args.short_reads)
+
+    if args.fasta:
+        cmd.append("--aligner_choice")
+        cmd.append(args.aligner_choice)
+        cmd.append("--fasta")
 
     cmd = " ".join(cmd)
     sys.stdout.flush()
@@ -101,9 +106,9 @@ def sqanti3_stats(args):
         #sys.exit(1)
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
-    if args.cage_peak:
+    if args.CAGE_peak:
         print("[SQANTI-SIM][%s] Parsing CAGE Peak data" %(strftime("%d-%m-%Y %H:%M:%S")))
-        cage_peak_data = CAGEPeak(args.cage_peak)
+        cage_peak_data = CAGEPeak(args.CAGE_peak)
 
         within_cage_dict = defaultdict(lambda: False)
         dist_cage_dict = defaultdict(lambda: False)

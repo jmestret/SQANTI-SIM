@@ -360,6 +360,8 @@ def eval(input: list):
     parser.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument("--short_reads", type=str, default=None, help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
     parser.add_argument("--cage_peak", type=str, default=None,help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
+    parser.add_argument("--fasta", action="store_true", help="\t\tUse when running SQANTI by using as input a FASTA/FASTQ with the sequences of isoforms", )
+    parser.add_argument("--aligner_choice", type=str, default="minimap2",help="\t\tIf --fasta used, choose the aligner to map your isoforms", choices=["minimap2","deSALT","gmap","uLTRA"])
     parser.add_argument("--min_support", type=int, default=3, help="\t\tMinimum number of supporting reads for an isoform", )
     parser.add_argument("-k", "--cores", type=int, default=1, help="\t\tNumber of cores to run in parallel", )
 
@@ -381,8 +383,8 @@ def eval(input: list):
 
     if args.short_reads:
         print("[SQANTI-SIM] - Short reads:", str(args.short_reads))
-    if args.cage_peak:
-        print("[SQANTI-SIM] - CAGE Peak:", str(args.cage_peak))
+    if args.CAGE_peak:
+        print("[SQANTI-SIM] - CAGE Peak:", str(args.CAGE_peak))
     
     print("[SQANTI-SIM] - Min support:", str(args.min_support))
     print("[SQANTI-SIM] - N threads:", str(args.cores))
