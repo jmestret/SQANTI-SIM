@@ -68,69 +68,31 @@ Running the tool with the minimum input to simulate PacBio reads will look as fo
 
 ### Required input
 
-These are the minimal parameters you will need to run `sqanti_sim.py classif`:
+These are the minimal parameters you will need to run `sqanti_sim.py eval`:
 
 - **Transcript index** file (`-i`): This file is the *prefix_index.tsv* file generated in the previus *preparatory* step. New columns and information will be add to this file, so you should track it and use the most updated version of this file in the next steps of the SQANTI-SIM pipeline.
-- **Reference annotation** in GTF format (`--gtf`): This file must be the same as the one used in the *classif* and *preparatory* steps so the transcript names and references match properly. An example of reference transcriptome and it required format is [GENCODE](https://www.gencodegenes.org/).
+- **Long-read transcriptome** in GTF format (`--isoforms`): The isoforms identified with your transcript reconstruction pipeline. The transcripts models must be in GTF format.
+- **Reference annotation** in GTF format (`--gtf`): This file is the modified GTF reference annotation generated in the *preparatory* step, that you should have used in your transcript reconstruction pipeline.
 - **Reference genome** in FASTA format (`--genome`): This is the reference genome in FASTA format.
-- **Long-read sequencing platform** (`--pb/--ont`): Decide whether simulate PacBio reads using IsoSeqSim simulator or ONT reads with NanoSim simulator. You can choose how many reads simulate with `--long_count`, if not used it will use the values from the "requested_counts" column from the index file. If `--long_count` is used the value of total simulate reads will not be exact, the number of total reads is used to multiply the requested TPM to decide how many reads simulate for each different transcript.
 
 ### Optional input
 
-- **Illumina reads** simulation (`--illumina`): If used you will also simulate Ilumina RNA-seq reads with Polyester simulator. You can choose how many reads simulate with `--short_count`, if not used it will use the values from the "requested_counts" column from the index file.
+- **Short reads support** (`--short_reads`): File Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq.
+- **CAGE Peak data** (`--cage_peak`): FANTOM5 Cage Peak (BED format, optional)
+- **Output prefix**(`-o`): The output prefix for the index file. SQANTI-SIM will use "sqanti_sim" as default prefix.
 - **Output directory**(`-d`): Output directory for output files. SQANTI-SIM will use the directory where the script was run as the default output directory.
+- **Supporting reads** (`--min_support`): Minimum number of supporting reads for an isoform to be identified as a new isoform by your transcript reconstruction pipeline. This parameter don't affec the results, its just to generate some metrics in the report according to your pipeline limitations/thresholds.
 - **Parallelization**(`-k`): Number of cores to run in parallel. Most of the SQANTI-SIM modes have code chunks that can be run in parallel, however the default option is to run SQANTI-SIM in one single thread.
 
 ## <a name="out"></a>Output explanation
 
-#### ONT_simulated.fastq or PacBio_simulated.fasta
+#### prefix_SQANTI_SIM_report.html
 
-FASTQ or FASTA file of simulated long-reads. The header of the reads looks like the following:
+This is the main output file of the SQANTI-SIM pipeline. This HTML report picks up all the performance metrics of your transcript identification pipeline.
 
-```
-# ONT reads
-@ENST00000686945_ONT_simulated_read_1229
+#### SQANTI3 output files
 
-# PacBio reads
->ENST00000379236_PacBio_simulated_read_1229
-```
+This is a directory with all the SQANTI3 output. A detailed explanation of its output can be found in the [SQANTI3 wiki]().
 
-The information before the first `_` in the reference transcript name from which the read cames from. The it is written the platform from which you are simulating (`ONT_simulated_read` or `PacBio_simulated_read`)  and the total read count of simulated read, meaning this read was the simulated read number `1230` (the count starts in 0).
 
-#### {ONT,PacBio}_simulated.read_to_isoform.tsv
 
-This is a tab-separated file with two columns and no header. In the first column we have all the reads names and in the second column the reference transcript name from which that specific read was simulated from. This information is kinda redundant because we can find the reference transcript in the header of the read.
-
-#### Illumina_simulated_{1,2}.fasta
-
-Fasta file of simulated Illumina RNA-seq reads. The header format is the same as the one given by the Polyester simulator.
-
-#### prefix_index.tsv
-
-This is the main index file with the structural annotation of the reference transcripts. This file will be requested and modified in each other SQANTI-SIM mode. It must be parsed using `-i/--trans_index`. After running the SQANTI-SIM *classif* mode this file will contain the potential structural category of each transcript. The columns of the *prefix_index.tsv* file are described below:
-
-1. **transcript_id**: The transcript id of the query transcript taken from the reference annotation.
-2. **gene_id**: The reference gene where this transcript comes from.
-3. **structural_category**: The potential structural category in which this transcript could be classified if simulated as novel.
-4. **associated_gene**: The reference gene that confers the structural category to the query transcript. If there are more than one associated gene they will be written separated by "_", e.g., *Gene1_Gene2_Gene3*.
-5. **associated_trans**: The reference transcript name hat confers the structural category. If there is not an specifica associated transcript, "novel" will appear instead.
-6. **chrom**: Chromosome.
-7. **strand**: Strand.
-8. **exons**: Number of exons.
-9. **donors**: End of the junction (if - strand it will be the start of the junction). Values are 1-based.
-10. **acceptors**: Start of the junction (if - strand it will be the end of the junction). Values are 1-based.
-11. **TSS_genomic_coord**: Start site of the transcript. Values are 1-based.
-12. **TTS_genomic_coord**: Termination site of the transcript. Values are 1-based.
-13. **sim_type**: If the transcript is present in the modified reference annotation (*known*) or not (*novel*).
-14. **requested_counts**: The requested reads to simulate in the *sim* step.
-15. **requested_tpm**: The requested TPM value to simulate in the *sim* step.
-16. **sim_counts**: The number of simulated long-reads.
-17. **illumina_counts**: The numer of simulated short-reads.
-
-#### Other output generated by default by the simulators
-
-- **ONT_simulated_aligned_error_profile**: Contains all the information of error introduced into each read.
-- **ONT_simulated_aligned_reads.fastq**: Contains all aligned reads. In SQANTI-SIM, all simulated reads.
-- **ONT_simulated_unaligned_reads.fastq**: Contains all unaligned reads. NanoSim was adapted in SQANTI-SIM so all the simulated reads are aligned reads.
-- **PacBio_simulated.tsv**: Structural annotation of each reference transcript and the number of reads simulated of each one.
-- **temp_isoseqsim**: Temporary directory for IsoSeqSim simulation.
