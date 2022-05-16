@@ -467,43 +467,48 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
-    # Align with minimap
-    sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
+    if args.mapped_reads:
+        if not os.path.exists(args.mapped_reads):
+            print("[SQANTI-SIM] ERROR: %s does not exist" %(args.mapped_reads), file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Align with minimap
+        sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
 
-    if tech == "pb":
-        cmd = [
-            "minimap2",
-            ref_t,
-            args.pb_reads,
-            "-x",
-            "map-pb",
-            "-a",
-            "--secondary=no",
-            "-o",
-            sam_file,
-            "-t",
-            str(args.cores),
-        ]
-    elif tech == "ont":
-        cmd = [
-            "minimap2",
-            ref_t,
-            args.ont_reads,
-            "-x",
-            "map-ont",
-            "-a",
-            "--secondary=no",
-            "-o",
-            sam_file,
-            "-t",
-            str(args.cores),
-        ]
+        if tech == "pb":
+            cmd = [
+                "minimap2",
+                ref_t,
+                args.pb_reads,
+                "-x",
+                "map-pb",
+                "-a",
+                "--secondary=no",
+                "-o",
+                sam_file,
+                "-t",
+                str(args.cores),
+            ]
+        elif tech == "ont":
+            cmd = [
+                "minimap2",
+                ref_t,
+                args.ont_reads,
+                "-x",
+                "map-ont",
+                "-a",
+                "--secondary=no",
+                "-o",
+                sam_file,
+                "-t",
+                str(args.cores),
+            ]
 
-    cmd = " ".join(cmd)
-    sys.stdout.flush()
-    if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTI-SIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
-        sys.exit(1)
+        cmd = " ".join(cmd)
+        sys.stdout.flush()
+        if subprocess.check_call(cmd, shell=True) != 0:
+            print("[SQANTI-SIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
+            sys.exit(1)
 
     # Raw counts -> Count only primary alignments
     trans_counts = defaultdict(lambda: 0)
