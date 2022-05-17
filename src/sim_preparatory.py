@@ -654,52 +654,30 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Give same or different expression to novel and known transcripts
     if args.diff_exp:
         # Generate a vector of inverse probabilities to assign lower TPM values to novel transcripts and higher to known transcripts
-        #prob = numpy.linspace(start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr)))
-        prob = numpy.geomspace(start=args.low_prob, stop=args.high_prob, num=int((max(expr_distr)+1) - min(expr_distr)))
+        uniq = list(set(expr_distr))
+        prob = numpy.linspace(start=args.low_prob, stop=args.high_prob, num=len(uniq))
+        #prob = numpy.geomspace(start=args.low_prob, stop=args.high_prob, num=len(uniq))
 
         # Choose expression values for novel and known transcripts
-        min_expr = min(expr_distr)
-        novel_expr = []
         n_novel = 0
-        while n_novel < len(novel_trans):
+        n_known = 0
+        novel_expr = []
+        known_expr = []
+        while n_novel < len(novel_trans) or n_known < len(known_trans):
             s = random.choice(expr_distr)
             r = random.uniform(0, 1)
-            if r > prob[(s - min_expr)]:
+            if r > prob[uniq.index(s)] and n_novel < len(novel_trans):
                 novel_expr.append(s)
                 n_novel += 1
-
-        known_expr = []
-        n_known = 0
-        while n_known < len(known_trans):
-            s = random.choice(expr_distr)
-            r = random.uniform(0, 1)
-            if r < prob[(s - min_expr)]:
+            elif n_known < len(known_trans):
                 known_expr.append(s)
                 n_known += 1
 
-        trans_index["requested_counts"] = trans_index.apply(
-            sample_coverage, axis=1
-        )
-
     else: # No bias for novel/known expression distribution
-        novel_expr = []
-        n_novel = 0
-        while n_novel < len(novel_trans):
-            s = random.choice(expr_distr)
-            novel_expr.append(s)
-            n_novel += 1
-
-        known_expr = []
-        n_known = 0
-        while n_known < len(known_trans):
-            s = random.choice(expr_distr)
-            known_expr.append(s)
-            n_known += 1
-
-        trans_index["requested_counts"] = trans_index.apply(
-            sample_coverage, axis=1
-        )
-
+        novel_expr = random.choices(expr_distr, k = len(novel_trans))
+        known_expr = random.choices(expr_distr, k = len(known_trans))
+    
+    trans_index["requested_counts"] = trans_index.apply(sample_coverage, axis=1)
     n_reads = trans_index["requested_counts"].sum()
     trans_index["requested_tpm"] = round(
         ((1000000.0 * trans_index["requested_counts"]) / n_reads), 2
