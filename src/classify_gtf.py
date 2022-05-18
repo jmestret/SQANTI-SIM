@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-sqanti3_sim.py
+classify_gtf.py
 
 Given a GTF file as input, determine its potential SQANTI3 structural
 category not taking into account itself in the reference.
-The classification step is adapted from the original SQANTI3 QC v4.2.
+The classification step is adapted from the original SQANTI3 QC v5.0.
 (sqanti3_qc.py -> https://github.com/ConesaLab/SQANTI3)
 
 Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)

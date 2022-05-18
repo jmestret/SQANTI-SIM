@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pb_ont_sim.py
+simulate_reads.py
 
 Simulate reads from different sequencing platforms: PacBio (IsoSeqSim), ONT
 (NanoSim) and Illumina (Polyester)

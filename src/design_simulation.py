@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sim_preparatory.py
+design_simulation.py
 
 Modifies GTF reference annotation and generate expression values for 
 the simulation step

@@ -17,10 +17,10 @@ import os
 import random
 import sys
 from collections import defaultdict
-from src import classif_gtf
-from src import pb_ont_sim
-from src import sim_preparatory
-from src import sqanti3_stats
+from src import classify_gtf
+from src import simulate_reads
+from src import design_simulation
+from src import evaluation_metrics
 from time import strftime
 
 
@@ -60,15 +60,15 @@ def classif(input: list):
     print("[SQANTI-SIM] - N threads:", str(args.cores))
 
     print("\n[SQANTI-SIM][%s] Classifying transcripts in structural categories" %(strftime("%d-%m-%Y %H:%M:%S")))
-    trans_info = classif_gtf.classify_gtf(args)
+    trans_info = classify_gtf.classify_gtf(args)
     
     print("[SQANTI-SIM] Summary table from categorization")
-    classif_gtf.summary_table_cat(trans_info)
+    classify_gtf.summary_table_cat(trans_info)
 
     print("[SQANTI-SIM][%s] classif step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
 
-def preparatory(input: list):
+def design(input: list):
     """Modifies reference annotation GTF and builds expression matrix
 
     Given the novel and known transcripts to simulate and its counts, generates
@@ -78,7 +78,7 @@ def preparatory(input: list):
     Args:
         input (list): arguments to parse
     """
-    parser = argparse.ArgumentParser(prog="sqanti_sim.py preparatory", description="sqanti_sim.py preparatory parse options", )
+    parser = argparse.ArgumentParser(prog="sqanti_sim.py design", description="sqanti_sim.py design parse options", )
     subparsers = parser.add_subparsers(dest="mode", description="\t\tDifferent modes to generate the expression matrix: equal (simulate with equal coverage for all reads), custom (simulate with diferent negative binomial distributions for novel and known transcripts) or sample (simulate using a real sample)")
 
     parser_e = subparsers.add_parser("equal", help="\t\tRun in equal mode")
@@ -150,7 +150,7 @@ def preparatory(input: list):
 
     if unknown:
         print(
-            "[SQANTI-SIM] preparatory mode unrecognized arguments: {}\n".format(
+            "[SQANTI-SIM] design mode unrecognized arguments: {}\n".format(
                 " ".join(unknown)
             ),
             file=sys.stderr,
@@ -226,7 +226,7 @@ def preparatory(input: list):
 
     # Modify GTF
     print("\n[SQANTI-SIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
-    counts_end = sim_preparatory.simulate_gtf(args)
+    counts_end = design_simulation.simulate_gtf(args)
 
     counts_ini = defaultdict(
         lambda: 0,
@@ -242,25 +242,25 @@ def preparatory(input: list):
             "intergenic": args.Intergenic,
         },
     )
-    sim_preparatory.summary_table_del(counts_ini, counts_end)
+    design_simulation.summary_table_del(counts_ini, counts_end)
 
     # Generate expression matrix
     print("[SQANTI-SIM][%s] Generating expression matrix" %(strftime("%d-%m-%Y %H:%M:%S")))
     index_file = os.path.join(args.dir, (args.output + "_index.tsv"))
 
     if args.mode == "equal":
-        sim_preparatory.create_expr_file_fixed_count(index_file, args)
+        design_simulation.create_expr_file_fixed_count(index_file, args)
 
     elif args.mode == "custom":
-        sim_preparatory.create_expr_file_nbinom(index_file, args)
+        design_simulation.create_expr_file_nbinom(index_file, args)
 
     elif args.mode == "sample":
         if args.pb_reads:
-            sim_preparatory.create_expr_file_sample(index_file, args, "pb")
+            design_simulation.create_expr_file_sample(index_file, args, "pb")
         else:
-            sim_preparatory.create_expr_file_sample(index_file, args, "ont")
+            design_simulation.create_expr_file_sample(index_file, args, "ont")
 
-    print("[SQANTI-SIM][%s] preparatory step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
+    print("[SQANTI-SIM][%s] design step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
     
 
 def sim(input: list):
@@ -331,13 +331,13 @@ def sim(input: list):
     # Simulation with IsoSeqSim, NanoSim and/or Polyester
     if args.pb:
         print("\n[SQANTI-SIM][%s] Simulating PacBio reads" %(strftime("%d-%m-%Y %H:%M:%S")))
-        pb_ont_sim.pb_simulation(args)
+        simulate_reads.pb_simulation(args)
     if args.ont:
         print("\n[SQANTI-SIM][%s] Simulating ONT reads" %(strftime("%d-%m-%Y %H:%M:%S")))
-        pb_ont_sim.ont_simulation(args)
+        simulate_reads.ont_simulation(args)
     if args.illumina:
         print("\n[SQANTI-SIM][%s] Simulating Illumina reads" %(strftime("%d-%m-%Y %H:%M:%S")))
-        pb_ont_sim.illumina_simulation(args)
+        simulate_reads.illumina_simulation(args)
 
     print("[SQANTI-SIM][%s] sim step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
@@ -391,7 +391,7 @@ def eval(input: list):
     print("[SQANTI-SIM] - N threads:", str(args.cores))
     print()
 
-    sqanti3_stats.sqanti3_stats(args)
+    evaluation_metrics.sqanti3_stats(args)
 
     print("[SQANTI-SIM][%s] eval step finished" %(strftime("%d-%m-%Y %H:%M:%S")))
 
@@ -418,7 +418,7 @@ print(
 
 if len(sys.argv) < 2:
     print("[SQANTI-SIM] usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
-    print("[SQANTI-SIM] modes: classif, preparatory, sim, eval\n", file=sys.stderr)
+    print("[SQANTI-SIM] modes: classif, design, sim, eval\n", file=sys.stderr)
     sys.exit(1)
 
 else:
@@ -429,9 +429,9 @@ if mode == "classif":
     print("[SQANTI-SIM] CLASSIF MODE")
     res = classif(input)
 
-elif mode == "preparatory":
-    print("[SQANTI-SIM] PREPARATORY MODE")
-    res = preparatory(input)
+elif mode == "design":
+    print("[SQANTI-SIM] DESIGN MODE")
+    res = design(input)
 
 elif mode == "sim":
     print("[SQANTI-SIM] SIM MODE")
@@ -446,5 +446,5 @@ elif mode in ["--version", "-v"]:
 
 else:
     print("[SQANTI-SIM] usage: python sqanti_sim.py <mode> --help\n", file=sys.stderr)
-    print("[SQANTI-SIM] modes: classif, preparatory, sim, eval\n", file=sys.stderr)
+    print("[SQANTI-SIM] modes: classif, design, sim, eval\n", file=sys.stderr)
     sys.exit(1)

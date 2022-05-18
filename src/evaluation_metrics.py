@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sqanti3_stats.py
+evaluation_metrics.py
 
 Generate SQANTI-SIM report and metrics
 
