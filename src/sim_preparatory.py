@@ -456,7 +456,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         return coverage
 
     # Extract fasta transcripts
-    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti_sim.transcripts.fa")
+    ref_t = os.path.splitext(args.gtf)[0] + ".transcripts.fa"
     if os.path.exists(ref_t):
         print("[SQANTI-SIM] WARNING: %s already exists. Overwritting!" %(ref_t))
 
@@ -468,14 +468,14 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         sys.exit(1)
 
     if args.mapped_reads:
+        sam_file = args.mapped_reads
         if not os.path.exists(args.mapped_reads):
             print("[SQANTI-SIM] ERROR: %s does not exist" %(args.mapped_reads), file=sys.stderr)
             sys.exit(1)
     else:
         # Align with minimap
-        sam_file = "_".join(f_idx.split("_")[:-1]) + "_align_" + tech + ".sam"
-
         if tech == "pb":
+            sam_file = os.path.join(args.dir, (os.path.splitext(os.path.basename(args.pb_reads))[0] + "_sqantisim_align.sam"))
             cmd = [
                 "minimap2",
                 ref_t,
@@ -490,6 +490,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 str(args.cores),
             ]
         elif tech == "ont":
+            sam_file = os.path.join(args.dir, (os.path.splitext(os.path.basename(args.ont_reads))[0] + "_sqantisim_align.sam"))
             cmd = [
                 "minimap2",
                 ref_t,
@@ -523,8 +524,8 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
             ):
                 continue
             trans_counts[trans_id] += 1
-    os.remove(sam_file)
-    os.remove(ref_t)
+    #os.remove(sam_file)
+    #os.remove(ref_t)
 
     # Empirical expression values
     expr_distr = list(trans_counts.values())
