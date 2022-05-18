@@ -270,7 +270,8 @@ print("***Generating plots for the report")
 
 # -------------------- Global plot parameters
 # SAME FORMAT AS SQANTI3 REPORT
-myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
+#myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
+myPalette = c("#3A5A81", "#D31336", "#252131")
 
 cat.palette = c("FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
                 "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
@@ -286,8 +287,6 @@ mytheme <- theme_classic(base_family = "Helvetica") +
   theme(legend.text = element_text(size = 11), legend.title = element_text(size=12), legend.key.size = unit(0.5, "cm")) +
   theme(plot.title = element_text(lineheight=.4, size=15, hjust = 0.5)) +
   theme(plot.margin = unit(c(2.5,1,1,1), "cm"))
-
-two_col <- c("#025196", "#fdb138")
 
 # -------------------- 
 # TABLE 1: known metrics
@@ -312,7 +311,7 @@ p1 <- expr.dist %>%
   ggplot( aes(x=sim_counts, fill=sim_type)) +
   geom_histogram(color='white', alpha=0.5, position = 'identity') +
   mytheme +
-  scale_fill_manual(values = two_col, name='Simulation type') +
+  scale_fill_manual(values = myPalette[1:2], name='Simulation type') +
   xlab('Counts') + 
   ylab('Number of transcripts') +
   ggtitle('Simulated counts distribution')
@@ -339,7 +338,7 @@ p3 <- rbind(res.full$data.novel, res.full$data.known) %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
-  scale_fill_manual(values=two_col, name='Stats') +
+  scale_fill_manual(values=myPalette[1:2], name='Stats') +
   scale_alpha_manual(values=c(0.5,1), name='Exons') +
   mytheme +
   ylab('Percentage %') +
@@ -355,7 +354,7 @@ p4 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=all_canonical), position="fill", stat="identity") +
-  scale_fill_manual(values=two_col, name='Stats') +
+  scale_fill_manual(values=myPalette[1:2], name='Stats') +
   scale_alpha_manual(values=c(1, 0.5), name='Junctions') +
   mytheme +
   ylab('Percentage %') +
@@ -381,7 +380,7 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
     geom_bar(aes(y=value, fill=within_CAGE_peak), position="fill", stat="identity") +
-    scale_fill_manual(values=two_col, name='CagePeak') +
+    scale_fill_manual(values=myPalette[1:2], name='CagePeak') +
     mytheme +
     ylab('Percentage %') +
     xlab('') +
@@ -414,7 +413,7 @@ if ('min_cov' %in% colnames(data.index)) {
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
     geom_bar(aes(y=value, fill=Coverage_SJ), position="fill", stat="identity") +
-    scale_fill_manual(values=two_col, name='Coverage SJ') +
+    scale_fill_manual(values=myPalette[1:2], name='Coverage SJ') +
     mytheme +
     ylab('Percentage %') +
     xlab('') +
@@ -448,7 +447,7 @@ p3.min <- rbind(res.min$data.novel, res.min$data.known) %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
-  scale_fill_manual(values=two_col, name='Stats') +
+  scale_fill_manual(values=myPalette[1:2], name='Stats') +
   scale_alpha_manual(values=c(0.5,1), name='Exons') +
   mytheme +
   ylab('Percentage %') +
@@ -463,7 +462,7 @@ p4.min <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=all_canonical), position="fill", stat="identity") +
-  scale_fill_manual(values=two_col, name='Stats') +
+  scale_fill_manual(values=myPalette[1:2], name='Stats') +
   scale_alpha_manual(values=c(1, 0.5), name='Junctions') +
   mytheme +
   ylab('Percentage %') +
@@ -489,7 +488,7 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
     geom_bar(aes(y=value, fill=within_CAGE_peak), position="fill", stat="identity") +
-    scale_fill_manual(values=two_col, name='CagePeak') +
+    scale_fill_manual(values=myPalette[1:2], name='CagePeak') +
     mytheme +
     ylab('Percentage %') +
     xlab('') +
@@ -522,7 +521,7 @@ if ('min_cov' %in% colnames(data.index)) {
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
     geom_bar(aes(y=value, fill=Coverage_SJ), position="fill", stat="identity") +
-    scale_fill_manual(values=two_col, name='Coverage SJ') +
+    scale_fill_manual(values=myPalette[1:2], name='Coverage SJ') +
     mytheme +
     ylab('Percentage %') +
     xlab('') +
