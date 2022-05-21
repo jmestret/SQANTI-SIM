@@ -1,15 +1,11 @@
-[![Release](https://img.shields.io/github/v/release/jorgemt98/sqantisim?include_prereleases)](https://github.com/jorgemt98/SQANTISIM/releases)
-[![Downloads](https://img.shields.io/github/downloads/jorgemt98/SQANTISIM/total?logo=github)](https://github.com/jorgemt98/SQANTISIM)
-[![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTISIM.svg)](https://github.com/jorgemt98/SQANTISIM/stargazers) 
-
 <p align="center">
   <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="" width="300">
 </p>
 
 <p align="center">
-  <a href="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki2.md">Installation</a>
+  <a href="https://github.com/jorgemt98/SQANTISIM/wiki/Requirements-and-installation">Installation</a>
   ·
-  <a href="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki0.md">Documentation</a>
+  <a href="https://github.com/jorgemt98/SQANTISIM/wiki">Documentation</a>
   ·
   <a href="https://github.com/jorgemt98/SQANTISIM/issues">Report bug</a>
   ·
@@ -24,7 +20,7 @@ SQANTISIM aims to simulate novel and degraded transcripts in a controlled way us
 
 ## Documentation
 
-Please refer to [Wiki](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki0.md) for how to install and use SQANTISIM 
+Please refer to [Wiki](https://github.com/jorgemt98/SQANTISIM/wiki) for how to install and use SQANTISIM 
 
 ## Lastest updates
 
