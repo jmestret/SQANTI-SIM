@@ -3,7 +3,7 @@
 [![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTISIM.svg)](https://github.com/jorgemt98/SQANTISIM/stargazers) 
 
 <p align="center">
-  <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="" width="200">
+  <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="" width="300">
 </p>
 
 <p align="center">
