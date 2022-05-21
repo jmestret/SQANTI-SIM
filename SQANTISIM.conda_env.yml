@@ -1,4 +1,4 @@
-name: SQANTI-SIM.env
+name: SQANTISIM.env
 channels:
   - conda-forge
   - bioconda

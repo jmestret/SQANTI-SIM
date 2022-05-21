@@ -230,7 +230,7 @@ def modifyGTF(f_name_in: str, f_name_out: str, target: list):
 def simulate_gtf(args):
     """Generates the modified reference annotation"""
 
-    print("[SQANTI-SIM] Writting modified GTF")
+    print("[SQANTISIM] Writting modified GTF")
     counts = defaultdict(
         lambda: 0,
         {
@@ -342,7 +342,7 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
     tot_trans = len(novel_trans) + len(known_trans)
     if args.trans_number > tot_trans:
         print(
-            "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
+            "[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (tot_trans)
         )
         args.trans_number = tot_trans
@@ -458,19 +458,19 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Extract fasta transcripts
     ref_t = os.path.splitext(args.gtf)[0] + ".transcripts.fa"
     if os.path.exists(ref_t):
-        print("[SQANTI-SIM] WARNING: %s already exists. Overwritting!" %(ref_t))
+        print("[SQANTISIM] WARNING: %s already exists. Overwritting!" %(ref_t))
 
     cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
     cmd = " ".join(cmd)
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTISIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
     if args.mapped_reads:
         sam_file = args.mapped_reads
         if not os.path.exists(args.mapped_reads):
-            print("[SQANTI-SIM] ERROR: %s does not exist" %(args.mapped_reads), file=sys.stderr)
+            print("[SQANTISIM] ERROR: %s does not exist" %(args.mapped_reads), file=sys.stderr)
             sys.exit(1)
     else:
         # Align with minimap
@@ -508,7 +508,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         cmd = " ".join(cmd)
         sys.stdout.flush()
         if subprocess.check_call(cmd, shell=True) != 0:
-            print("[SQANTI-SIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
+            print("[SQANTISIM] ERROR running minimap2: {0}".format(cmd), file=sys.stderr)
             sys.exit(1)
 
     # Raw counts -> Count only primary alignments
@@ -560,13 +560,13 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     f_in.close()
 
     if n_trans < len(novel_trans):
-        print("[SQANTI-SIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
+        print("[SQANTISIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
         sys.exit(1)
 
     if n_trans > (len(novel_trans) + len(known_trans)):
         n_trans = (len(novel_trans) + len(known_trans))
         print(
-            "[SQANTI-SIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
+            "[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
             % (n_trans)
         )
 
@@ -687,5 +687,5 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     trans_index["requested_tpm"] = trans_index["requested_tpm"].fillna(0)
     trans_index.to_csv(f_idx, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("[SQANTI-SIM] Requested transcripts: %s" %(n_trans))
-    print("[SQANTI-SIM] Requested reads: %s" %(n_reads))
+    print("[SQANTISIM] Requested transcripts: %s" %(n_trans))
+    print("[SQANTISIM] Requested reads: %s" %(n_reads))

@@ -62,7 +62,7 @@ conda update conda
 
 #### 2. Download and set up SQANTISIM
 
-Clone the [GitHub repository](https://github.com/jorgemt98/SQANTI-SIM) and create the conda environment with the dependencies.
+Clone the [GitHub repository](https://github.com/jorgemt98/SQANTISIM) and create the conda environment with the dependencies.
 
 ```
 git clone https://github.com/jorgemt98/SQANTISIM

@@ -32,9 +32,9 @@ To run SQANTISIM, just call the python script `sqantisim.py` and choose one of t
 (SQANTISIM.env)$ modes: classif, design, sim, eval
 ```
 
-Refer to [*Usage summary*](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki3.md) for a brief explanation of the arguments and parameters for running SQANTISIM or use `python sqantisim.py <mode> --help`. For a detailed description of the different running modes refer to:
-- [SQANTISIM: classif](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki5.md)
-- [SQANTISIM: design](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki6.md)
-- [SQANTISIM: sim](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki7.md)
-- [SQANTISIM: eval](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki8.md)
+Refer to [*Usage summary*](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki3.md) for a brief explanation of the arguments and parameters for running SQANTISIM or use `python sqantisim.py <mode> --help`. For a detailed description of the different running modes refer to:
+- [SQANTISIM: classif](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki5.md)
+- [SQANTISIM: design](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki6.md)
+- [SQANTISIM: sim](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki7.md)
+- [SQANTISIM: eval](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki8.md)
 

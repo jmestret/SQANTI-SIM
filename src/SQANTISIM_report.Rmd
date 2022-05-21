@@ -1,5 +1,5 @@
 ---
-title: "SQANTI-SIM OUTPUT COMPARISON REPORT"
+title: "SQANTISIM OUTPUT COMPARISON REPORT"
 author: "`r paste0('  ','Author', ': ',Sys.getenv('USERNAME'))`"
 date: "`r paste0('  ','Date', ': ', format(Sys.time(), '%d %B %Y'))`"
 output:

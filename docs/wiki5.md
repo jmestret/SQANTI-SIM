@@ -9,11 +9,11 @@
 
 `sqantisim.py classif` allows you to classify all transcripts from a GTF reference annotation into its potential SQANTI3 structural category. Structural categories are assigned assuming that the query transcript cannot match itself as if it was a **novel** not annotated transcript.
 
-![classif_example](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/classif_example.png)
+![classif_example](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/classif_example.png)
 
 Transcripts are classified using the same structural category decision tree as SQANTI3, so it has a **consistent transcript structural classification** with the different SQANTI3 tools. The output of this tool is a tab-separated index file with some structural annotations of all the transcripts from the reference annotation. It will also print a summary table with all the transcripts classified in each structural category.
 
-![decission_tree](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_class_decision_tree.png)
+![decission_tree](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_class_decision_tree.png)
 
 The main purpose of this tool is to be used as part of the SQANTISIM pipeline. However, it can also be helpful for other interests, e.g., the *classif* mode can be used to identify all those redundant transcripts in the annotation that match as FSM with other annotated transcripts, meaning they have the same splice junctions.
 

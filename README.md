@@ -1,17 +1,17 @@
-[![Release](https://img.shields.io/github/v/release/jorgemt98/sqanti-sim?include_prereleases)](https://github.com/jorgemt98/SQANTI-SIM/releases)
-[![Downloads](https://img.shields.io/github/downloads/jorgemt98/SQANTI-SIM/total?logo=github)](https://github.com/jorgemt98/SQANTI-SIM)
-[![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTI-SIM.svg)](https://github.com/jorgemt98/SQANTI-SIM/stargazers) 
+[![Release](https://img.shields.io/github/v/release/jorgemt98/sqantisim?include_prereleases)](https://github.com/jorgemt98/SQANTISIM/releases)
+[![Downloads](https://img.shields.io/github/downloads/jorgemt98/SQANTISIM/total?logo=github)](https://github.com/jorgemt98/SQANTISIM)
+[![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTISIM.svg)](https://github.com/jorgemt98/SQANTISIM/stargazers) 
 
 <p align="center">
-  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png" alt="" width="">
+  <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="600" width="">
 </p>
 
 <p align="center">
-  <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki2.md">Installation</a>
+  <a href="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki2.md">Installation</a>
   ·
-  <a href="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki0.md">Documentation</a>
+  <a href="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki0.md">Documentation</a>
   ·
-  <a href="https://github.com/jorgemt98/SQANTI-SIM/issues">Report bug</a>
+  <a href="https://github.com/jorgemt98/SQANTISIM/issues">Report bug</a>
   ·
   <a href="https://github.com/ConesaLab/SQANTI3">SQANTI3</a>
 </p>
@@ -24,7 +24,7 @@ SQANTISIM aims to simulate novel and degraded transcripts in a controlled way us
 
 ## Documentation
 
-Please refer to [Wiki](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki0.md) for how to install and use SQANTISIM 
+Please refer to [Wiki](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/wiki0.md) for how to install and use SQANTISIM 
 
 ## Lastest updates
 

@@ -17,7 +17,7 @@ Moreover, you will decide the expression values (counts and TPM) for those simul
 
 - **sample**: Finally, you can reproduce the expression values from a real sample. In this mode, a real sample is mapped using Minimap2 and the raw count distribution is used to assign the expression values to the requested transcripts to simulate. This mode, by default, gives the expression values to novel and known transcripts without bias by simply bootstrapping the empirical distribution. However, using the `--diff_exp` parameter, SQANTISIM will generate an inverted vector of probabilities to assign lower expression values to novel transcripts and higher to known. You can customise this probability vector by selecting the start (`--low_prob`) and end (`--high_prob`) probabilities of the range.
 
-![design_modes](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/design_modes.png)
+![design_modes](https://github.com/jorgemt98/SQANTISIM/blob/main/docs/design_modes.png)
 
 The output of this tool will be the modified reference annotation in GTF format and the index file with new columns referring to the expression values. **IMPORTANT**: The modified reference annotation must be used as reference when using your transcript identification pipeline.
 

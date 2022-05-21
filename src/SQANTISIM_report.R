@@ -1,6 +1,6 @@
 #######################################
 #                                     #
-#    SQANTI-SIM report generation     #
+#    SQANTISIM report generation     #
 #                                     #
 #######################################
 
@@ -546,7 +546,7 @@ if ('min_cov' %in% colnames(data.index)) {
 
 # -------------------- Output report
 rmarkdown::render(
-  input = paste(src.path, 'SQANTI_SIM_report.Rmd', sep = "/"),
+  input = paste(src.path, 'SQANTISIM_report.Rmd', sep = "/"),
   output_dir = output_directory,
-  output_file = paste0(output_name, "_SQANTI_SIM_report.html")
+  output_file = paste0(output_name, "_SQANTISIM_report.html")
 )
