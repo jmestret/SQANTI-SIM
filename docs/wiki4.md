@@ -1,40 +1,40 @@
-## SQANTI-SIM usage
+## SQANTISIM usage
 
 #### 1. Activate the conda enviroment
 
-Before running SQANTI-SIM, you will need to activate the conda enviroment. If you are running SQANTI-SIM from the terminal use:
+Before running SQANTISIM, you will need to activate the conda environment. If you are running SQANTISIM from the terminal, use:
 
 ```
-$ conda activate SQANTI-SIM.env 
+$ conda activate SQANTISIM.env 
 ```
 
-On the other hand, if you trying to use SQANTI-SIM from a bash script use:
+On the other hand, if you are trying to use SQANTISIM from a bash script use:
 
 ```
-$ source activate SQANTI-SIM.env 
+$ source activate SQANTISIM.env 
 ```
 
 #### 2. Add `cDNA_cupcake/sequence` to `$PYTHONPATH`
 
-Once the enviroment is loaded, add *cDNA Cupcake* to the path:
+Once the environment is loaded, add *cDNA Cupcake* to the path:
 
 ```
-(SQANTI-SIM.env)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/sequence/
-(SQANTI-SIM.env)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/
+(SQANTISIM.env)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/sequence/
+(SQANTISIM.env)$ export PYTHONPATH=$PYTHONPATH:<path_to>/cDNA_Cupcake/
 ```
 
-#### 3. Run SQANTI-SIM
+#### 3. Run SQANTISIM
 
-To run SQANTI-SIM just call the python script `sqanti_sim.py` and choose one of the 4 running modes (*classif*, *preparatory*, *sim* or *eval*) and specify the requiered and desired inputs. 
+To run SQANTISIM, just call the python script `sqantisim.py` and choose one of the four running modes (*classif*, *design*, *sim* or *eval*) and specify the required and desired inputs. 
 
 ```
-(SQANTI-SIM.env)$ usage: python sqanti_sim.py <mode> --help
-(SQANTI-SIM.env)$ modes: classif, preparatory, sim, eval
+(SQANTISIM.env)$ usage: python sqantisim.py <mode> --help
+(SQANTISIM.env)$ modes: classif, design, sim, eval
 ```
 
-Refer to [*Usage summary*](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki3.md) for a brief explanation of the arguments and paramenters for running SQANTI-SIM or use `python sqanti_sim.py <mode> --help`. For a detailed explanation of the different running modes refer to:
-- [*SQANTI-SIM: classif*](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki5.md)
-- [*SQANTI-SIM: preparatory*]()
-- [*SQANTI-SIM: sim*]()
-- [*SQANTI-SIM: eval*]()
+Refer to [*Usage summary*](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki3.md) for a brief explanation of the arguments and parameters for running SQANTISIM or use `python sqantisim.py <mode> --help`. For a detailed description of the different running modes refer to:
+- [SQANTISIM: classif](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki5.md)
+- [SQANTISIM: design](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki6.md)
+- [SQANTISIM: sim](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki7.md)
+- [SQANTISIM: eval](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki8.md)
 

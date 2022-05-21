@@ -1,11 +1,11 @@
 ## Installation guide
 
 * [Prerequisites](#prerequisites)
-* [Install SQANTI-SIM](#installation)
+* [Install SQANTISIM](#installation)
 
 ## <a name="prerequisites"></a>Prerequisites
 
-Following dependencies are required for running *SQANTI-SIM*:
+Following dependencies are required for running *SQANTISIM*:
 
 #### Python packages
 
@@ -35,9 +35,9 @@ Following dependencies are required for running *SQANTI-SIM*:
 * [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake) (Tested with version 28.0.0)
 * [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) (Tested with version 0.1)
 * [NanoSim requirements](https://github.com/bcgsc/NanoSim) (Tested with version 3.1.0)
-* [SQANTI3 requirements](https://github.com/ConesaLab/SQANTI3) (Tested with version 4.2)
+* [SQANTI3 requirements](https://github.com/ConesaLab/SQANTI3) (Tested with version 5.0)
 
-SQANTI-SIM has been tested on python 3.7 and R 4.1.2. You can check your python and R version by:
+SQANTISIM has been tested on python 3.7 and R 4.1.2. You can check your python and R versions by:
 
 ```
 python --version
@@ -46,9 +46,9 @@ R --version
 # R version 4.1.2
 ```
 
-## <a name="installation"></a>Install SQANTI-SIM
+## <a name="installation"></a>Install SQANTISIM
 
-The recommended way to install all SQANTI-SIM dependencies is via Anaconda. [Here](https://docs.anaconda.com/anaconda/install/) is an explanation on how to install Anaconda. Installation is only necessary onece. Please follow the steps below to avoid errors during installation.
+The recommended way to install all SQANTISIM dependencies is via Anaconda. [Here](https://docs.anaconda.com/anaconda/install/) is an explanation of how to install Anaconda. Installation is only necessary once. Please follow the steps below to avoid errors during installation.
 
 #### 1. Install and update Anaconda
 
@@ -60,36 +60,34 @@ conda -V
 conda update conda
 ```
 
-#### 2. Download and set up SQANTI-SIM
+#### 2. Download and set up SQANTISIM
 
-Clone the [GitHub repository](https://github.com/jorgemt98/SQANTI-SIM) and create the conda enviroment with the dependencies.
+Clone the [GitHub repository](https://github.com/jorgemt98/SQANTI-SIM) and create the conda environment with the dependencies.
 
 ```
-git clone https://github.com/jorgemt98/SQANTI-SIM
-cd SQANTI-SIM
-conda env create -f SQANTI_SIM.conda_env.yml
-source activate SQANTI-SIM.env
+git clone https://github.com/jorgemt98/SQANTISIM
+cd SQANTISIM
+conda env create -f SQANTISIM.conda_env.yml
+source activate SQANTISIM.env
 ```
 
 #### 3. Install cDNA_Cupcake
 
-SQANTI-SIM makes use of cDNA_Cupcake which cannot be automatically installed with Anaconda. If you don't have [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake) installed, first activate the SQANTI-SIM enviroment and then follow the next commands:
+SQANTISIM makes use of cDNA_Cupcake, which cannot be automatically installed with Anaconda. If you don't have [cDNA_Cupcake](https://github.com/Magdoll/cDNA_Cupcake) installed, first activate the SQANTISIM environment and then follow the following commands:
 
 ```
-(SQANTI-SIM.env)$ git clone https://github.com/Magdoll/cDNA_Cupcake.git
-(SQANTI-SIM.env)$ cd cDNA_Cupcake
-(SQANTI-SIM.env)$ python setup.py build
-(SQANTI-SIM.env)$ python setup.py install
+(SQANTISIM.env)$ git clone https://github.com/Magdoll/cDNA_Cupcake.git
+(SQANTISIM.env)$ cd cDNA_Cupcake
+(SQANTISIM.env)$ python setup.py build
+(SQANTISIM.env)$ python setup.py install
 ```
 
-After this, SQANTI-SIM is ready to use. To use SQANTI-SIM just run the scripts directly, it does not require installation for itself. You can check wether the setting up is complete by:
+After this, SQANTISIM is ready to use. To use SQANTISIM, just run the scripts directly; it does not require installation for itself. You can check whether the setting up is complete by:
 
 ```
-(SQANTI-SIM.env)$ python sqanti_sim.py
+(SQANTISIM.env)$ python sqantisim.py
 
-# [SQANTI-SIM] usage: python sqanti_sim.py <mode> --help
-# [SQANTI-SIM] modes: classif, preparatory, sim, eval
+# [SQANTISIM] usage: python sqantisim.py <mode> --help
+# [SQANTISIM] modes: classif, preparatory, sim, eval
 ```
-
-
  
