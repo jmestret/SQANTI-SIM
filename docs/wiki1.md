@@ -1,4 +1,4 @@
-## What is SQANTISIM? <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/red_small_logo.png" align="right" alt="" width="300" />
+## What is SQANTISIM? <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/red_small_logo.png" alt="" width="100" />
 
 *SQANTISIM* is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
 
