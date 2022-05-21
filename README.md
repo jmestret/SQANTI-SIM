@@ -3,7 +3,7 @@
 [![Stars](https://img.shields.io/github/stars/jorgemt98/SQANTI-SIM.svg)](https://github.com/jorgemt98/SQANTI-SIM/stargazers) 
 
 <p align="center">
-  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png">
+  <img src="https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/sqantisim_logo.png" alt="" width="">
 </p>
 
 <p align="center">
@@ -18,23 +18,23 @@
 
 ***
 
-*SQANTI-SIM* is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
+*SQANTISIM* is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
 
-The aim of SQANTI-SIM is to simulate novel and degradated transcripts in a controlled way using as ground-truth real transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
+SQANTISIM aims to simulate novel and degraded transcripts in a controlled way using ground-truth present transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
 ## Documentation
 
-Please refer to [Wiki](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki0.md) for how to install and use SQANTI-SIM 
+Please refer to [Wiki](https://github.com/jorgemt98/SQANTI-SIM/blob/main/docs/wiki0.md) for how to install and use SQANTISIM 
 
 ## Lastest updates
 
-Current version (21/04/2022): SQANTI-SIM version beta
+Current version (21/05/2022): 0.1.0-beta
 
 Updates, patches and releases:
 
 **beta:**
 - Please, try to use the tool and notify any bug or suggestion
 
-## How to cite SQANTI-SIM
+## How to cite SQANTISIM
 
-There is no SQANTI-SIM paper :disappointed:
+There is no SQANTISIM paper :disappointed:
