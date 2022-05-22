@@ -341,10 +341,7 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
 
     tot_trans = len(novel_trans) + len(known_trans)
     if args.trans_number > tot_trans:
-        print(
-            "[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
-            % (tot_trans)
-        )
+        print("[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated" % (tot_trans), file=sys.stderr)
         args.trans_number = tot_trans
 
     random.shuffle(known_trans)
@@ -405,21 +402,21 @@ def create_expr_file_nbinom(f_idx: str, args: list):
                 known_trans.append(line[j])
     f_in.close()
 
+    tot_trans = len(novel_trans) + len(known_trans)
+    if args.trans_number > tot_trans:
+        print("[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated" % (tot_trans), file=sys.stderr)
+        args.trans_number = tot_trans
+
     random.shuffle(known_trans)
     known_trans = known_trans[: (args.trans_number - len(novel_trans))]
 
     nb_known = numpy.random.negative_binomial(
         args.nbn_known, args.nbp_known, len(known_trans)
     ).tolist()
-    nb_known = [
-        1 if n == 0 else n for n in nb_known
-    ]  # minimum one count per transcript
-    nb_novel = numpy.random.negative_binomial(
-        args.nbn_novel, args.nbp_novel, len(novel_trans)
+    nb_known = [1 if n == 0 else n for n in nb_known]  # minimum one count per transcript
+    nb_novel = numpy.random.negative_binomial(args.nbn_novel, args.nbp_novel, len(novel_trans)
     ).tolist()
-    nb_novel = [
-        1 if n == 0 else n for n in nb_novel
-    ]  # minimum one count per transcript
+    nb_novel = [1 if n == 0 else n for n in nb_novel]  # minimum one count per transcript
     n_reads = sum(nb_known) + sum(nb_novel)
 
     trans_index = pandas.read_csv(f_idx, sep="\t", header=0, dtype={"chrom":str})
@@ -458,7 +455,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     # Extract fasta transcripts
     ref_t = os.path.splitext(args.gtf)[0] + ".transcripts.fa"
     if os.path.exists(ref_t):
-        print("[SQANTISIM] WARNING: %s already exists. Overwritting!" %(ref_t))
+        print("[SQANTISIM] WARNING: %s already exists. Overwritting!" %(ref_t), file=sys.stderr)
 
     cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
     cmd = " ".join(cmd)
@@ -560,15 +557,13 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
     f_in.close()
 
     if n_trans < len(novel_trans):
+        n_trans = len(novel_trans)
         print("[SQANTISIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
         sys.exit(1)
 
     if n_trans > (len(novel_trans) + len(known_trans)):
         n_trans = (len(novel_trans) + len(known_trans))
-        print(
-            "[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"
-            % (n_trans)
-        )
+        print("[SQANTISIM] WARNING: A higher number than annotated transcripts was requested to simulate, only %s transcript will be simulated"% (n_trans), file=sys.stderr)
 
     # Simulate also the number of different isoforms simulated for the same gene
     # If not iso_complex the known transcripts to simulate are chosen randomly

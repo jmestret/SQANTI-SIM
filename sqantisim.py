@@ -43,13 +43,12 @@ def classif(input: list):
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
-        print(
-            "[SQANTISIM] classif mode unrecognized arguments: {}\n".format(
-                " ".join(unknown)
-            ),
-            file=sys.stderr,
-        )
+        print("[SQANTISIM] classif mode unrecognized arguments: {}\n".format(" ".join(unknown)),file=sys.stderr)
     
+    if not os.path.exists(args.gtf):
+        print("[SQANTISIM] ERROR: --gtf file does not exist. Provide a valid path", file=sys.stderr)
+        sys.exit(1)
+
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir)
 
@@ -128,8 +127,8 @@ def design(input: list):
     parser_s.add_argument("-nt", "--trans_number", type=int, default=None, help="\t\tNumber of different transcripts to simulate", )
     parser_s.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     group = parser_s.add_mutually_exclusive_group()
-    group.add_argument("--pb_reads", type=str, default=str(), help="\t\tInput PacBio reads for quantification", )
-    group.add_argument("--ont_reads", type=str, default=str(), help="\t\tInput ONT reads for quantification", )
+    group.add_argument("--pb_reads", type=str, default=str(), help="\t\tInput PacBio reads for quantification in FASTA or FASTQ format", )
+    group.add_argument("--ont_reads", type=str, default=str(), help="\t\tInput ONT reads for quantification in FASTA or FASTQ format", )
     group.add_argument("--mapped_reads", type=str, default=str(), help="\t\tAligned reads in SAM format", )
     parser_s.add_argument("--iso_complex", action="store_true", help="\t\tIf used the program will simulate the expressed isoform complexity (number of isoforms per gene)", )
     parser_s.add_argument("--diff_exp", action="store_true", help="\t\tIf used the program will simulate different expression values for novel and known transcripts", )
@@ -149,20 +148,23 @@ def design(input: list):
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
-        print(
-            "[SQANTISIM] design mode unrecognized arguments: {}\n".format(
-                " ".join(unknown)
-            ),
-            file=sys.stderr,
-        )
+        print("[SQANTISIM] design mode unrecognized arguments: {}\n".format(" ".join(unknown)), file=sys.stderr)
 
     total_novel = sum([args.ISM, args.NIC, args.NNC, args.Fusion, args.Antisense, args.GG, args.GI, args.Intergenic])
     if args.trans_number is not None and total_novel > args.trans_number:
-        print("[SQANTISIM] ERROR: -nt/--trans number must be higher than the novel transcripts to simulate")
-        sys.exit(1)
+        print("[SQANTISIM] WARNING: -nt is lower than the novel transcripts to simulate, only novel transcripts will be simulated", file=sys.stderr)
 
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir)
+    
+    if not args.output:
+        output = os.path.basename(args.trans_index).split("_")
+        args.output = "_".join(output[:-1])
+
+    if not args.seed:
+        args.seed = int.from_bytes(os.urandom(1), 'big')
+    random.seed(args.seed)
+    numpy.random.seed(args.seed)
 
     print("\n[SQANTISIM] Running with the following parameters:")
     if args.mode == "equal":
@@ -175,10 +177,10 @@ def design(input: list):
 
     elif args.mode == "custom":
         if args.nbn_known < 0 or args.nbn_novel < 0:
-            print("[SQANTISIM] ERROR: --nbn_known and --nbn_novel must be greater than 0")
+            print("[SQANTISIM] ERROR: --nbn_known and --nbn_novel must be greater than 0", file=sys.stderr)
             sys.exit(1)
         if args.nbp_known < 0 or args.nbp_known > 1 or args.nbp_novel < 0 or args.nbp_novel > 1:
-            print("[SQANTISIM] ERROR: --nbp_known and --nbp_novel must be in the interval [0,1]")
+            print("[SQANTISIM] ERROR: --nbp_known and --nbp_novel must be in the interval [0,1]", file=sys.stderr)
             sys.exit(1)
 
         print("[SQANTISIM] - Mode: custom")
@@ -193,7 +195,7 @@ def design(input: list):
 
     elif args.mode == "sample":
         if args.low_prob < 0 or args.low_prob > 1 or args.high_prob < 0 or args.high_prob > 1:
-            print("[SQANTISIM] ERROR: --low_prob and --high_prob must be in the interval [0,1]")
+            print("[SQANTISIM] ERROR: --low_prob and --high_prob must be in the interval [0,1]", file=sys.stderr)
             sys.exit(1)
 
         print("[SQANTISIM] - Mode: sample")
@@ -208,21 +210,12 @@ def design(input: list):
             print("[SQANTISIM] - ONT reads:", str(args.ont_reads))
         print("[SQANTISIM] - N threads:", str(args.cores))
 
-    if not args.seed:
-        args.seed = int.from_bytes(os.urandom(1), 'big')
-    random.seed(args.seed)
-    numpy.random.seed(args.seed)
     print("[SQANTISIM] - Seed:", str(args.seed))
-
     print("[SQANTISIM]\tISM\tNIC\tNNC\tFusion\tAS\tGG\tGI\tIntergenic")
     print("[SQANTISIM]\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" %(
         str(args.ISM), str(args.NIC), str(args.NNC), str(args.Fusion),
         str(args.Antisense), str(args.GG), str(args.GI), str(args.Intergenic)
     ))
-
-    if not args.output:
-        output = os.path.basename(args.trans_index).split("_")
-        args.output = "_".join(output[:-1])
 
     # Modify GTF
     print("\n[SQANTISIM][%s] Generating modified GTF" %(strftime("%d-%m-%Y %H:%M:%S")))
@@ -291,10 +284,12 @@ def sim(input: list):
     args, unknown = parser.parse_known_args(input)
 
     if unknown:
-        print(
-            "[SQANTISIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)),
-            file=sys.stderr,
-        )
+        print("[SQANTISIM] sim mode unrecognized arguments: {}\n".format(" ".join(unknown)), file=sys.stderr)
+
+    if not args.seed:
+        args.seed = int.from_bytes(os.urandom(1), 'big')
+    random.seed(args.seed)
+    numpy.random.seed(args.seed)
     
     print("\n[SQANTISIM] Running with the following parameters:")
     print("[SQANTISIM] - Ref GTF:", str(args.gtf))
@@ -321,11 +316,6 @@ def sim(input: list):
             print("[SQANTISIM] - Short reads: requested_counts from index file")
 
     print("[SQANTISIM] - N threads:", str(args.cores))
-
-    if not args.seed:
-        args.seed = int.from_bytes(os.urandom(1), 'big')
-    random.seed(args.seed)
-    numpy.random.seed(args.seed)
     print("[SQANTISIM] - Seed:", str(args.seed))
 
     # Simulation with IsoSeqSim, NanoSim and/or Polyester
@@ -353,13 +343,13 @@ def eval(input: list):
     """
 
     parser = argparse.ArgumentParser( prog="sqantisim.py eval", description="sqantisim.py eval parse options", )
-    parser.add_argument("--isoforms", type=str, required=True, help="\t\tGTF with trancriptome reconstructed with your pipeline", )
+    parser.add_argument("--isoforms", type=str, required=True, help="\t\tLong-read trancriptome reconstructed with your pipeline in GTF, FASTA or FASTQ format", )
     parser.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
     parser.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     parser.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
     parser.add_argument("-o", "--output", type=str, default="sqantisim", help="\t\tPrefix for output files", )
     parser.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
-    parser.add_argument("--short_reads", type=str, default=None, help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.", required=False, )
+    parser.add_argument("--short_reads", type=str, default=None, help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.",)
     parser.add_argument("--cage_peak", type=str, default=None,help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
     parser.add_argument("--fasta", action="store_true", help="\t\tUse when running SQANTI by using as input a FASTA/FASTQ with the sequences of isoforms", )
     parser.add_argument("--aligner_choice", type=str, default="minimap2",help="\t\tIf --fasta used, choose the aligner to map your isoforms", choices=["minimap2","deSALT","gmap","uLTRA"])
@@ -404,7 +394,7 @@ def eval(input: list):
 
 print(
     """                                                                      
-      _____  ____            _   _ _______ _____      _____ _____ __  __  
+      _____  ____            _   _ _______ _____  _____ _____ __  __  
      / ____|/ __ \     /\   | \ | |__   __|_   _|/ ____|_   _|  \/  | 
     | (___ | |  | |   /  \  |  \| |  | |    | | | (___   | | | \  / | 
      \___ \| |  | |  / /\ \ | . ` |  | |    | |  \___ \  | | | |\/| | 

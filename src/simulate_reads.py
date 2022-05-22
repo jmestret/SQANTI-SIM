@@ -50,10 +50,7 @@ def pb_simulation(args):
         args.long_count = index_file_requested_counts
 
     if os.path.isdir(args.dir):
-        print(
-            "WARNING: output direcory already exists. Overwritting!",
-            file=sys.stderr,
-        )
+        print("WARNING: output direcory already exists. Overwritting!", file=sys.stderr)
     else:
         os.makedirs(args.dir)
 
@@ -137,10 +134,7 @@ def ont_simulation(args):
         return id_counts[row["transcript_id"]]
 
     # Generate NanoSim template expression file
-    expr_f = os.path.join(
-        os.path.dirname(os.path.abspath(args.trans_index)),
-        "tmp_expression.tsv",
-    )
+    expr_f = os.path.join(os.path.dirname(os.path.abspath(args.trans_index)), "tmp_expression.tsv")
     index_file_requested_counts = 0
     f_out = open(expr_f, "w")
     f_out.write("target_id\test_counts\ttpm\n")
@@ -176,9 +170,7 @@ def ont_simulation(args):
         uracil = False
     else:
         print(
-            "[SQANTISIM] ERROR not valid read_type value %s" % (args.read_type),
-            file=sys.stderr,
-        )
+            "[SQANTISIM] ERROR not valid read_type value %s" % (args.read_type), file=sys.stderr)
         return
 
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -194,9 +186,8 @@ def ont_simulation(args):
         res = subprocess.run(["tar", "-xzf", model_name + ".tar.gz"])
         os.chdir(cwd)
         if res.returncode != 0:
-            print(
-                "Unpacking NanoSim pre-trained model failed", file=sys.stderr
-            )
+            print("[SQANTISIM] ERROR: Unpacking NanoSim pre-trained model failed", file=sys.stderr)
+            sys.exit(1)
 
     # Extract fasta transcripts
     print("[SQANTISIM] Extracting transcript sequences")
@@ -289,9 +280,7 @@ def ont_simulation(args):
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     trans_index["sim_counts"] = trans_index.apply(counts_to_index, axis=1)
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
-    trans_index.to_csv(
-        args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
-    )
+    trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")
 
     print("[SQANTISIM] NanoSim simulation done")
     return
