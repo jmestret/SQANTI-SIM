@@ -13,6 +13,7 @@ import os
 import pandas
 import pysam
 import random
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -292,6 +293,19 @@ def illumina_simulation(args):
     def counts_to_index(row):
         return id_counts[row["transcript_id"]]
 
+    # Extract fasta transcripts
+    print("[SQANTISIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqantisim.transcripts.fa")
+    if os.path.exists(ref_t):
+        print("[SQANTISIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+
+    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
+    cmd = " ".join(cmd)
+    sys.stdout.flush()
+    if subprocess.check_call(cmd, shell=True) != 0:
+        print("[SQANTISIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        sys.exit(1)
+
     # Generate Polyester template expression file
     count_d = defaultdict(float)
     n = 0
@@ -319,23 +333,11 @@ def illumina_simulation(args):
     with open(ref_t, "r") as rt:
         for line in rt:
             if line.startswith(">"):
-                line = line[1:].strip()
+                line = line[1:].split()
+                line = line[0]
                 f_out.write(str(count_d[line]) + "\n")
     rt.close()
     f_out.close()
-
-    # Extract fasta transcripts
-    print("[SQANTISIM] Extracting transcript sequences")
-    ref_t = os.path.join(os.path.dirname(args.genome), "sqantisim.transcripts.fa")
-    if os.path.exists(ref_t):
-        print("[SQANTISIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
-
-    cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
-    cmd = " ".join(cmd)
-    sys.stdout.flush()
-    if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTISIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
-        sys.exit(1)
 
     print("[SQANTISIM] Simulating Illumina reads with Polyester")
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -375,7 +377,7 @@ def illumina_simulation(args):
         for line in illumina_sim:
             if line.startswith(">"):
                 line = line[1:].strip()
-                line = line.split("/")
+                line = re.split("/|;|\s+|\n",line)
                 line = line[1]
                 id_counts[line] += 1
     illumina_sim.close()

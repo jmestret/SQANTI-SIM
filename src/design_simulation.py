@@ -271,7 +271,7 @@ def summary_table_del(counts_ini: dict, counts_end: dict):
         counts_ini[sc] -= counts_end[sc]
 
     print("\033[94m_" * 79 + "\033[0m")
-    print("\033[92mS Q A N T I - S I M\033[0m \U0001F4CA")
+    print("\033[92mS Q A N T I S I M\033[0m \U0001F4CA")
     print()
     print("Deleted transcripts from GTF \U0001F50E")
     print("\033[94m_" * 79 + "\033[0m")

@@ -1211,7 +1211,7 @@ def summary_table_cat(data: dict):
             counts[trans.str_class] += 1
 
     print("\033[94m_" * 79 + "\033[0m")
-    print("\033[92mS Q A N T I - S I M\033[0m \U0001F4CA")
+    print("\033[92mS Q A N T I S I M\033[0m \U0001F4CA")
     print()
     print("Classification summary Table \U0001F50E")
     print("\033[94m_" * 79 + "\033[0m")
