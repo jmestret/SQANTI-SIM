@@ -77,7 +77,7 @@ def sqanti3_stats(args):
         "-o",
         args.output,
         "-d",
-        args.dir,
+        os.path.join(args.dir, "sqanti3"),
         "--cpus",
         str(args.cores),
         "--min_ref_len",
@@ -137,8 +137,8 @@ def sqanti3_stats(args):
 
     if args.short_reads:
         print("[SQANTISIM][%s] Parsing Short Read data" %(strftime("%d-%m-%Y %H:%M:%S")))
-        star_out = os.path.join(args.dir, "STAR_mapping/")
-        star_index = os.path.join(args.dir, "STAR_index/")
+        star_out = os.path.join(args.dir, "sqanti3/STAR_mapping/")
+        star_index = os.path.join(args.dir, "sqanti3/STAR_index/")
 
         # Short Read Coverage
         SJcovNames, SJcovInfo = STARcov_parser(star_out)
@@ -162,15 +162,15 @@ def sqanti3_stats(args):
 
     print("[SQANTISIM][%s] Generating SQANTISIM report" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
-    classification_file = os.path.join(args.dir, (args.output + "_classification.txt"))
-    junctions_file = os.path.join(args.dir, (args.output + "_junctions.txt"))
-    corrected_genePred = os.path.join(args.dir, (args.output + "_corrected.genePred"))
+    classification_file = os.path.join(args.dir, "sqanti3/",(args.output + "_classification.txt"))
+    junctions_file = os.path.join(args.dir, "sqanti3/", (args.output + "_junctions.txt"))
+    corrected_genePred = os.path.join(args.dir, "sqanti3/", (args.output + "_corrected.genePred"))
 
     # Add TSS and TTS genomic coords to classification file
     # GenePred format -> https://genome.ucsc.edu/FAQ/FAQformat.html#format9
     trans_start_end = defaultdict(lambda: [None, None])
     with open(corrected_genePred, "r") as gp_file:
-        for line in corrected_genePred:
+        for line in gp_file:
             line = line.split()
             name = line[0]
             strand = line[2]
@@ -184,8 +184,8 @@ def sqanti3_stats(args):
             trans_start_end[name] = [txStart, txEnd]
 
     classif_f = pandas.read_csv(classification_file, sep="\t", header=0, dtype={"chrom":str})
-    classif_f["TSS_genomic_coord"] = trans_index.apply(write_TSS, axis=1)
-    classif_f["TTS_genomic_coord"] = trans_index.apply(write_TTS, axis=1)
+    classif_f["TSS_genomic_coord"] = classif_f.apply(write_TSS, axis=1)
+    classif_f["TTS_genomic_coord"] = classif_f.apply(write_TTS, axis=1)
     classif_f.to_csv(classification_file, sep="\t", header=True, index=False, na_rep="NA")
 
     # Generate SQANTISIM report
@@ -195,7 +195,7 @@ def sqanti3_stats(args):
         classification_file,
         junctions_file,
         args.trans_index,
-        args.min_support,
+        str(args.min_support),
         src_dir,
     ]
 

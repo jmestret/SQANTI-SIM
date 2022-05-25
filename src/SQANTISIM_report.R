@@ -31,10 +31,12 @@ suppressMessages(library(tidyr))
 get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, min_supp=0){
   # Simulated ref transcripts
   if (min_supp > 0){
-    data.index <- data.index[which(data.index$sim_counts >= min_supp), ]
+    idx <- data.index[which(data.index$sim_counts >= min_supp), ]
+  } else {
+    idx <- data.index
   }
-  data.novel <- data.index[which(data.index$sim_type == 'novel'),]
-  data.known <- data.index[which(data.index$sim_type == 'known'),]
+  data.novel <- idx[which(idx$sim_type == 'novel'),]
+  data.known <- idx[which(idx$sim_type == 'known'),]
   sim.sc <- unique(data.novel$structural_category)
 
   # Matches between simulated and reconstructed transcripts:
@@ -185,7 +187,12 @@ index.file <- args[3] # index file
 min.supp <- args[4] # min support reads
 src.path <- args[5] # path to src utilities
 
-output_directory <- dirname(class.file)
+class.file <- "sqantisim_classification.txt"
+junc.file <- "sqantisim_junctions.txt"
+index.file <- "sqantisim_index.tsv"
+min.supp <- 3
+
+output_directory <- dirname(dirname(class.file))
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 
 # -------------------- Read files
@@ -308,13 +315,13 @@ t2.min <- DT::datatable(res.min$novel.metrics, class = 'compact',  options = lis
 expr.dist <- data.index[which(data.index$sim_type %in% c('novel', 'known')), c('sim_type', 'sim_counts')]
 
 p1 <- expr.dist %>%
-  ggplot( aes(x=sim_counts, fill=sim_type)) +
-  geom_histogram(color='white', alpha=0.5, position = 'identity') +
+  ggplot(aes(x=sim_counts, fill=sim_type)) +
+  geom_histogram(aes(y=stat(count)/sum(count)), color="black", alpha=0.5, position = 'identity', bins = round(sqrt(nrow(expr.dist)))) +
   mytheme +
-  scale_fill_manual(values = myPalette[1:2], name='Simulation type') +
-  xlab('Counts') + 
-  ylab('Number of transcripts') +
-  ggtitle('Simulated counts distribution')
+  scale_fill_manual(values = myPalette[1:2], name='Transcript type') +
+  xlab('Number of simulated reads') + 
+  ylab('Percentage of transcripts') +
+  ggtitle('Simulated expression levels')
 
 # PLOT 2: structural classification
 p2 <- data.class %>%
@@ -343,7 +350,7 @@ p3 <- rbind(res.full$data.novel, res.full$data.known) %>%
   mytheme +
   ylab('Percentage %') +
   xlab('')+
-  ggtitle('Monoexon vs Multiexon')
+  ggtitle('Single- and Multi-exon identifications')
 
 # PLOT 4: canonical juncs
 data.query$match_type <- 'FP'
@@ -359,7 +366,7 @@ p4 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   mytheme +
   ylab('Percentage %') +
   xlab('') +
-  ggtitle('Canonical Junctions') +
+  ggtitle('Canonical or Non Canonical Junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
 if ('within_CAGE_peak' %in% colnames(data.index)){
@@ -384,7 +391,7 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     mytheme +
     ylab('Percentage %') +
     xlab('') +
-    ggtitle('Within cage peak') +
+    ggtitle('Within CAGE peak') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
   # PLOT 6: distance to cage peak
@@ -452,7 +459,7 @@ p3.min <- rbind(res.min$data.novel, res.min$data.known) %>%
   mytheme +
   ylab('Percentage %') +
   xlab('')+
-  ggtitle('Monoexon vs Multiexon')
+  ggtitle('Single- and Multi-exon identifications (min. supp.)')
 
 data.query$match_type <- 'FP'
 data.query$match_type[which(data.query$isoform %in% res.min$novel.perfect.matches$isoform)] <- 'TP'
@@ -467,7 +474,7 @@ p4.min <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   mytheme +
   ylab('Percentage %') +
   xlab('') +
-  ggtitle('Canonical Junctions') +
+  ggtitle('Canonical or Non Canonical Junctions (min. supp.)') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
 if ('within_CAGE_peak' %in% colnames(data.index)){
@@ -492,7 +499,7 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     mytheme +
     ylab('Percentage %') +
     xlab('') +
-    ggtitle('Within cage peak') +
+    ggtitle('Within cage peak (min. supp.)') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
   # PLOT 6: distance to cage peak
@@ -504,7 +511,7 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     mytheme +
     ylab('Distance to CAGE peak') +
     xlab('') +
-    ggtitle('Distance To Cage Peak') +
+    ggtitle('Distance To Cage Peak (min. supp.)') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
 
@@ -525,7 +532,7 @@ if ('min_cov' %in% colnames(data.index)) {
     mytheme +
     ylab('Percentage %') +
     xlab('') +
-    ggtitle('Splice Junctions Short Reads Coverage') +
+    ggtitle('Splice Junctions Short Reads Coverage (min. supp.)') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
   p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
@@ -540,7 +547,7 @@ if ('min_cov' %in% colnames(data.index)) {
     mytheme +
     ylab('log TSS ratio') +
     xlab('') +
-    ggtitle('Ratio TSS') +
+    ggtitle('Ratio TSS (min. supp.)') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 }
 

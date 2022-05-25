@@ -25,7 +25,7 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 n.sim.trans <- nrow(res.full$data.known) +  nrow(res.full$data.novel)
 n.known.trans <- nrow(res.full$data.known)
 n.novel.trans <- nrow(res.full$data.novel)
-n.class.trans <- nrow(res.full$data.query)
+n.class.trans <- nrow(data.query)
 
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
 cat('\n\n**Number of known transcripts**: ', n.known.trans, '\n\n')
@@ -50,7 +50,7 @@ p2
 Simulated transcript were grouped in know simulated transcripts which appear in the reference annotation GTF and novel simulated transcripts that were deleted from the annotation. The following metrics were computed:
 
 - **Number of isoforms simulated**: Total number of simulated isoforms
-- **True Positive isoforms (TP)**: Isoforms that match junctions with a simulated transcript and its TSS and TTS is within the thresholds
+- **True Positive isoforms (TP)**: Isoforms that match junctions with a simulated transcript and its TSS and TTS is within the 50bp threshold
 - **Partial True Positive isoforms (PTP)**: Isoforms that match junctions but the TSS and TTS are beyond the threshold
 - **False Negative isoforms (FN) **: Isoforms that were simulated but not detected
 - **False Positive (FP)**: Transcript that were detected but not simulated
@@ -71,8 +71,8 @@ t1
 
 ```{r, results = 'hide'}
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+                "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4")
 known.metrics.t <- as.data.frame(t(as.matrix(res.full$known.metrics)))
 known.metrics.t[is.na(known.metrics.t)] <- NA
 known.metrics.t <-known.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
@@ -102,8 +102,8 @@ t2
 
 ```{r, results = 'hide'}
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+                "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4")
 novel.metrics.t <- as.data.frame(t(as.matrix(res.full$novel.metrics)))
 novel.metrics.t[is.na(novel.metrics.t)] <- NA
 novel.metrics.t <-novel.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
@@ -151,7 +151,7 @@ if ('min_cov' %in% colnames(data.index)){
 }
 ```
 
-### Above min_supp results
+### Above min. supp. results
 
 #### Stats for known transcripts
 
@@ -161,8 +161,8 @@ t1.min
 
 ```{r, results = 'hide'}
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+                "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4")
 known.metrics.t <- as.data.frame(t(as.matrix(res.min$known.metrics)))
 known.metrics.t[is.na(known.metrics.t)] <- NA
 known.metrics.t <-known.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
@@ -192,8 +192,8 @@ t2.min
 
 ```{r, results = 'hide'}
 radar.palette <- c("global"='hotpink', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
+                "NNC"="#EE6A50", "Genic-Genomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
+                "Intergenic" = "darksalmon", "Genic-Intron"="#41B6C4")
 novel.metrics.t <- as.data.frame(t(as.matrix(res.min$novel.metrics)))
 novel.metrics.t[is.na(novel.metrics.t)] <- NA
 novel.metrics.t <-novel.metrics.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
