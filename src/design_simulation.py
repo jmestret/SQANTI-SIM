@@ -101,7 +101,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                     ref_trans.add(ref_t)
                     counts[SC] -= 1
 
-            elif SC in [ "novel_not_in_catalog", "genic_intron"]:
+            elif SC in [ "novel_not_in_catalog", "genic_intron", "intergenic"]:
                 if (
                     trans_id not in ref_trans
                     and gene_id not in ref_genes
@@ -110,7 +110,8 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                 ):
                     target_trans.add(trans_id)
                     target_genes.add(gene_id)
-                    ref_genes.add(ref_g)
+                    if ref_g != "novel":
+                        ref_genes.add(ref_g)
                     counts[SC] -= 1
 
             elif SC in ["novel_in_catalog", "fusion", "antisense", "genic"]:
@@ -129,16 +130,7 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
                         for i in ref_g:
                             ref_genes.add(i)
                         counts[SC] -= 1
-
-            elif SC == "intergenic":
-                if (
-                    trans_id not in ref_trans
-                    and gene_id not in ref_genes
-                    and gene_id not in target_genes
-                ):
-                    target_trans.add(trans_id)
-                    target_genes.add(gene_id)
-                    counts[SC] -= 1
+                        
 
     # List of transcript and genes that will be deleted from reference
     # if all transcripts from a gene are being deleted the gene will be deleted too

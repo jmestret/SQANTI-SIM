@@ -125,7 +125,8 @@ class myQueryTranscripts:
                  str_class, subtype=None, genes=None, transcripts=None,
                  chrom=None, strand=None, refLen="NA",refExons="NA",
                  refStart="NA", refEnd="NA", q_splicesite_hit=0,
-                 q_exon_overlap=0,junctions=None, tss=None, tts=None):
+                 q_exon_overlap=0,junctions=None, tss=None, tts=None,
+                 intergenic_assoc=None):
 
         self.id = id
         self.gene_id = gene_id  # gene where this transcript cames from
@@ -151,6 +152,7 @@ class myQueryTranscripts:
         self.junctions = junctions if len(junctions) > 0 else ["NA", "NA"]
         self.tss = tss if self.strand == "+" else tts
         self.tts = tts if self.strand == "+" else tss
+        self.intergenic_assoc = intergenic_assoc
 
     def get_total_diff(self):
         return abs(self.tss_diff) + abs(self.tts_diff)
@@ -810,6 +812,10 @@ def transcriptsKnownSpliceSites(trec: genePredRecord, ref_chr: list, start_ends_
         ]
         best_by_gene = list(filter(lambda x: x.score > 0, best_by_gene))
         if len(best_by_gene) == 0:  # no hit
+            try:
+                isoform_hit.intergenic_assoc = ref_gene
+            except:
+                isoform_hit.intergenic_assoc = "novel"
             return isoform_hit
 
         best_by_gene.sort(
@@ -1245,14 +1251,17 @@ def write_category_file(data: dict, out_name: str):
                 donors = [str(d) for d in donors]
                 acceptors = [str(a + 1) for a in acceptors]  # Change to 1-based exon start
             trans.tss += 1  # Change to 1-based transcript start
+
             if trans.str_class == "intergenic":
+                if not trans.intergenic_assoc:
+                    trans.intergenic_assoc = "novel"
                 f_out.write(
                     "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
                     % (
                         trans.id,
                         trans.gene_id,
                         trans.str_class,
-                        "novel",
+                        trans.intergenic_assoc,
                         "_".join(trans.transcripts),
                         trans.chrom,
                         trans.strand,
