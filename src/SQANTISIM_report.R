@@ -278,7 +278,7 @@ print("***Generating plots for the report")
 # -------------------- Global plot parameters
 # SAME FORMAT AS SQANTI3 REPORT
 #myPalette = c("#6BAED6","#FC8D59","#78C679","#EE6A50","#969696","#66C2A4", "goldenrod1", "darksalmon", "#41B6C4","tomato3", "#FE9929")
-myPalette = c("#3A5A81", "#D31336", "#252131")
+myPalette = c("#3A5A81", "#D31336", "#252131", "#6BAED6","#FC8D59","#78C679","#EE6A50")
 
 cat.palette = c("FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
                 "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
@@ -557,3 +557,4 @@ rmarkdown::render(
   output_dir = output_directory,
   output_file = paste0(output_name, "_SQANTISIM_report.html")
 )
+

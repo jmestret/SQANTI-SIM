@@ -128,10 +128,10 @@ def sqanti3_stats(args):
                 dist_cage_dict[line[id_pos]] = dist_cage
         index_file.close()
 
-        trans_index["dist_to_cage_peak"] = trans_index.apply(
+        trans_index["dist_to_CAGE_peak"] = trans_index.apply(
             write_dist_cage, axis=1
         )
-        trans_index["within_cage_peak"] = trans_index.apply(
+        trans_index["within_CAGE_peak"] = trans_index.apply(
             write_whithin_cage, axis=1
         )
 
