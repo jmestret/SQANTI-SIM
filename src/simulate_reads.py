@@ -258,7 +258,7 @@ def ont_simulation(args):
         for line in f_in:
             if line.startswith("@"):
                 line = line.lstrip("@")
-                trans_id = line.split("_")[0]
+                trans_id = "_".join(line.split("_")[:-7])
                 id_counts[trans_id] += 1
                 read_id = trans_id + "_ONT_simulated_read_" + str(n_read)
                 n_read += 1
