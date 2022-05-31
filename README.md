@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="https://github.com/jorgemt98/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="" width="300">
+  <img src="https://github.com/jmestret/SQANTISIM/blob/main/docs/sqantisim_logo.png" alt="" width="300">
 </p>
 
 <p align="center">
-  <a href="https://github.com/jorgemt98/SQANTISIM/wiki/Requirements-and-installation">Installation</a>
+  <a href="https://github.com/jmestret/SQANTISIM/wiki/Requirements-and-installation">Installation</a>
   ·
-  <a href="https://github.com/jorgemt98/SQANTISIM/wiki">Documentation</a>
+  <a href="https://github.com/jmestret/SQANTISIM/wiki">Documentation</a>
   ·
-  <a href="https://github.com/jorgemt98/SQANTISIM/issues">Report bug</a>
+  <a href="https://github.com/jmestret/SQANTISIM/issues">Report bug</a>
   ·
   <a href="https://github.com/ConesaLab/SQANTI3">SQANTI3</a>
 </p>
@@ -18,9 +18,11 @@
 
 SQANTISIM aims to simulate novel and degraded transcripts in a controlled way using ground-truth present transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
 
+![small_workflow](https://github.com/jmestret/SQANTISIM/blob/main/docs/small_workflow.png)
+
 ## Documentation
 
-Please refer to [Wiki](https://github.com/jorgemt98/SQANTISIM/wiki) for how to install and use SQANTISIM 
+Please refer to [Wiki](https://github.com/jmestret/SQANTISIM/wiki) for how to install and use SQANTISIM 
 
 ## Lastest updates
 
