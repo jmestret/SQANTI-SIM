@@ -187,11 +187,6 @@ index.file <- args[3] # index file
 min.supp <- args[4] # min support reads
 src.path <- args[5] # path to src utilities
 
-class.file <- "sqantisim_classification.txt"
-junc.file <- "sqantisim_junctions.txt"
-index.file <- "sqantisim_index.tsv"
-min.supp <- 3
-
 output_directory <- dirname(dirname(class.file))
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
 

@@ -609,7 +609,7 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                     del known_counts_to_gene[pos]
                     known_ctg_keys.remove(pos)
             
-            elif len(novel_ctg_keys) > 0 and novel_ctg_keys[-1] > known_ctg_keys[-1]:
+            elif len(novel_ctg_keys) > 0 and (novel_ctg_keys[-1] >= known_ctg_keys[-1] or diff_isos == 1):
                 pos = novel_ctg_keys[-1]
                 gene_id = novel_counts_to_gene[pos].pop()
                 diff_isos = pos
@@ -624,11 +624,18 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
                 if len(known_counts_to_gene[pos]) == 0:
                     del known_counts_to_gene[pos]
                     known_ctg_keys.remove(pos)
-            
-            for i in range(diff_isos):
-                    curr_trans = trans_by_gene[gene_id][i]
-                    if curr_trans not in novel_trans:
-                        known_trans.append(curr_trans)
+
+            novels_in_gene = 0
+            for j in range(len(trans_by_gene[gene_id])):
+                if trans_by_gene[gene_id][j] in novel_trans:
+                    novels_in_gene += 1
+
+            new_knowns = []
+            while len(new_knowns) < (diff_isos - novels_in_gene) and (diff_isos - novels_in_gene) > 0:
+                curr_trans = trans_by_gene[gene_id].pop()
+                if curr_trans not in novel_trans:
+                    new_knowns.append(curr_trans)
+            known_trans.extend(new_knowns)
 
         #if n_trans < (len(novel_trans) + len(known_trans)):
         #    known_trans[:(n_trans - len(novel_trans))]
@@ -676,3 +683,4 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
 
     print("[SQANTISIM] Requested transcripts: %s" %(n_trans))
     print("[SQANTISIM] Requested reads: %s" %(n_reads))
+    
