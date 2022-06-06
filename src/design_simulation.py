@@ -86,8 +86,9 @@ def target_trans(f_idx: str, f_idx_out: str, counts: dict) -> tuple:
             ref_t = trans[4]
             TSS = int(trans[col_names.index("TSS_genomic_coord")])
             TTS = int(trans[col_names.index("TTS_genomic_coord")])
+            trans_len = int(trans[col_names.index("length")])
 
-            if abs(TSS - TTS) <= MIN_SIM_LEN: # Dont simulate small transcripts
+            if trans_len < MIN_SIM_LEN: # Dont simulate small transcripts
                 continue
 
             if SC in ["full-splice_match", "incomplete-splice_match"]:
@@ -322,12 +323,13 @@ def create_expr_file_fixed_count(f_idx: str, args: list):
         skip = skip.split()
         i = skip.index("sim_type")
         j = skip.index("transcript_id")
+        k = skip.index("length")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
             if sim_type == "novel":
                 novel_trans.append(line[j])
-            else:
+            elif int(line[k]) >= MIN_SIM_LEN:
                 known_trans.append(line[j])
     f_in.close()
 
@@ -385,12 +387,13 @@ def create_expr_file_nbinom(f_idx: str, args: list):
         skip = skip.split()
         i = skip.index("sim_type")
         j = skip.index("transcript_id")
+        k = skip.index("length")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
             if sim_type == "novel":
                 novel_trans.append(line[j])
-            else:
+            elif int(line[k]) >= MIN_SIM_LEN:
                 known_trans.append(line[j])
     f_in.close()
 
@@ -536,16 +539,19 @@ def create_expr_file_sample(f_idx: str, args: list, tech: str):
         i = skip.index("sim_type")
         j = skip.index("transcript_id")
         k = skip.index("gene_id")
+        l = skip.index("length")
         for line in f_in:
             line = line.split()
             sim_type = line[i]
             if sim_type == "novel":
                 novel_trans.append(line[j])
                 novel_genes.add(line[k])
-            else:
+                trans_to_gene[line[j]] = line[k]
+                trans_by_gene[line[k]].append(line[j])
+            elif int(line[l]) >= MIN_SIM_LEN:
                 known_trans.append(line[j])
-            trans_to_gene[line[j]] = line[k]
-            trans_by_gene[line[k]].append(line[j])
+                trans_to_gene[line[j]] = line[k]
+                trans_by_gene[line[k]].append(line[j])
     f_in.close()
 
     if n_trans < len(novel_trans):

@@ -1235,7 +1235,7 @@ def write_category_file(data: dict, out_name: str):
     """
 
     f_out = open(out_name, "w")
-    f_out.write("transcript_id\tgene_id\tstructural_category\tassociated_gene\tassociated_trans\tchrom\tstrand\texons\tdonors\tacceptors\tTSS_genomic_coord\tTTS_genomic_coord\n")
+    f_out.write("transcript_id\tgene_id\tstructural_category\tassociated_gene\tassociated_trans\tchrom\tstrand\texons\tdonors\tacceptors\tTSS_genomic_coord\tTTS_genomic_coord\tlength\n")
 
     for chrom in data.values():
         for trans in chrom:
@@ -1256,7 +1256,7 @@ def write_category_file(data: dict, out_name: str):
                 if not trans.intergenic_assoc:
                     trans.intergenic_assoc = "novel"
                 f_out.write(
-                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
                     % (
                         trans.id,
                         trans.gene_id,
@@ -1270,11 +1270,12 @@ def write_category_file(data: dict, out_name: str):
                         ",".join(acceptors),
                         trans.tss,
                         trans.tts,
+                        trans.length,
                     )
                 )
             else:
                 f_out.write(
-                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+                    "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
                     % (
                         trans.id,
                         trans.gene_id,
@@ -1288,6 +1289,7 @@ def write_category_file(data: dict, out_name: str):
                         ",".join(acceptors),
                         trans.tss,
                         trans.tts,
+                        trans.length,
                     )
                 )
 
