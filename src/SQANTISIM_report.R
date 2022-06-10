@@ -28,7 +28,7 @@ suppressMessages(library(tidyr))
 #                                     #
 #######################################
 
-get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, min_supp=0){
+get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_supp=0){
   # Simulated ref transcripts
   if (min_supp > 0){
     idx <- data.index[which(data.index$sim_counts >= min_supp), ]
@@ -49,6 +49,7 @@ get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, mi
   known.perfect.matches <- known.matches[which(known.matches$diffTSS < MAX_TSS_TTS_DIFF & known.matches$diffTTS < MAX_TSS_TTS_DIFF),]
   cond <- (known.perfect.matches$exons > 1) | (known.perfect.matches$strand.x == '+' & known.perfect.matches$TSS_genomic_coord.x <= known.perfect.matches$TTS_genomic_coord.y & known.perfect.matches$TSS_genomic_coord.y <= known.perfect.matches$TTS_genomic_coord.x) | (known.perfect.matches$strand.x == '-' & known.perfect.matches$TTS_genomic_coord.x <= known.perfect.matches$TSS_genomic_coord.y & known.perfect.matches$TTS_genomic_coord.y <= known.perfect.matches$TSS_genomic_coord.x)
   known.perfect.matches <- known.perfect.matches[cond,]
+  known.matches <- known.matches[which(known.matches$junctions != "" | known.matches$isoform %in% known.perfect.matches$isoform),]  # Delete PTP of mono-exons which always match because there is no splice junctions
   
   novel.matches <- inner_join(data.query, data.novel, by=c('junctions', 'chrom')) %>%
     mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
@@ -57,108 +58,86 @@ get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, mi
   novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < MAX_TSS_TTS_DIFF & novel.matches$diffTTS < MAX_TSS_TTS_DIFF),]
   cond <- (novel.perfect.matches$exons > 1) | (novel.perfect.matches$strand.x == '+' & novel.perfect.matches$TSS_genomic_coord.x <= novel.perfect.matches$TTS_genomic_coord.y & novel.perfect.matches$TSS_genomic_coord.y <= novel.perfect.matches$TTS_genomic_coord.x) | (novel.perfect.matches$strand.x == '-' & novel.perfect.matches$TTS_genomic_coord.x <= novel.perfect.matches$TSS_genomic_coord.y & novel.perfect.matches$TTS_genomic_coord.y <= novel.perfect.matches$TSS_genomic_coord.x)
   novel.perfect.matches <- novel.perfect.matches[cond,]
+  novel.matches <- novel.matches[which(novel.matches$junctions != "" | novel.matches$isoform %in% novel.perfect.matches$isoform),]  # Delete PTP of mono-exons which always match because there is no splice junctions
   
   #  Compute metrics
-  known.metrics <- data.frame(init=c())
-  novel.metrics <- data.frame(init=c())
+  sqantisim.stats <- data.frame(init=c())
   for (sc in xaxislabelsF1){
     
     if (sc == 'FSM') {
-      known.sim <- nrow(data.known)
+      n.sim <- nrow(data.known)
+      TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
+      PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - TP
+      FP <- nrow(data.query[which(data.query$structural_category == sc),]) - TP - PTP
     } else {
-      known.sim <- 0
+      n.sim <- nrow(data.novel[which(data.novel$structural_category == sc),])
+      TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.y == sc),])
+      PTP <- nrow(novel.matches[which(novel.matches$structural_category.y == sc),]) - TP
+      FP <- nrow(data.query[which(data.query$structural_category == sc),]) - TP - (nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - TP)
     }
-    
-    known.TP <- nrow(known.perfect.matches[which(known.perfect.matches$structural_category.x == sc),])
-    known.PTP <- nrow(known.matches[which(known.matches$structural_category.x == sc),]) - known.TP
-    known.FN <- known.sim - known.TP
-    
-    if (sc %in% sim.sc) {
-      novel.sim <- nrow(data.novel[which(data.novel$structural_category == sc),])
-      novel.TP <- nrow(novel.perfect.matches[which(novel.perfect.matches$structural_category.x == sc),])
-      novel.PTP <- nrow(novel.matches[which(novel.matches$structural_category.x == sc),]) - novel.TP
-      
-      FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP - novel.TP - novel.PTP
-      novel.FN <- novel.sim - novel.TP
-      
-      
-      novel.metrics['Total', sc] <- novel.sim
-      novel.metrics['TP', sc] <- novel.TP
-      novel.metrics['PTP', sc] <- novel.PTP
-      novel.metrics['FP', sc] <- FP
-      novel.metrics['FN', sc] <- novel.FN
-      novel.metrics['Sensitivity', sc] <- novel.TP/ (novel.TP + novel.FN)
-      novel.metrics['Precision', sc] <- novel.TP/ (novel.TP + FP)
-      novel.metrics['F-score', sc] <- 2*((novel.metrics['Sensitivity', sc]*novel.metrics['Precision', sc])/(novel.metrics['Sensitivity', sc]+novel.metrics['Precision', sc]))
-      novel.metrics['False_Discovery_Rate', sc] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
-      novel.metrics['Positive_Detection_Rate', sc] <- (novel.TP + novel.PTP) / novel.sim
-      novel.metrics['False_Detection_Rate', sc] <- (FP) / (FP + novel.PTP +  novel.TP)
-      
-    } else {
-      FP <- nrow(data.query[which(data.query$structural_category == sc),]) - known.TP - known.PTP
+    FN <- n.sim - TP
+
+    if (sum(n.sim, TP, PTP, FP, FN) > 0){
+      sqantisim.stats['Total', sc] <- n.sim
+      sqantisim.stats['TP', sc] <- TP
+      sqantisim.stats['PTP', sc] <- PTP
+      sqantisim.stats['FP', sc] <- FP
+      sqantisim.stats['FN', sc] <- FN
+      sqantisim.stats['Sensitivity', sc] <- TP/ (TP + FN)
+      sqantisim.stats['Precision', sc] <- TP/ (TP + PTP + FP)
+      sqantisim.stats['F-score', sc] <- 2*((sqantisim.stats['Sensitivity', sc]*sqantisim.stats['Precision', sc])/(sqantisim.stats['Sensitivity', sc]+sqantisim.stats['Precision', sc]))
+      sqantisim.stats['False_Discovery_Rate', sc] <- (FP + PTP) / (FP + PTP +  TP)
+      sqantisim.stats['Positive_Detection_Rate', sc] <- (TP + PTP) / n.sim
+      sqantisim.stats['False_Detection_Rate', sc] <- (FP) / (FP + PTP + TP)
     }
-    
-    known.metrics['Total', sc] <- known.sim
-    known.metrics['TP', sc] <- known.TP
-    known.metrics['PTP', sc] <- known.PTP
-    known.metrics['FP', sc] <- FP
-    known.metrics['FN', sc] <- known.FN
-    known.metrics['Sensitivity', sc] <- known.TP/ (known.TP + known.FN)
-    known.metrics['Precision', sc] <- known.TP/ (known.TP + FP)
-    known.metrics['F-score', sc] <- 2*((known.metrics['Sensitivity', sc]*known.metrics['Precision', sc])/(known.metrics['Sensitivity', sc]+known.metrics['Precision', sc]))
-    known.metrics['False_Discovery_Rate', sc] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-    known.metrics['Positive_Detection_Rate', sc] <- (known.TP + known.PTP) / known.sim
-    known.metrics['False_Detection_Rate', sc] <- (FP) / (FP + known.PTP +  known.TP)
-    
   }
   
   known.TP <- 0
   known.PTP <- 0
-  known.FP <- 0
   known.FN <- 0
   novel.TP <- 0
   novel.PTP <- 0
-  novel.FP <- 0
   novel.FN <- 0 
-  for (sc in xaxislabelsF1){
-    known.TP <- known.TP + known.metrics['TP', sc]
-    known.PTP <- known.PTP + known.metrics['PTP', sc]
-    known.FP <- known.FP + known.metrics['FP', sc]
-    if (sc %in% sim.sc){
-      novel.TP <- novel.TP + novel.metrics['TP', sc]
-      novel.PTP <- novel.PTP + novel.metrics['PTP', sc]
-      novel.FP <- novel.FP + novel.metrics['FP', sc]
+  total.FP <- 0
+  for (sc in colnames(sqantisim.stats)){
+    if (sc == "FSM"){
+      known.TP <- known.TP + sqantisim.stats['TP', sc]
+      known.PTP <- known.PTP + sqantisim.stats['PTP', sc]
+      total.FP <- total.FP + sqantisim.stats['FP', sc]
+    }else{
+      novel.TP <- novel.TP + sqantisim.stats['TP', sc]
+      novel.PTP <- novel.PTP + sqantisim.stats['PTP', sc]
+      total.FP <- total.FP + sqantisim.stats['FP', sc]
     }
   }
   
-  known.metrics['Total', 'global'] <-  nrow(data.known)
-  known.metrics['TP', 'global'] <- known.TP
-  known.metrics['PTP', 'global'] <- known.PTP
-  known.metrics['FP', 'global'] <- known.FP
-  known.metrics['FN', 'global'] <- nrow(data.known) - known.TP
-  known.metrics['Precision', 'global'] <- known.TP / (known.TP + known.FP)
-  known.metrics['Sensitivity', 'global'] <- known.TP / (known.TP + known.metrics['FN', 'global'])
-  known.metrics['F-score', 'global'] <- 2*((known.metrics['Sensitivity', 'global']*known.metrics['Precision', 'global'])/(known.metrics['Sensitivity', 'global']+known.metrics['Precision', 'global']))
-  known.metrics['False_Discovery_Rate', 'global'] <- (FP + known.PTP) / (FP + known.PTP +  known.TP)
-  known.metrics['Positive_Detection_Rate', 'global'] <- (known.TP + known.PTP) / nrow(data.known)
-  known.metrics['False_Detection_Rate', 'global'] <- (known.FP) / (known.FP + known.PTP +  known.TP)
+  sqantisim.stats['Total', 'Known'] <-  nrow(data.known)
+  sqantisim.stats['TP', 'Known'] <- known.TP
+  sqantisim.stats['PTP', 'Known'] <- known.PTP
+  sqantisim.stats['FP', 'Known'] <- total.FP
+  sqantisim.stats['FN', 'Known'] <- nrow(data.known) - known.TP
+  sqantisim.stats['Precision', 'Known'] <- known.TP / (known.TP + known.PTP + total.FP)
+  sqantisim.stats['Sensitivity', 'Known'] <- known.TP / (known.TP + sqantisim.stats['FN', 'Known'])
+  sqantisim.stats['F-score', 'Known'] <- 2*((sqantisim.stats['Sensitivity', 'Known']*sqantisim.stats['Precision', 'Known'])/(sqantisim.stats['Sensitivity', 'Known']+sqantisim.stats['Precision', 'Known']))
+  sqantisim.stats['False_Discovery_Rate', 'Known'] <- (total.FP + known.PTP) / (total.FP + known.PTP +  known.TP)
+  sqantisim.stats['Positive_Detection_Rate', 'Known'] <- (known.TP + known.PTP) / nrow(data.known)
+  sqantisim.stats['False_Detection_Rate', 'Known'] <- (total.FP) / (total.FP + known.PTP +  known.TP)
   
-  novel.metrics['Total', 'global'] <-  nrow(data.novel)
-  novel.metrics['TP', 'global'] <- novel.TP
-  novel.metrics['PTP', 'global'] <- novel.PTP
-  novel.metrics['FP', 'global'] <- novel.FP
-  novel.metrics['FN', 'global'] <- nrow(data.novel) - novel.TP
-  novel.metrics['Precision', 'global'] <- novel.TP / (novel.TP + novel.FP)
-  novel.metrics['Sensitivity', 'global'] <- novel.TP / (novel.TP + novel.metrics['FN', 'global'])
-  novel.metrics['F-score', 'global'] <- 2*((novel.metrics['Sensitivity', 'global']*novel.metrics['Precision', 'global'])/(novel.metrics['Sensitivity', 'global']+novel.metrics['Precision', 'global']))
-  novel.metrics['False_Discovery_Rate', 'global'] <- (FP + novel.PTP) / (FP + novel.PTP +  novel.TP)
-  novel.metrics['Positive_Detection_Rate', 'global'] <- (novel.TP + novel.PTP) / nrow(data.novel)
-  novel.metrics['False_Detection_Rate', 'global'] <- (novel.FP) / (novel.FP + novel.PTP +  novel.TP)
+  sqantisim.stats['Total', 'Novel'] <-  nrow(data.novel)
+  sqantisim.stats['TP', 'Novel'] <- novel.TP
+  sqantisim.stats['PTP', 'Novel'] <- novel.PTP
+  sqantisim.stats['FP', 'Novel'] <- total.FP
+  sqantisim.stats['FN', 'Novel'] <- nrow(data.novel) - novel.TP
+  sqantisim.stats['Precision', 'Novel'] <- novel.TP / (novel.TP + novel.PTP + total.FP)
+  sqantisim.stats['Sensitivity', 'Novel'] <- novel.TP / (novel.TP + sqantisim.stats['FN', 'Novel'])
+  sqantisim.stats['F-score', 'Novel'] <- 2*((sqantisim.stats['Sensitivity', 'Novel']*sqantisim.stats['Precision', 'Novel'])/(sqantisim.stats['Sensitivity', 'Novel']+sqantisim.stats['Precision', 'Novel']))
+  sqantisim.stats['False_Discovery_Rate', 'Novel'] <- (total.FP + novel.PTP) / (total.FP + novel.PTP +  novel.TP)
+  sqantisim.stats['Positive_Detection_Rate', 'Novel'] <- (novel.TP + novel.PTP) / nrow(data.novel)
+  sqantisim.stats['False_Detection_Rate', 'Novel'] <- (total.FP) / (total.FP + novel.PTP +  novel.TP)
   
-  col.order <- c("global", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")
+  col.order <- c("Known", "Novel", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron")
   row.order <- c('Total', 'TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score', 'False_Discovery_Rate', 'Positive_Detection_Rate', 'False_Detection_Rate')
-  known.metrics <- known.metrics[intersect(row.order, rownames(known.metrics)), intersect(col.order, colnames(known.metrics))]
-  novel.metrics <- novel.metrics[intersect(row.order, rownames(novel.metrics)), intersect(col.order, colnames(novel.metrics))]
+  sqantisim.stats <- sqantisim.stats[intersect(row.order, rownames(sqantisim.stats)), intersect(col.order, colnames(sqantisim.stats))]
   
   # Add column with match type for plotting later
   data.known$match_type <- 'FN'
@@ -167,8 +146,8 @@ get_performance_metrics <- function(data.query, data.known, MAX_TSS_TTS_DIFF, mi
   data.novel$match_type <- 'FN'
   data.novel$match_type[which(data.novel$transcript_id %in% novel.perfect.matches$transcript_id)] <- 'TP'
   
-  res <- list(data.known, data.novel, known.matches, novel.matches, known.perfect.matches, novel.perfect.matches, known.metrics, novel.metrics)
-  names(res) <- c("data.known", "data.novel", "known.matches", "novel.matches", "known.perfect.matches", "novel.perfect.matches", "known.metrics", "novel.metrics")
+  res <- list(data.known, data.novel, known.matches, novel.matches, known.perfect.matches, novel.perfect.matches, sqantisim.stats)
+  names(res) <- c("data.known", "data.novel", "known.matches", "novel.matches", "known.perfect.matches", "novel.perfect.matches", "sqantisim.stats")
   return(res)
 }
 
@@ -229,7 +208,8 @@ data.index$acceptors <- lapply(data.index$acceptors, function(x){
 })
 data.index$junctions <- paste(data.index$donors, data.index$acceptors, sep=',')
 data.index$junctions[which(data.index$junctions == ',')] <- ''
-#data.index$TSS_genomic_coord  <- data.index$TSS_genomic_coord - 1
+data.index[which(data.index$strand == "-"),"TSS_genomic_coord"]  <- data.index[which(data.index$strand == "-"),"TSS_genomic_coord"] - 1
+data.index[which(data.index$strand == "-"),"TTS_genomic_coord"]  <- data.index[which(data.index$strand == "-"),"TTS_genomic_coord"] + 1
 data.index$structural_category = factor(data.index$structural_category,
                                       labels = xaxislabelsF1,
                                       levels = xaxislevelsF1,
@@ -253,7 +233,8 @@ res.min <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min
 # -------------------- 
 # -------------------- 
 # TABLE INDEX
-# t1: known metrics
+# t1: SQANTISIM metrics
+# t2: SQANTISIM metrics above min_supp
 
 # -------------------- 
 # -------------------- 
@@ -291,19 +272,13 @@ mytheme <- theme_classic(base_family = "Helvetica") +
   theme(plot.margin = unit(c(2.5,1,1,1), "cm"))
 
 # -------------------- 
-# TABLE 1: known metrics
-t1 <- DT::datatable(res.full$known.metrics, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.full$known.metrics), digits = 3, rows=c(6:11), zero.print = 0)
+# TABLE 1: SQANTISIM metrics
+t1 <- DT::datatable(res.full$sqantisim.stats, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
+  formatRound(colnames(res.full$sqantisim.stats), digits = 3, rows=c(6:11), zero.print = 0)
 
-t1.min <- DT::datatable(res.min$known.metrics, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.min$known.metrics), digits = 3, rows=c(6:11), zero.print = 0)
-
-# TABLE 2: novel metrics
-t2 <- DT::datatable(res.full$novel.metrics, class = 'compact',  options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.full$novel.metrics), digits = 3, rows=c(6:11), zero.print = 0)
-
-t2.min <- DT::datatable(res.min$novel.metrics, class = 'compact',  options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.min$novel.metrics), digits = 3, rows=c(6:11), zero.print = 0)
+# TABLE 2: SQANTISIM metrics above min_supp
+t2 <- DT::datatable(res.min$sqantisim.stats, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
+  formatRound(colnames(res.min$sqantisim.stats), digits = 3, rows=c(6:11), zero.print = 0)
 
 # -------------------- PLOT FULL
 # PLOT 1: simulated expression profile
