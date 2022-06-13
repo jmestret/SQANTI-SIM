@@ -42,23 +42,20 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   # Matches between simulated and reconstructed transcripts:
   # First all splice-junctions must be identical
   # Second, difference between the annotated and reconstructed TSS and TTS must be smaller than MAX_TSS_TTS_DIFF
-  known.matches <- inner_join(data.query, data.known, by=c('junctions', 'chrom')) %>%
+  matches <- inner_join(data.query, data.index, by=c('junctions', 'chrom')) %>%
     mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
     arrange(difftot) %>%
     distinct(isoform, .keep_all = T)
-  known.perfect.matches <- known.matches[which(known.matches$diffTSS < MAX_TSS_TTS_DIFF & known.matches$diffTTS < MAX_TSS_TTS_DIFF),]
-  cond <- (known.perfect.matches$exons > 1) | (known.perfect.matches$strand.x == '+' & known.perfect.matches$TSS_genomic_coord.x <= known.perfect.matches$TTS_genomic_coord.y & known.perfect.matches$TSS_genomic_coord.y <= known.perfect.matches$TTS_genomic_coord.x) | (known.perfect.matches$strand.x == '-' & known.perfect.matches$TTS_genomic_coord.x <= known.perfect.matches$TSS_genomic_coord.y & known.perfect.matches$TTS_genomic_coord.y <= known.perfect.matches$TSS_genomic_coord.x)
-  known.perfect.matches <- known.perfect.matches[cond,]
-  known.matches <- known.matches[which(known.matches$junctions != "" | known.matches$isoform %in% known.perfect.matches$isoform),]  # Delete PTP of mono-exons which always match because there is no splice junctions
+  matches <- matches[which(matches$sim_type != "absent"),]
+  perfect.matches <- matches[which(matches$diffTSS < MAX_TSS_TTS_DIFF & matches$diffTTS < MAX_TSS_TTS_DIFF),]
+  cond <- (perfect.matches$exons > 1) | (perfect.matches$strand.x == '+' & perfect.matches$TSS_genomic_coord.x <= perfect.matches$TTS_genomic_coord.y & perfect.matches$TSS_genomic_coord.y <= perfect.matches$TTS_genomic_coord.x) | (perfect.matches$strand.x == '-' & perfect.matches$TTS_genomic_coord.x <= perfect.matches$TSS_genomic_coord.y & perfect.matches$TTS_genomic_coord.y <= perfect.matches$TSS_genomic_coord.x)
+  perfect.matches <- perfect.matches[cond,]
+  matches <- matches[which(matches$junctions != "" | matches$isoform %in% perfect.matches$isoform),]  # Delete PTP of mono-exons which always match because there is no splice junctions
   
-  novel.matches <- inner_join(data.query, data.novel, by=c('junctions', 'chrom')) %>%
-    mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
-    arrange(difftot) %>%
-    distinct(isoform, .keep_all = T)
-  novel.perfect.matches <- novel.matches[which(novel.matches$diffTSS < MAX_TSS_TTS_DIFF & novel.matches$diffTTS < MAX_TSS_TTS_DIFF),]
-  cond <- (novel.perfect.matches$exons > 1) | (novel.perfect.matches$strand.x == '+' & novel.perfect.matches$TSS_genomic_coord.x <= novel.perfect.matches$TTS_genomic_coord.y & novel.perfect.matches$TSS_genomic_coord.y <= novel.perfect.matches$TTS_genomic_coord.x) | (novel.perfect.matches$strand.x == '-' & novel.perfect.matches$TTS_genomic_coord.x <= novel.perfect.matches$TSS_genomic_coord.y & novel.perfect.matches$TTS_genomic_coord.y <= novel.perfect.matches$TSS_genomic_coord.x)
-  novel.perfect.matches <- novel.perfect.matches[cond,]
-  novel.matches <- novel.matches[which(novel.matches$junctions != "" | novel.matches$isoform %in% novel.perfect.matches$isoform),]  # Delete PTP of mono-exons which always match because there is no splice junctions
+  known.matches <- matches[which(matches$sim_type == "known"),]
+  known.perfect.matches <- perfect.matches[which(perfect.matches$sim_type == "known"),]
+  novel.matches <- matches[which(matches$sim_type == "novel"),]
+  novel.perfect.matches <- perfect.matches[which(perfect.matches$sim_type == "novel"),]
   
   #  Compute metrics
   sqantisim.stats <- data.frame(init=c())
@@ -151,6 +148,14 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   return(res)
 }
 
+modify_index_file <- function(index.file, res.full){
+  modif.index <- read.table(index.file, header=T, as.is=T, sep="\t")
+  modif.index$pipeline_performance <- "FN"
+  modif.index$pipeline_performance[which(modif.index$sim_counts <= 0)] <-  "absent"
+  modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$known.matches$transcript_id | modif.index$transcript_id %in% res.full$novel.matches$transcript_id)] <- "PTP"
+  modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$known.perfect.matches$transcript_id | modif.index$transcript_id %in% res.full$novel.perfect.matches$transcript_id)] <- "TP"
+  write.table(modif.index, file = paste0(index.file, ".eval"), quote = F, sep = "\t", na = "NA",row.names = F)
+}
 
 #######################################
 #                                     #
@@ -223,6 +228,8 @@ data.index$sim_type[which(data.index$sim_counts == 0)] <- 'absent' # Ignore not 
 MAX_TSS_TTS_DIFF = 50
 res.full <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
 res.min <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min.supp)
+
+modify_index_file(index.file, res.full)
 
 #######################################
 #                                     #
