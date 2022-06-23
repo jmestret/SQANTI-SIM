@@ -1,6 +1,6 @@
 #######################################
 #                                     #
-#    SQANTISIM report generation     #
+#    SQANTISIM report generation      #
 #                                     #
 #######################################
 
@@ -42,7 +42,7 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   # Matches between simulated and reconstructed transcripts:
   # First all splice-junctions must be identical
   # Second, difference between the annotated and reconstructed TSS and TTS must be smaller than MAX_TSS_TTS_DIFF
-  matches <- inner_join(data.query, data.index, by=c('junctions', 'chrom')) %>%
+  matches <- inner_join(data.query, idx, by=c('junctions', 'chrom')) %>%
     mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
     arrange(difftot) %>%
     distinct(isoform, .keep_all = T)
@@ -136,24 +136,50 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   row.order <- c('Total', 'TP', 'PTP', 'FP', 'FN', 'Sensitivity', 'Precision', 'F-score', 'False_Discovery_Rate', 'Positive_Detection_Rate', 'False_Detection_Rate')
   sqantisim.stats <- sqantisim.stats[intersect(row.order, rownames(sqantisim.stats)), intersect(col.order, colnames(sqantisim.stats))]
   
-  # Add column with match type for plotting later
-  data.known$match_type <- 'FN'
-  data.known$match_type[which(data.known$transcript_id %in% known.perfect.matches$transcript_id)] <- 'TP'
-  data.known$structural_category <- 'known'
-  data.novel$match_type <- 'FN'
-  data.novel$match_type[which(data.novel$transcript_id %in% novel.perfect.matches$transcript_id)] <- 'TP'
+  # Summary dataframe
+  plot.cols <- c("transcript_id", "gene_id", "structural_category", "exons", "length", "sim_type", "sim_counts")
+  if ('within_CAGE_peak' %in% colnames(data.index)){
+    plot.cols <- c(plot.cols, "within_CAGE_peak", "dist_to_CAGE_peak")
+  }
+  if ('min_cov' %in% colnames(data.index)) {
+    plot.cols <- c(plot.cols, "min_cov", "ratio_TSS")
+  }
   
-  res <- list(data.known, data.novel, known.matches, novel.matches, known.perfect.matches, novel.perfect.matches, sqantisim.stats)
-  names(res) <- c("data.known", "data.novel", "known.matches", "novel.matches", "known.perfect.matches", "novel.perfect.matches", "sqantisim.stats")
+  data.summary <- rbind(
+    data.novel[, plot.cols],
+    data.known[, plot.cols]
+  )
+  data.summary$structural_category <- as.character(data.summary$structural_category)
+  data.summary$structural_category[which(data.summary$transcript_id %in% data.known$transcript_id)] <- "Known"
+  data.summary$structural_category <- factor(data.summary$structural_category, levels=c("Known", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron"))
+  
+  data.summary$sim_match_type <- "FN"
+  data.summary$sim_match_type[which(data.summary$transcript_id %in% data.known$transcript_id)] <-  "FN_known"
+  data.summary$sim_match_type[which(data.summary$transcript_id %in% data.novel$transcript_id)] <-  "FN_novel"
+  data.summary$sim_match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id)] <-  "TP_known"
+  data.summary$sim_match_type[which(data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <-  "TP_novel"
+  data.summary$sim_match_type <- factor(data.summary$sim_match_type, levels=c("TP_known", "FN_known", "TP_novel", "FN_novel"))
+  
+  data.summary$match_type <- "FN"
+  data.summary$match_type[which(data.summary$transcript_id %in% known.matches$transcript_id | data.summary$transcript_id %in% novel.matches$transcript_id)] <- "PTP"
+  data.summary$match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id | data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <- "TP"
+  
+  data.summary <- merge(data.summary, perfect.matches[,c("isoform", "transcript_id")], by="transcript_id", all.x=T)
+  
+  res <- list(data.summary, known.perfect.matches, novel.perfect.matches, sqantisim.stats)
+  names(res) <- c("data.summary", "known.perfect.matches", "novel.perfect.matches", "sqantisim.stats")
   return(res)
 }
 
 modify_index_file <- function(index.file, res.full){
   modif.index <- read.table(index.file, header=T, as.is=T, sep="\t")
-  modif.index$pipeline_performance <- "FN"
+  n <- colnames(modif.index)
+  modif.index <- merge(x = modif.index, y = res.full$data.summary[,c("transcript_id", "isoform")], by = "transcript_id", all.x = TRUE)
+  colnames(modif.index) <- c(n, "pipeline_performance")
+  modif.index$pipeline_performance[is.na(modif.index$pipeline_performance)] <- "FN"
   modif.index$pipeline_performance[which(modif.index$sim_counts <= 0)] <-  "absent"
-  modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$known.matches$transcript_id | modif.index$transcript_id %in% res.full$novel.matches$transcript_id)] <- "PTP"
-  modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$known.perfect.matches$transcript_id | modif.index$transcript_id %in% res.full$novel.perfect.matches$transcript_id)] <- "TP"
+  #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "PTP")])] <- "PTP"
+  #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "TP")])] <- "TP"
   write.table(modif.index, file = paste0(index.file, ".eval"), quote = F, sep = "\t", na = "NA",row.names = F)
 }
 
@@ -228,8 +254,13 @@ data.index$sim_type[which(data.index$sim_counts == 0)] <- 'absent' # Ignore not 
 MAX_TSS_TTS_DIFF = 50
 res.full <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
 res.min <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min.supp)
+res.min$sqantisim.stats <- res.min$sqantisim.stats[c("Total", "TP", "FN", "Sensitivity"),]
 
 modify_index_file(index.file, res.full)
+res.full$data.summary$match_type[which(res.full$data.summary$match_type == "PTP")] <- "FN"
+res.full$data.summary$match_type <- factor(res.full$data.summary$match_type, levels = c("TP", "FN"))
+res.min$data.summary$match_type[which(res.min$data.summary$match_type == "PTP")] <- "FN"
+res.min$data.summary$match_type <- factor(res.min$data.summary$match_type, levels = c("TP", "FN"))
 
 #######################################
 #                                     #
@@ -248,12 +279,16 @@ modify_index_file(index.file, res.full)
 # PLOT INDEX
 # p1: simulated expression profile
 # p2: structural classification
-# p3: novel TP vs FN - mono/multi-exon
+# p3: TP vs FN - mono/multi-exon
 # p4: canonical juncs
-# p5: within cage peak
-# p6: distance to cage peak
-# p7: min SJ cov by short reads
-# p8: ratio TSS
+# p5: Number of exons
+# p6: Transcript length
+# p7: Expression levels
+# p8: Transcripts per gene
+# p9: within cage peak
+# p10: distance to cage peak
+# p11: min SJ cov by short reads
+# p12: ratio TSS
 # px: radar chart from perfomance metrics
 
 print("***Generating plots for the report")
@@ -285,7 +320,7 @@ t1 <- DT::datatable(res.full$sqantisim.stats, class = 'compact', options = list(
 
 # TABLE 2: SQANTISIM metrics above min_supp
 t2 <- DT::datatable(res.min$sqantisim.stats, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.min$sqantisim.stats), digits = 3, rows=c(6:11), zero.print = 0)
+  formatRound(colnames(res.min$sqantisim.stats), digits = 3, rows=c(4), zero.print = 0)
 
 # -------------------- PLOT FULL
 # PLOT 1: simulated expression profile
@@ -315,19 +350,33 @@ p2 <- data.class %>%
   theme(axis.title.x=element_blank()) +  theme(axis.text.x  = element_text(margin=ggplot2::margin(17,0,0,0), size=12)) +
   theme(legend.justification=c(1,1), legend.position=c(1,1))
 
-# PLOT 3: novel TP vs FN - mono/multi-exon
-p3 <- rbind(res.full$data.novel, res.full$data.known) %>%
+# PLOT 3: TP vs FN - mono/multi-exon
+p3 <- res.full$data.summary %>%
   mutate(exon_type=ifelse(exons > 1, 'multi-exon', 'mono-exon')) %>%
   group_by(structural_category, match_type, exon_type) %>%
   summarise(value=n()) %>%
   ggplot(aes(x=structural_category)) +
   geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
-  scale_fill_manual(values=myPalette[1:2], name='Stats') +
+  scale_fill_manual(values=myPalette, name='Stats') +
   scale_alpha_manual(values=c(0.5,1), name='Exons') +
   mytheme +
   ylab('Percentage %') +
   xlab('')+
   ggtitle('Single- and Multi-exon identifications')
+
+p3.min <- res.min$data.summary %>%
+  mutate(exon_type=ifelse(exons > 1, 'multi-exon', 'mono-exon')) %>%
+  group_by(structural_category, match_type, exon_type) %>%
+  summarise(value=n()) %>%
+  ggplot(aes(x=structural_category)) +
+  geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_alpha_manual(values=c(0.5,1), name='Exons') +
+  mytheme +
+  ylab('Percentage %') +
+  xlab('')+
+  ggtitle('Single- and Multi-exon identifications (min. supp.)')
+
 
 # PLOT 4: canonical juncs
 data.query$match_type <- 'FP'
@@ -346,20 +395,205 @@ p4 <- data.query[which(!is.na(data.query$all_canonical)),] %>%
   ggtitle('Canonical or Non Canonical Junctions') +
   theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
 
+# PLOT 5: Number of exons
+p5.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=exons, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$exons, c(0.1, 0.9))) +
+  ylab("Number of exons") +
+  xlab("") +
+  ggtitle("Number of exons") +
+  guides(fill="none")
+
+p5.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=exons, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$exons, c(0.1, 0.9))) +
+  ylab("Number of exons") +
+  xlab("") +
+  ggtitle("Number of exons") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+p5.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=exons, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
+  ylab("Number of exons") +
+  xlab("") +
+  ggtitle("Number of exons") +
+  guides(fill="none")
+
+p5.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=exons, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
+  ylab("Number of exons") +
+  xlab("") +
+  ggtitle("Number of exons") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+
+# PLOT 6: Length of transcripts
+p6.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=length, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$length, c(0.1, 0.9))) +
+  ylab("Transcript length (bp)") +
+  xlab("") +
+  ggtitle("Transcript length") +
+  guides(fill="none")
+
+p6.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=length, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$length, c(0.1, 0.9))) +
+  ylab("Transcript length (bp)") +
+  xlab("") +
+  ggtitle("Transcript length") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+p6.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=length, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
+  ylab("Transcript length (bp)") +
+  xlab("") +
+  ggtitle("Transcript length") +
+  guides(fill="none")
+
+p6.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=length, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
+  ylab("Transcript length (bp)") +
+  xlab("") +
+  ggtitle("Transcript length") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+# PLOT 7: Expression level
+p7.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=sim_counts, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$sim_counts, c(0.1, 0.9))) +
+  ylab("Number of simulated reads") +
+  xlab("") +
+  ggtitle("Expression level") +
+  guides(fill="none")
+
+p7.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=sim_counts, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$sim_counts, c(0.1, 0.9))) +
+  ylab("Number of simulated reads") +
+  xlab("") +
+  ggtitle("Expression level") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+p7.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=sim_counts, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
+  ylab("Number of simulated reads") +
+  xlab("") +
+  ggtitle("Expression level") +
+  guides(fill="none")
+
+p7.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=sim_counts, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
+  ylab("Number of simulated reads") +
+  xlab("") +
+  ggtitle("Expression level") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+
+# PLOT 8: Transcripts per gene
+trans.per.gene <- res.full$data.summary %>%
+  group_by(gene_id) %>%
+  summarise(trans_per_gene=n())
+res.full$data.summary <- merge(res.full$data.summary, trans.per.gene, by = "gene_id")
+
+p8.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=trans_per_gene, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$trans_per_gene, c(0.1, 0.9))) +
+  ylab("Number of transcripts per gene") +
+  xlab("") +
+  ggtitle("Isoform complexity") +
+  guides(fill="none")
+
+p8.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=trans_per_gene, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.full$data.summary$trans_per_gene, c(0.1, 0.9))) +
+  ylab("Number of transcripts per gene") +
+  xlab("") +
+  ggtitle("Isoform complexity") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+trans.per.gene <- res.min$data.summary %>%
+  group_by(gene_id) %>%
+  summarise(trans_per_gene=n())
+res.min$data.summary <- merge(res.min$data.summary, trans.per.gene, by = "gene_id")
+
+p8.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=trans_per_gene, fill=match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
+  ylab("Number of transcripts per gene") +
+  xlab("") +
+  ggtitle("Isoform complexity") +
+  guides(fill="none")
+
+p8.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=trans_per_gene, fill=sim_match_type)) +
+  geom_boxplot(alpha=1, outlier.shape = NA) +
+  mytheme +
+  scale_fill_manual(values=myPalette, name='Stats') +
+  scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
+  ylab("Number of transcripts per gene") +
+  xlab("") +
+  ggtitle("Isoform complexity") +
+  guides(fill="none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+
+
 if ('within_CAGE_peak' %in% colnames(data.index)){
-  # PLOT 5: within cage peak
+  # PLOT 9: within cage peak
   data.query$match_type <- 'FP'
-  data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'novel_TP'
-  data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'known_TP'
-  p5.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.known$transcript_id & !(data.index$transcript_id %in% res.full$known.perfect.matches$transcript_id)),]
-  p5.known_FN$match_type <- 'known_FN'
-  p5.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.novel$transcript_id & !(data.index$transcript_id %in% res.full$novel.perfect.matches$transcript_id)),]
-  p5.novel_FN$match_type <- 'novel_FN'
-  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
+  data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'TP_novel'
+  data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'TP_known'
+  p9.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_known")]),]
+  p9.known_FN$match_type <- 'FN_known'
+  p9.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_novel")]),]
+  p9.novel_FN$match_type <- 'FN_novel'
+  p9.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p9.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
+                  p9.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
   
-  p5 <- p5.all[which(!is.na(p5.all$within_CAGE_peak)),] %>%
+  p9 <- p9.all[which(!is.na(p9.all$within_CAGE_peak)),] %>%
     group_by(match_type, within_CAGE_peak) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
@@ -371,8 +605,8 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
     ggtitle('Within CAGE peak') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
-  # PLOT 6: distance to cage peak
-  p6 <- p5.all[which(!is.na(p5.all$dist_to_CAGE_peak)),] %>%
+  # PLOT 10: distance to cage peak
+  p10 <- p9.all[which(!is.na(p9.all$dist_to_CAGE_peak)),] %>%
     ggplot(aes(x=dist_to_CAGE_peak, color=match_type, fill=match_type)) +
     geom_density(alpha=.3) +
     scale_color_manual(values = myPalette) +
@@ -385,31 +619,39 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
 }
 
 if ('min_cov' %in% colnames(data.index)) {
-  # PLOT 7: min SJ cov by short reads
-  p7.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'min_cov')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'min_cov')])
-  p7.all$Coverage_SJ <- 'False'
-  p7.all[which(p7.all$min_cov>0), 'Coverage_SJ'] <- 'True'
+  # PLOT 11: min SJ cov by short reads
+  data.query$match_type <- 'FP'
+  data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'TP_novel'
+  data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'TP_known'
+  p11.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_known")]),]
+  p11.known_FN$match_type <- 'FN_known'
+  p11.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_novel")]),]
+  p11.novel_FN$match_type <- 'FN_novel'
   
-  p7 <- p7.all[which(!is.na(p7.all$Coverage_SJ)),] %>%
+  p11.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
+                  p11.known_FN[,c('structural_category', 'match_type', 'min_cov')],
+                  p11.novel_FN[,c('structural_category', 'match_type', 'min_cov')])
+  p11.all$Coverage_SJ <- 'False'
+  p11.all[which(p11.all$min_cov>0), 'Coverage_SJ'] <- 'True'
+  
+  p11 <- p11.all[which(!is.na(p11.all$Coverage_SJ)),] %>%
     group_by(match_type, Coverage_SJ) %>%
     summarise(value=n()) %>%
     ggplot(aes(x=match_type)) +
     geom_bar(aes(y=value, fill=Coverage_SJ), position="fill", stat="identity") +
-    scale_fill_manual(values=myPalette[1:2], name='Coverage SJ') +
+    scale_fill_manual(values=myPalette, name='Coverage SJ') +
     mytheme +
     ylab('Percentage %') +
     xlab('') +
     ggtitle('Splice Junctions Short Reads Coverage') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
   
-  # PLOT 8: ratio TSS
-  p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
+  # PLOT 12: ratio TSS
+  p12.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
+                  p11.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
+                  p11.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
   
-  p8 <- p8.all[which(!is.na(p8.all$ratio_TSS)),] %>%
+  p12 <- p12.all[which(!is.na(p12.all$ratio_TSS)),] %>%
     ggplot(aes(x=log(ratio_TSS), color=match_type, fill=match_type)) +
     geom_density(alpha=.3) +
     scale_color_manual(values = myPalette) +
@@ -423,110 +665,6 @@ if ('min_cov' %in% colnames(data.index)) {
 
 # PLOT X: Radar chart
 # Generated in RMD file
-
-# ----------------- PLOT WITH MIN SUPPORT
-p3.min <- rbind(res.min$data.novel, res.min$data.known) %>%
-  mutate(exon_type=ifelse(exons > 1, 'multi-exon', 'mono-exon')) %>%
-  group_by(structural_category, match_type, exon_type) %>%
-  summarise(value=n()) %>%
-  ggplot(aes(x=structural_category)) +
-  geom_bar(aes(fill=match_type, y=value, alpha=exon_type), position="fill", stat="identity") +
-  scale_fill_manual(values=myPalette[1:2], name='Stats') +
-  scale_alpha_manual(values=c(0.5,1), name='Exons') +
-  mytheme +
-  ylab('Percentage %') +
-  xlab('')+
-  ggtitle('Single- and Multi-exon identifications (min. supp.)')
-
-data.query$match_type <- 'FP'
-data.query$match_type[which(data.query$isoform %in% res.min$novel.perfect.matches$isoform)] <- 'TP'
-data.query$match_type[which(data.query$isoform %in% res.min$known.perfect.matches$isoform)] <- 'TP'
-p4.min <- data.query[which(!is.na(data.query$all_canonical)),] %>%
-  group_by(structural_category, match_type, all_canonical) %>%
-  summarise(value=n()) %>%
-  ggplot(aes(x=structural_category)) +
-  geom_bar(aes(fill=match_type, y=value, alpha=all_canonical), position="fill", stat="identity") +
-  scale_fill_manual(values=myPalette[1:2], name='Stats') +
-  scale_alpha_manual(values=c(1, 0.5), name='Junctions') +
-  mytheme +
-  ylab('Percentage %') +
-  xlab('') +
-  ggtitle('Canonical or Non Canonical Junctions (min. supp.)') +
-  theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-
-if ('within_CAGE_peak' %in% colnames(data.index)){
-  # PLOT 5: within cage peak
-  data.query$match_type <- 'FP'
-  data.query$match_type[which(data.query$isoform %in% res.min$novel.perfect.matches$isoform)] <- 'novel_TP'
-  data.query$match_type[which(data.query$isoform %in% res.min$known.perfect.matches$isoform)] <- 'known_TP'
-  p5.known_FN <- data.index[which(data.index$transcript_id %in% res.min$data.known$transcript_id & !(data.index$transcript_id %in% res.min$known.perfect.matches$transcript_id)),]
-  p5.known_FN$match_type <- 'known_FN'
-  p5.novel_FN <- data.index[which(data.index$transcript_id %in% res.min$data.novel$transcript_id & !(data.index$transcript_id %in% res.min$novel.perfect.matches$transcript_id)),]
-  p5.novel_FN$match_type <- 'novel_FN'
-  p5.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
-  
-  p5.min <- p5.all[which(!is.na(p5.all$within_CAGE_peak)),] %>%
-    group_by(match_type, within_CAGE_peak) %>%
-    summarise(value=n()) %>%
-    ggplot(aes(x=match_type)) +
-    geom_bar(aes(y=value, fill=within_CAGE_peak), position="fill", stat="identity") +
-    scale_fill_manual(values=myPalette[1:2], name='CagePeak') +
-    mytheme +
-    ylab('Percentage %') +
-    xlab('') +
-    ggtitle('Within cage peak (min. supp.)') +
-    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-  
-  # PLOT 6: distance to cage peak
-  p6.min <- p5.all[which(!is.na(p5.all$dist_to_CAGE_peak)),] %>%
-    ggplot(aes(x=dist_to_CAGE_peak, color=match_type, fill=match_type)) +
-    geom_density(alpha=.3) +
-    scale_color_manual(values = myPalette) +
-    scale_fill_manual(values = myPalette) +
-    mytheme +
-    ylab('Distance to CAGE peak') +
-    xlab('') +
-    ggtitle('Distance To Cage Peak (min. supp.)') +
-    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-}
-
-if ('min_cov' %in% colnames(data.index)) {
-  # PLOT 7: min SJ cov by short reads
-  p7.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'min_cov')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'min_cov')])
-  p7.all$Coverage_SJ <- 'False'
-  p7.all[which(p7.all$min_cov>0), 'Coverage_SJ'] <- 'True'
-  
-  p7.min <- p7.all[which(!is.na(p7.all$Coverage_SJ)),] %>%
-    group_by(match_type, Coverage_SJ) %>%
-    summarise(value=n()) %>%
-    ggplot(aes(x=match_type)) +
-    geom_bar(aes(y=value, fill=Coverage_SJ), position="fill", stat="identity") +
-    scale_fill_manual(values=myPalette[1:2], name='Coverage SJ') +
-    mytheme +
-    ylab('Percentage %') +
-    xlab('') +
-    ggtitle('Splice Junctions Short Reads Coverage (min. supp.)') +
-    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-  
-  p8.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p5.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p5.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
-  
-  p8.min <- p8.all[which(!is.na(p8.all$ratio_TSS)),] %>%
-    ggplot(aes(x=log(ratio_TSS), color=match_type, fill=match_type)) +
-    geom_density(alpha=.3) +
-    scale_color_manual(values = myPalette) +
-    scale_fill_manual(values = myPalette) +
-    mytheme +
-    ylab('log TSS ratio') +
-    xlab('') +
-    ggtitle('Ratio TSS (min. supp.)') +
-    theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
-}
 
 # -------------------- Output report
 rmarkdown::render(

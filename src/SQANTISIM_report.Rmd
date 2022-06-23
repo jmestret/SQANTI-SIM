@@ -22,9 +22,9 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = FALSE, echo = FA
 ## Summary
 
 ```{r, results='asis'}
-n.sim.trans <- nrow(res.full$data.known) +  nrow(res.full$data.novel)
-n.known.trans <- nrow(res.full$data.known)
-n.novel.trans <- nrow(res.full$data.novel)
+n.sim.trans <- nrow(res.full$data.summary)
+n.known.trans <- nrow(res.full$data.summary[which(res.full$data.summary$sim_type == "known"),])
+n.novel.trans <- nrow(res.full$data.summary[which(res.full$data.summary$sim_type == "novel"),])
 n.class.trans <- nrow(data.query)
 
 cat('\n\n**Number of simulated transcripts**: ', n.sim.trans, '\n\n')
@@ -61,80 +61,12 @@ Simulated transcript were grouped in know simulated transcripts which appear in 
 - **Positive Detection Rate**: (TP + PTP)/Number of simulated transcripts
 - **False Detection Rate**: FP/Detected isoforms
 
-## Performance metrics {.tabset}
+## Performance metrics
 
 ### Full results
 
 ```{r}
 t1
-```
-
-```{r, results = 'hide'}
-radar.palette <- c("Known"="#750037", "Novel"='#052240', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
-                "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
-                "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
-sqantisim.stats.t <- as.data.frame(t(as.matrix(res.full$sqantisim.stats)))
-sqantisim.stats.t[is.na(sqantisim.stats.t)] <- NA
-sqantisim.stats.t <-sqantisim.stats.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
-sqantisim.stats.t <- rbind(1, 0, sqantisim.stats.t)
-
-par(mar=c(1,1,1,1), mfrow=c(1,2))
-for (i in 1:2){
-  radarchart(
-  sqantisim.stats.t[c(1, 2, i+2),], axistype = 1,
-  pcol = radar.palette[[rownames(sqantisim.stats.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(sqantisim.stats.t)[i+2]]], 0.5), plwd = 2, plty = 1,
-  # Customize the grid
-  cglcol = "grey", cglty = 1, cglwd = 0.8,
-  # Customize the axis
-  axislabcol = "grey", 
-  # Variable labels
-  vlcex = 0.7, vlabels = colnames(sqantisim.stats.t[c(1, 2, i+2),]),
-  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(sqantisim.stats.t)[i+2]
-)
-}
-
-par(mar=c(1,1,1,1), mfrow=c(2,ceiling((nrow(sqantisim.stats.t)-4)/2)))
-for (i in 3:(nrow(sqantisim.stats.t)-2)){
-  radarchart(
-  sqantisim.stats.t[c(1, 2, i+2),], axistype = 1,
-  pcol = radar.palette[[rownames(sqantisim.stats.t)[i+2]]], pfcol = scales::alpha(radar.palette[[rownames(sqantisim.stats.t)[i+2]]], 0.5), plwd = 2, plty = 1,
-  # Customize the grid
-  cglcol = "grey", cglty = 1, cglwd = 0.8,
-  # Customize the axis
-  axislabcol = "grey", 
-  # Variable labels
-  vlcex = 0.7, vlabels = colnames(sqantisim.stats.t[c(1, 2, i+2),]),
-  caxislabels = c(0, 0.25, 0.5, 0.75, 1), title = rownames(sqantisim.stats.t)[i+2]
-)
-}
-```
-
-#### Plots {.tabset}
-
-##### Number of exons
-
-```{r}
-p3
-```
-
-##### Canonical Junctions
-
-```{r}
-p4
-```
-
-```{r, results='asis'}
-if ('within_cage_peak' %in% colnames(data.index)){
-  cat('\n\n##### CAGE Peak Support\n\n')
-  print(p5)
-  print(p6)
-}
-
-if ('min_cov' %in% colnames(data.index)){
-  cat('\n\n##### Short Reads Support\n\n')
-  print(p7)
-  print(p8)
-}
 ```
 
 ### Above min. supp. results
@@ -147,9 +79,12 @@ t2
 radar.palette <- c("Known"="#750037", "Novel"='#052240', "FSM"="#6BAED6", "ISM"="#FC8D59", "NIC"="#78C679", 
                 "NNC"="#EE6A50", "Genic\nGenomic"="#969696", "Antisense"="#66C2A4", "Fusion"="goldenrod1",
                 "Intergenic" = "darksalmon", "Genic\nIntron"="#41B6C4")
-sqantisim.stats.t <- as.data.frame(t(as.matrix(res.min$sqantisim.stats)))
+
+sqantisim.stats <- rbind(res.full$sqantisim.stats, res.min$sqantisim.stats)[c("Sensitivity", "Precision", "F-score", "Positive_Detection_Rate", "Sensitivity1"),]
+rownames(sqantisim.stats) <- c("Sn", "Pr", "F-score", "PDR", "Sn(min.supp.)")
+sqantisim.stats <- sqantisim.stats[c("F-score", "Sn", "Sn(min.supp.)", "Pr", "PDR"), which(!is.na(sqantisim.stats["F-score",]))]
+sqantisim.stats.t <- as.data.frame(t(as.matrix(sqantisim.stats)))
 sqantisim.stats.t[is.na(sqantisim.stats.t)] <- NA
-sqantisim.stats.t <-sqantisim.stats.t[,c("Sensitivity", "Precision", "F-score", "False_Discovery_Rate", "Positive_Detection_Rate", "False_Detection_Rate")]
 sqantisim.stats.t <- rbind(1, 0, sqantisim.stats.t)
 
 par(mar=c(1,1,1,1), mfrow=c(1,2))
@@ -183,28 +118,87 @@ for (i in 3:(nrow(sqantisim.stats.t)-2)){
 }
 ```
 
-##### Number of exons
+### Plots full results {.tabset}
+
+#### Mono- or multi-exon
+
+```{r}
+p3
+```
+
+#### Canonical Junctions
+
+```{r}
+p4
+```
+
+#### Number of exons
+
+```{r}
+grid.arrange(p5.1, p5.2, ncol = 2, nrow = 1)
+```
+
+#### Transcript length
+
+```{r}
+grid.arrange(p6.1, p6.2, ncol = 2, nrow = 1)
+```
+
+#### Expression level
+
+```{r}
+grid.arrange(p7.1, p7.2, ncol = 2, nrow = 1)
+```
+
+#### Isoform complexity
+
+```{r}
+grid.arrange(p8.1, p8.2, ncol = 2, nrow = 1)
+```
+
+
+```{r, results='asis'}
+if ('within_cage_peak' %in% colnames(data.index)){
+  cat('\n\n##### CAGE Peak Support\n\n')
+  print(p9)
+  print(p10)
+}
+
+if ('min_cov' %in% colnames(data.index)){
+  cat('\n\n##### Short Reads Support\n\n')
+  print(p11)
+  print(p12)
+}
+```
+
+### Plots above min. supp. results {.tabset}
+
+#### Mono- or multi-exon
 
 ```{r}
 p3.min
 ```
 
-##### Canonical Junctions
+#### Number of exons
 
 ```{r}
-p4.min
+grid.arrange(p5.min.1, p5.min.2, ncol = 2, nrow = 1)
 ```
 
-```{r, results='asis'}
-if ('within_cage_peak' %in% colnames(data.index)){
-  cat('\n\n##### CAGE Peak Support\n\n')
-  print(p5.min)
-  print(p6.min)
-}
+#### Transcript length
 
-if ('min_cov' %in% colnames(data.index)){
-  cat('\n\n##### Short Reads Support\n\n')
-  print(p7.min)
-  print(p8.min)
-}
+```{r}
+grid.arrange(p6.min.1, p6.min.2, ncol = 2, nrow = 1)
+```
+
+#### Expression level
+
+```{r}
+grid.arrange(p7.min.1, p7.min.2, ncol = 2, nrow = 1)
+```
+
+#### Isoform complexity
+
+```{r}
+grid.arrange(p8.min.1, p8.min.2, ncol = 2, nrow = 1)
 ```
