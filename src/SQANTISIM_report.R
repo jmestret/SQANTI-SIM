@@ -113,7 +113,7 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   sqantisim.stats['PTP', 'Known'] <- known.PTP
   sqantisim.stats['FP', 'Known'] <- total.FP
   sqantisim.stats['FN', 'Known'] <- nrow(data.known) - known.TP
-  sqantisim.stats['Precision', 'Known'] <- known.TP / (known.TP + known.PTP + total.FP)
+  sqantisim.stats['Precision', 'Known'] <- known.TP / (known.TP + known.PTP + total.FP + novel.PTP)
   sqantisim.stats['Sensitivity', 'Known'] <- known.TP / (known.TP + sqantisim.stats['FN', 'Known'])
   sqantisim.stats['F-score', 'Known'] <- 2*((sqantisim.stats['Sensitivity', 'Known']*sqantisim.stats['Precision', 'Known'])/(sqantisim.stats['Sensitivity', 'Known']+sqantisim.stats['Precision', 'Known']))
   sqantisim.stats['False_Discovery_Rate', 'Known'] <- (total.FP + known.PTP) / (total.FP + known.PTP +  known.TP)
@@ -125,7 +125,7 @@ get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, mi
   sqantisim.stats['PTP', 'Novel'] <- novel.PTP
   sqantisim.stats['FP', 'Novel'] <- total.FP
   sqantisim.stats['FN', 'Novel'] <- nrow(data.novel) - novel.TP
-  sqantisim.stats['Precision', 'Novel'] <- novel.TP / (novel.TP + novel.PTP + total.FP)
+  sqantisim.stats['Precision', 'Novel'] <- novel.TP / (novel.TP + novel.PTP + total.FP + known.PTP)
   sqantisim.stats['Sensitivity', 'Novel'] <- novel.TP / (novel.TP + sqantisim.stats['FN', 'Novel'])
   sqantisim.stats['F-score', 'Novel'] <- 2*((sqantisim.stats['Sensitivity', 'Novel']*sqantisim.stats['Precision', 'Novel'])/(sqantisim.stats['Sensitivity', 'Novel']+sqantisim.stats['Precision', 'Novel']))
   sqantisim.stats['False_Discovery_Rate', 'Novel'] <- (total.FP + novel.PTP) / (total.FP + novel.PTP +  novel.TP)
