@@ -35,4 +35,4 @@ Updates, patches and releases:
 
 ## How to cite SQANTISIM
 
-There is no SQANTISIM paper :disappointed:
+SQANTISIM will be included in the upcoming SQANTI3 paper
