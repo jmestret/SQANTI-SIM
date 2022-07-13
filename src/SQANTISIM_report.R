@@ -28,7 +28,56 @@ suppressMessages(library(tidyr))
 #                                     #
 #######################################
 
-get_performance_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_supp=0){
+gene_level_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_supp=0){
+  # Simulated ref transcripts
+  if (min_supp > 0){
+    idx <- data.index[which(data.index$sim_counts >= min_supp), ]
+  } else {
+    idx <- data.index
+  }
+  data.novel <- idx[which(idx$sim_type == 'novel'),]
+  data.known <- idx[which(idx$sim_type == 'known'),]
+  sim.sc <- unique(data.novel$structural_category)
+  
+  # Matches between simulated and reconstructed transcripts:
+  # First all splice-junctions must be identical
+  # Second, difference between the annotated and reconstructed TSS and TTS must be smaller than MAX_TSS_TTS_DIFF
+  matches <- inner_join(data.query, idx, by=c('junctions', 'chrom')) %>%
+    mutate(diffTSS = abs(TSS_genomic_coord.x - TSS_genomic_coord.y), diffTTS = abs(TTS_genomic_coord.x - TTS_genomic_coord.y), difftot = diffTSS+diffTTS) %>%
+    arrange(difftot) %>%
+    distinct(isoform, .keep_all = T)
+  #matches <- matches[which(matches$sim_type != "absent"),]
+  perfect.matches <- matches[which(matches$diffTSS < MAX_TSS_TTS_DIFF & matches$diffTTS < MAX_TSS_TTS_DIFF),]
+  cond <- (perfect.matches$exons > 1) | (perfect.matches$strand.x == '+' & perfect.matches$TSS_genomic_coord.x <= perfect.matches$TTS_genomic_coord.y & perfect.matches$TSS_genomic_coord.y <= perfect.matches$TTS_genomic_coord.x) | (perfect.matches$strand.x == '-' & perfect.matches$TTS_genomic_coord.x <= perfect.matches$TSS_genomic_coord.y & perfect.matches$TTS_genomic_coord.y <= perfect.matches$TSS_genomic_coord.x)
+  perfect.matches <- perfect.matches[cond,]
+  
+  sim_genes <- idx$gene_id[idx$sim_counts > 0]
+  sim_genes <- sim_genes[!duplicated(sim_genes)]
+  matched_genes <- perfect.matches$gene_id[perfect.matches$gene_id %in% sim_genes]
+  matched_genes <- matched_genes[!duplicated(matched_genes)]
+  
+  fp_genes <- data.query[!(data.query$isoform %in% perfect.matches$isoform),]
+  fp_genes <- data.query[!(data.query$associated_gene %in% matched_genes),]
+  fp_genes <- fp_genes$associated_gene[!duplicated(fp_genes$associated_gene)]
+  
+  TP <-  length(matched_genes)
+  FP <- length(fp_genes)
+  FN <- length(sim_genes)-length(matched_genes)
+  PTP <- 0
+  sensitivity <- TP/length(sim_genes)
+  precision <- TP/(TP+FP)
+  
+  gene.metrics <- c("Total" = length(sim_genes), "TP" = TP, "PTP" = PTP,
+                    "FP" = FP, "FN" = FN, "Sensitivity" = sensitivity, "Precision" = precision, 
+                    "F-score" = (2*(precision*sensitivity)/(precision+sensitivity)),
+                    "False_Discovery_Rate" = (FP + PTP) / (FP + PTP +  TP),
+                    "Positive_Detection_Rate" = (TP + PTP) / length(sim_genes),
+                    "False_Detection_Rate" = (FP) / (FP + PTP + TP))
+  
+  return(gene.metrics)
+}
+
+isoform_level_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_supp=0){
   # Simulated ref transcripts
   if (min_supp > 0){
     idx <- data.index[which(data.index$sim_counts >= min_supp), ]
@@ -227,7 +276,7 @@ data.junction$junctions <- paste(data.junction$Donors, data.junction$Acceptors, 
 # Combine class and junc
 data.query <- full_join(data.class, data.junction, by='isoform')
 data.query$junctions[which(is.na(data.query$junctions))] <- ''
-data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord', 'all_canonical', 'dist_to_CAGE_peak', 'within_CAGE_peak', 'min_cov', 'ratio_TSS')]
+data.query <- data.query[,c('isoform', 'chrom', 'strand', 'structural_category', 'associated_gene', 'junctions', 'TSS_genomic_coord', 'TTS_genomic_coord', 'all_canonical', 'dist_to_CAGE_peak', 'within_CAGE_peak', 'min_cov', 'ratio_TSS')]
 
 # Read index file
 data.index <- read.table(index.file, header=T, as.is=T, sep="\t")
@@ -252,9 +301,12 @@ data.index$sim_type[which(data.index$sim_counts == 0)] <- 'absent' # Ignore not 
 # -------------------- Performance metrics
 # Matched for novel and known
 MAX_TSS_TTS_DIFF = 50
-res.full <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
-res.min <- get_performance_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min.supp)
+res.full <- isoform_level_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
+res.min <- isoform_level_metrics(data.query, data.index, MAX_TSS_TTS_DIFF, min.supp)
 res.min$sqantisim.stats <- res.min$sqantisim.stats[c("Total", "TP", "FN", "Sensitivity"),]
+
+res.gene <- gene_level_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
+
 
 modify_index_file(index.file, res.full)
 res.full$data.summary$match_type[which(res.full$data.summary$match_type == "PTP")] <- "FN"
@@ -315,12 +367,28 @@ mytheme <- theme_classic(base_family = "Helvetica") +
 
 # -------------------- 
 # TABLE 1: SQANTISIM metrics
-t1 <- DT::datatable(res.full$sqantisim.stats, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
-  formatRound(colnames(res.full$sqantisim.stats), digits = 3, rows=c(6:11), zero.print = 0)
+sketch = htmltools::withTags(table(
+  class = 'display',
+  thead(
+    tr(
+      th(rowspan = 2, ""),
+      th(rowspan = 2, "Genes"),
+      th(colspan = ncol(res.full$sqantisim.stats), "Isoform level")
+    ),
+    tr(
+      lapply(colnames(res.full$sqantisim.stats), th)
+    )
+  )
+))
+
+t1 <- DT::datatable(cbind("Genes"=res.gene, res.full$sqantisim.stats), container=sketch, class = 'compact', extensions = "Buttons", options = list(pageLength = 15, dom = 'Bfrtip', buttons = c("copy", "csv", "pdf"))) %>%
+  formatRound(c("Genes", colnames(res.full$sqantisim.stats)), digits = 3, rows=c(6:11), zero.print = 0)
+write.table(cbind("Genes"=res.gene, res.full$sqantisim.stats), file = paste(output_directory, 'SQANTISIM_metrics.tsv', sep = "/"), quote = F, sep = "\t", na = "NA",row.names = F, col.names = c("Genes", gsub("\n", "_", colnames(res.full$sqantisim.stats))))
 
 # TABLE 2: SQANTISIM metrics above min_supp
-t2 <- DT::datatable(res.min$sqantisim.stats, class = 'compact', options = list(pageLength = 15, dom = 'tip')) %>%
+t2 <- DT::datatable(res.min$sqantisim.stats, class = 'compact', extensions = "Buttons", options = list(pageLength = 15, dom = 'Bfrtip', buttons = c("copy", "csv", "pdf"))) %>%
   formatRound(colnames(res.min$sqantisim.stats), digits = 3, rows=c(4), zero.print = 0)
+write.table(res.min$sqantisim.stats, file = paste(output_directory, 'SQANTISIM_metrics_min_supp.tsv', sep = "/"), quote = F, sep = "\t", na = "NA",row.names = F, col.names = gsub("\n", "_", colnames(res.min$sqantisim.stats)))
 
 # -------------------- PLOT FULL
 # PLOT 1: simulated expression profile
@@ -586,9 +654,18 @@ if ('within_CAGE_peak' %in% colnames(data.index)){
   data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'TP_novel'
   data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'TP_known'
   p9.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_known")]),]
-  p9.known_FN$match_type <- 'FN_known'
+  if (nrow(p9.known_FN) > 0){
+    p9.known_FN$match_type <- 'FN_known'
+  } else {
+    p9.known_FN$match_type <- character()
+  }
+  
   p9.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_novel")]),]
-  p9.novel_FN$match_type <- 'FN_novel'
+  if (nrow(p9.novel_FN) > 0){
+    p9.novel_FN$match_type <- 'FN_novel'
+  } else {
+    p9.novel_FN$match_type <- character()
+  }
   p9.all <- rbind(data.query[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
                   p9.known_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')],
                   p9.novel_FN[,c('structural_category', 'match_type', 'within_CAGE_peak', 'dist_to_CAGE_peak')])
@@ -624,9 +701,18 @@ if ('min_cov' %in% colnames(data.index)) {
   data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'TP_novel'
   data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'TP_known'
   p11.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_known")]),]
-  p11.known_FN$match_type <- 'FN_known'
+  if (nrow(p11.known_FN) > 0){
+    p11.known_FN$match_type <- 'FN_known'
+  } else {
+    p11.known_FN$match_type <- character()
+  }
   p11.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_novel")]),]
-  p11.novel_FN$match_type <- 'FN_novel'
+  
+  if (nrow(p11.novel_FN) > 0){
+    p11.novel_FN$match_type <- 'FN_novel'
+  } else {
+    p11.novel_FN$match_type <- character()
+  }
   
   p11.all <- rbind(data.query[,c('structural_category', 'match_type', 'min_cov')],
                   p11.known_FN[,c('structural_category', 'match_type', 'min_cov')],
