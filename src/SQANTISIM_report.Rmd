@@ -168,8 +168,12 @@ if ('within_cage_peak' %in% colnames(data.index)){
 }
 
 if ('min_cov' %in% colnames(data.index)){
-  cat('\n\n#### Short Reads Support\n\n')
+  cat('\n\n#### Splice Junction Coverage\n\n')
   print(p11)
+}
+
+if ('ratio_TSS' %in% colnames(data.index)){
+  cat('\n\n#### TSS ratio\n\n')
   print(p12)
 }
 ```

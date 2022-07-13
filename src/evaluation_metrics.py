@@ -82,8 +82,10 @@ def sqanti3_stats(args):
         str(args.cores),
         "--min_ref_len",
         str(MIN_REF_LEN),
+        "--report",
+        "skip",
         "--force_id_ignore",
-        "--skipORF",
+        "--skipORF"
     ]
 
     if args.CAGE_peak:
@@ -135,25 +137,48 @@ def sqanti3_stats(args):
             write_whithin_cage, axis=1
         )
 
-    if args.short_reads:
+    # Short Read Coverage
+    if args.coverage:
+        print("[SQANTISIM][%s] Parsing Coverage data" %(strftime("%d-%m-%Y %H:%M:%S")))
+        
+        SJcovNames, SJcovInfo = STARcov_parser(args.coverage)
+        trans_index["min_cov"] = trans_index.apply(write_SJ_cov, axis=1)
+
+    elif args.short_reads:
         print("[SQANTISIM][%s] Parsing Short Read data" %(strftime("%d-%m-%Y %H:%M:%S")))
         star_out = os.path.join(args.dir, "sqanti3/STAR_mapping/")
         star_index = os.path.join(args.dir, "sqanti3/STAR_index/")
 
-        # Short Read Coverage
         SJcovNames, SJcovInfo = STARcov_parser(star_out)
         trans_index["min_cov"] = trans_index.apply(write_SJ_cov, axis=1)
+    
+    # Short reads ratio TSS - Code adapted from SQANTI3
+    if args.SR_bam:
+        print("[SQANTISIM][%s] Calculating ratio TSS from provided BAM" %(strftime("%d-%m-%Y %H:%M:%S")))
 
-        # Short reads ratio TSS
+        if os.path.isdir(args.SR_bam):
+            bams = []
+            for files in os.listdir(args.SR_bam):
+                if files.endswith('.bam'):
+                    bams.append(args.SR_bam + '/' + files)
+        else:
+            b = open(args.SR_bam , "r")
+            bams = []
+            for file in b:
+                bams.append(file.rstrip())
+        chr_order = get_bam_header(bams[0])
+        inside_bed, outside_bed = get_TSS_bed(corrGTF, chr_order)
+        ratio_TSS_dict = get_ratio_TSS(inside_bed, outside_bed, bams, chr_order)
+        trans_index["ratio_TSS"] = trans_index.apply(write_ratio_TSS, axis=1)
+
+    elif args.short_reads:
         chr_order = os.path.join(star_index, "chrNameLength.txt")
         inside_bed, outside_bed = get_TSS_bed(args.gtf, chr_order)
         bams = []
         for filename in os.listdir(star_out):
             if filename.endswith(".bam"):
                 bams.append(star_out + "/" + filename)
-        ratio_TSS_dict = get_ratio_TSS(
-            inside_bed, outside_bed, bams, chr_order
-        )
+        ratio_TSS_dict = get_ratio_TSS(inside_bed, outside_bed, bams, chr_order)
         trans_index["ratio_TSS"] = trans_index.apply(write_ratio_TSS, axis=1)
 
     trans_index.to_csv(

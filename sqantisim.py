@@ -82,7 +82,7 @@ def design(input: list):
 
     parser_e = subparsers.add_parser("equal", help="\t\tRun in equal mode")
     parser_e.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
-    parser_e.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
+    parser_e.add_argument("--gtf", type=str, required=True, help="\t\ttComplete reference annotation in GTF format", )
     parser_e.add_argument("-o", "--output", type=str, default=str(), help="\t\tPrefix for output files" )
     parser_e.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser_e.add_argument("-nt", "--trans_number", type=int, default=10000, help="\t\tNumber of different transcripts to simulate", )
@@ -100,7 +100,7 @@ def design(input: list):
 
     parser_c = subparsers.add_parser("custom", help="\t\tRun in custom mode")
     parser_c.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
-    parser_c.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
+    parser_c.add_argument("--gtf", type=str, required=True, help="\t\ttComplete reference annotation in GTF format", )
     parser_c.add_argument("-o", "--output", type=str, default=str(), help="\t\tPrefix for output files" )
     parser_c.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser_c.add_argument("-nt", "--trans_number", type=int, default=10000, help="\t\tNumber of different transcripts to simulate", )
@@ -121,7 +121,7 @@ def design(input: list):
 
     parser_s = subparsers.add_parser("sample", help="\t\tRun in sample mode")
     parser_s.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
-    parser_s.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
+    parser_s.add_argument("--gtf", type=str, required=True, help="\t\tComplete reference annotation in GTF format", )
     parser_s.add_argument("-o", "--output", type=str, default=str(), help="\t\tPrefix for output files" )
     parser_s.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser_s.add_argument("-nt", "--trans_number", type=int, default=None, help="\t\tNumber of different transcripts to simulate", )
@@ -267,7 +267,7 @@ def sim(input: list):
     """
 
     parser = argparse.ArgumentParser( prog="sqantisim.py sim", description="sqantisim.py sim parse options" )
-    parser.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
+    parser.add_argument("--gtf", type=str, required=True, help="\t\tReduced reference annotation in GTF format", )
     parser.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     parser.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
     parser.add_argument("--read_type", type=str, default="dRNA", help="\t\tRead type for NanoSim simulation", )
@@ -349,6 +349,8 @@ def eval(input: list):
     parser.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
     parser.add_argument("-o", "--output", type=str, default="sqantisim", help="\t\tPrefix for output files", )
     parser.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
+    parser.add_argument('-c','--coverage', help='\t\tJunction coverage files (provide a single file, comma-delmited filenames, or a file pattern, ex: "mydir/*.junctions").', required=False)
+    parser.add_argument('--SR_bam' , help='\t\t Directory or fofn file with the sorted bam files of Short Reads RNA-Seq mapped against the genome', required=False)
     parser.add_argument("--short_reads", type=str, default=None, help="\t\tFile Of File Names (fofn, space separated) with paths to FASTA or FASTQ from Short-Read RNA-Seq. If expression or coverage files are not provided, Kallisto (just for pair-end data) and STAR, respectively, will be run to calculate them.",)
     parser.add_argument("--CAGE_peak", type=str, default=None,help="\t\tFANTOM5 Cage Peak (BED format, optional)" )
     parser.add_argument("--fasta", action="store_true", help="\t\tUse when running SQANTI by using as input a FASTA/FASTQ with the sequences of isoforms", )
@@ -372,6 +374,10 @@ def eval(input: list):
     print("[SQANTISIM] - Out prefix:", str(args.output))
     print("[SQANTISIM] - Out dir:", str(args.dir))
 
+    if args.coverage:
+        print("[SQANTISIM] - Coverage:", str(args.coverage))
+    if args.SR_bam:
+        print("[SQANTISIM] - Short-read BAM files:", str(args.SR_bam))
     if args.short_reads:
         print("[SQANTISIM] - Short reads:", str(args.short_reads))
     if args.CAGE_peak:

@@ -191,7 +191,10 @@ isoform_level_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_
     plot.cols <- c(plot.cols, "within_CAGE_peak", "dist_to_CAGE_peak")
   }
   if ('min_cov' %in% colnames(data.index)) {
-    plot.cols <- c(plot.cols, "min_cov", "ratio_TSS")
+    plot.cols <- c(plot.cols, "min_cov")
+  }
+  if ('ratio_TSS' %in% colnames(data.index)) {
+    plot.cols <- c(plot.cols, "ratio_TSS")
   }
   
   data.summary <- rbind(
@@ -220,7 +223,7 @@ isoform_level_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_
   return(res)
 }
 
-modify_index_file <- function(index.file, res.full){
+modify_index_file <- function(index.file, res.full, output_directory){
   modif.index <- read.table(index.file, header=T, as.is=T, sep="\t")
   n <- colnames(modif.index)
   modif.index <- merge(x = modif.index, y = res.full$data.summary[,c("transcript_id", "isoform")], by = "transcript_id", all.x = TRUE)
@@ -229,7 +232,7 @@ modify_index_file <- function(index.file, res.full){
   modif.index$pipeline_performance[which(modif.index$sim_counts <= 0)] <-  "absent"
   #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "PTP")])] <- "PTP"
   #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "TP")])] <- "TP"
-  write.table(modif.index, file = paste0(index.file, ".eval"), quote = F, sep = "\t", na = "NA",row.names = F)
+  write.table(modif.index, file = paste(output_directory, paste0(substr(index.file, 1,nchar(index.file)-4), ".eval.tsv"), sep = "/"), quote = F, sep = "\t", na = "NA",row.names = F)
 }
 
 #######################################
@@ -308,7 +311,7 @@ res.min$sqantisim.stats <- res.min$sqantisim.stats[c("Total", "TP", "FN", "Sensi
 res.gene <- gene_level_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
 
 
-modify_index_file(index.file, res.full)
+modify_index_file(index.file, res.full, output_directory)
 res.full$data.summary$match_type[which(res.full$data.summary$match_type == "PTP")] <- "FN"
 res.full$data.summary$match_type <- factor(res.full$data.summary$match_type, levels = c("TP", "FN"))
 res.min$data.summary$match_type[which(res.min$data.summary$match_type == "PTP")] <- "FN"
@@ -731,11 +734,29 @@ if ('min_cov' %in% colnames(data.index)) {
     xlab('') +
     ggtitle('Splice Junctions Short Reads Coverage') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+}
+
+if ('ratio_TSS' %in% colnames(data.index)) {
+  data.query$match_type <- 'FP'
+  data.query$match_type[which(data.query$isoform %in% res.full$novel.perfect.matches$isoform)] <- 'TP_novel'
+  data.query$match_type[which(data.query$isoform %in% res.full$known.perfect.matches$isoform)] <- 'TP_known'
+  p12.known_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_known")]),]
+  if (nrow(p12.known_FN) > 0){
+    p12.known_FN$match_type <- 'FN_known'
+  } else {
+    p12.known_FN$match_type <- character()
+  }
+  p12.novel_FN <- data.index[which(data.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$sim_match_type == "FN_novel")]),]
   
+  if (nrow(p12.novel_FN) > 0){
+    p12.novel_FN$match_type <- 'FN_novel'
+  } else {
+    p12.novel_FN$match_type <- character()
+  }
   # PLOT 12: ratio TSS
   p12.all <- rbind(data.query[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p11.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
-                  p11.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
+                  p12.known_FN[,c('structural_category', 'match_type', 'ratio_TSS')],
+                  p12.novel_FN[,c('structural_category', 'match_type', 'ratio_TSS')])
   
   p12 <- p12.all[which(!is.na(p12.all$ratio_TSS)),] %>%
     ggplot(aes(x=log(ratio_TSS), color=match_type, fill=match_type)) +
