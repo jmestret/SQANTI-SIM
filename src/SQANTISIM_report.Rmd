@@ -209,3 +209,10 @@ grid.arrange(p7.min.1, p7.min.2, ncol = 2, nrow = 1)
 ```{r}
 grid.arrange(p8.min.1, p8.min.2, ncol = 2, nrow = 1)
 ```
+
+### Evaluation of quantification
+
+```{r}
+p13
+```
+

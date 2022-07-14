@@ -222,6 +222,7 @@ def sqanti3_stats(args):
         args.trans_index,
         str(args.min_support),
         src_dir,
+        args.expression
     ]
 
     cmd = " ".join(cmd)

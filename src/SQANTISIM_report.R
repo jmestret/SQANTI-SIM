@@ -232,7 +232,7 @@ modify_index_file <- function(index.file, res.full, output_directory){
   modif.index$pipeline_performance[which(modif.index$sim_counts <= 0)] <-  "absent"
   #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "PTP")])] <- "PTP"
   #modif.index$pipeline_performance[which(modif.index$transcript_id %in% res.full$data.summary$transcript_id[which(res.full$data.summary$match_type == "TP")])] <- "TP"
-  write.table(modif.index, file = paste(output_directory, paste0(substr(index.file, 1,nchar(index.file)-4), ".eval.tsv"), sep = "/"), quote = F, sep = "\t", na = "NA",row.names = F)
+  return(modif.index)
 }
 
 #######################################
@@ -248,6 +248,7 @@ junc.file <- args[2] # junctions file SQANTI3
 index.file <- args[3] # index file
 min.supp <- args[4] # min support reads
 src.path <- args[5] # path to src utilities
+quant.file <- args[6] # quantification file
 
 output_directory <- dirname(dirname(class.file))
 output_name <- basename(strsplit(class.file, "_classification.txt")[[1]][1])
@@ -311,7 +312,9 @@ res.min$sqantisim.stats <- res.min$sqantisim.stats[c("Total", "TP", "FN", "Sensi
 res.gene <- gene_level_metrics(data.query, data.index, MAX_TSS_TTS_DIFF)
 
 
-modify_index_file(index.file, res.full, output_directory)
+modif.index <- modify_index_file(index.file, res.full, output_directory)
+write.table(modif.index, file = paste(output_directory, paste0(substr(index.file, 1,nchar(index.file)-4), ".eval.tsv"), sep = "/"), quote = F, sep = "\t", na = "NA",row.names = F)
+
 res.full$data.summary$match_type[which(res.full$data.summary$match_type == "PTP")] <- "FN"
 res.full$data.summary$match_type <- factor(res.full$data.summary$match_type, levels = c("TP", "FN"))
 res.min$data.summary$match_type[which(res.min$data.summary$match_type == "PTP")] <- "FN"
@@ -768,6 +771,34 @@ if ('ratio_TSS' %in% colnames(data.index)) {
     xlab('') +
     ggtitle('Ratio TSS') +
     theme(axis.text.x = element_text(angle = 45, margin=ggplot2::margin(17,0,0,0), size=10))
+}
+
+# Quantification descriptors
+if (quant.file != "none"){
+  quantification <- read.table(quant.file, header = F, sep="\t")
+  colnames(quantification) <- c("transcript_id", "predicted_counts")
+  #quantification <- merge(quantification, modif.index, by.x = "transcript_id", by.y = "pipeline_performance", all.x = T)
+  quantification <- merge(quantification, modif.index, by.x = "transcript_id", by.y = "pipeline_performance")
+  quantification$sim_counts[is.na(quantification$sim_counts)] <- 0
+  quantification <- quantification[,c("transcript_id", "predicted_counts", "sim_counts")]
+  
+  #RMSE(RMSD)
+  rmse <- sqrt(mean((quantification$sim_counts - quantification$predicted_counts)^2))
+  
+  #MAPE
+  mape <- mean(abs((quantification$sim_counts-quantification$predicted_counts)/quantification$sim_counts)) * 100
+
+  #Q-Q plot
+  nq <- 500
+  p <- (1:nq)/nq -0.5/nq
+  p13 <- ggplot() +
+    geom_point(aes(x=quantile(log(quantification$sim_counts), p), y=quantile(log(quantification$predicted_counts), p)), color = "#15918A") +
+    geom_abline(slope=1, intercept=0, color="#F58A53") +
+    annotate(geom = 'text', label = paste0("RMSE = ", round(rmse,3), "\nMAPE = ", round(mape, 3), "%"), x = -Inf, y = Inf, hjust = -0.1, vjust = 1) +
+    mytheme +
+    xlab("Simulated log counts") +
+    ylab("Predicted log counts") +
+    ggtitle("Q-Q plot of TP count levels")
 }
 
 # PLOT X: Radar chart

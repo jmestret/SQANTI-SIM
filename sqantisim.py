@@ -347,6 +347,7 @@ def eval(input: list):
     parser.add_argument("--gtf", type=str, required=True, help="\t\tReference annotation in GTF format", )
     parser.add_argument("--genome", type=str, required=True, help="\t\tReference genome FASTA", )
     parser.add_argument("-i", "--trans_index", type=str, required=True, help="\t\tFile with transcript information generated with SQANTISIM", )
+    parser.add_argument("-e", "--expression", type=str, default="none", help="\t\tExpression of transcript models (file wihtout header with two columns tab-separated: first with id and second with quantified number of reads, no header)", )
     parser.add_argument("-o", "--output", type=str, default="sqantisim", help="\t\tPrefix for output files", )
     parser.add_argument("-d", "--dir", type=str, default=".", help="\t\tDirectory for output files (default: .)", )
     parser.add_argument('-c','--coverage', help='\t\tJunction coverage files (provide a single file, comma-delmited filenames, or a file pattern, ex: "mydir/*.junctions").', required=False)
@@ -374,6 +375,8 @@ def eval(input: list):
     print("[SQANTISIM] - Out prefix:", str(args.output))
     print("[SQANTISIM] - Out dir:", str(args.dir))
 
+    if args.expression:
+        print("[SQANTISIM] - Expression:", str(args.expression))
     if args.coverage:
         print("[SQANTISIM] - Coverage:", str(args.coverage))
     if args.SR_bam:
