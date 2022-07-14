@@ -26,11 +26,21 @@ Please refer to [Wiki](https://github.com/jmestret/SQANTISIM/wiki) for how to in
 
 ## Lastest updates
 
-Current version (21/05/2022): 0.1.0-beta
+Current version (14/07/2022): 0.1.1-beta
 
 Updates, patches and releases:
 
-**beta:**
+**0.1.1-beta**:
+- Updates in the SQANTISIM evaluation stage:
+	- New evaluation metrics and charts have been added  (gene level metrics and expression level, number of exons and transcript length of true positives and false negatives).
+	- An option for using RMSE, MAPE, and Q-Q plots to assess transcript quantification (`-e/--expression`).
+	- The evaluation stage produces a new output file, a tab-separated file containing the performance metrics.
+	- New table export buttons in the report.
+	- The SQANTI3 report is no longer created in order to prevent undesired mistakes 
+- Improved the isoform complexity approximation.
+- Correct multithreading in NanoSim modified simulation.
+
+0.1.0-beta:
 - Please, try to use the tool and notify any bug or suggestion
 
 ## How to cite SQANTISIM
