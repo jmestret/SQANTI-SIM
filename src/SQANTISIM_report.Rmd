@@ -177,37 +177,24 @@ if ('ratio_TSS' %in% colnames(data.index)){
   print(p12)
 }
 ```
-
-### Plots above min. supp. results {.tabset}
-
-#### Mono- or multi-exon
-
-```{r}
-p3.min
-```
-
-#### Number of exons
-
-```{r}
-grid.arrange(p5.min.1, p5.min.2, ncol = 2, nrow = 1)
-```
-
-#### Transcript length
-
-```{r}
-grid.arrange(p6.min.1, p6.min.2, ncol = 2, nrow = 1)
-```
-
-#### Expression level
-
-```{r}
-grid.arrange(p7.min.1, p7.min.2, ncol = 2, nrow = 1)
-```
-
-#### Isoform complexity
-
-```{r}
-grid.arrange(p8.min.1, p8.min.2, ncol = 2, nrow = 1)
+```{r, results='asis'}
+if (nrow(res.min$data.summary) > 0){
+  cat('\n\n### Plots above min. supp. results {.tabset}\n\n')
+  cat('\n\n#### Mono- or multi-exon\n\n')
+  print(p3.min)
+  
+  cat('\n\n#### Number of exons\n\n')
+  print(grid.arrange(p5.min.1, p5.min.2, ncol = 2, nrow = 1))
+  
+  cat('\n\n#### Transcript length\n\n')
+  print(grid.arrange(p6.min.1, p6.min.2, ncol = 2, nrow = 1))
+  
+  cat('\n\n#### Expression level\n\n')
+  print(grid.arrange(p7.min.1, p7.min.2, ncol = 2, nrow = 1))
+  
+  cat('\n\n#### Isoform complexity\n\n')
+  print(grid.arrange(p8.min.1, p8.min.2, ncol = 2, nrow = 1))
+}
 ```
 
 ### Evaluation of quantification

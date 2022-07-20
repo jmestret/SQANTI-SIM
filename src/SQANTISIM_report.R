@@ -205,16 +205,18 @@ isoform_level_metrics <- function(data.query, data.index, MAX_TSS_TTS_DIFF, min_
   data.summary$structural_category[which(data.summary$transcript_id %in% data.known$transcript_id)] <- "Known"
   data.summary$structural_category <- factor(data.summary$structural_category, levels=c("Known", "FSM", "ISM", "NIC", "NNC", "Genic\nGenomic",  "Antisense", "Fusion","Intergenic", "Genic\nIntron"))
   
-  data.summary$sim_match_type <- "FN"
-  data.summary$sim_match_type[which(data.summary$transcript_id %in% data.known$transcript_id)] <-  "FN_known"
-  data.summary$sim_match_type[which(data.summary$transcript_id %in% data.novel$transcript_id)] <-  "FN_novel"
-  data.summary$sim_match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id)] <-  "TP_known"
-  data.summary$sim_match_type[which(data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <-  "TP_novel"
-  data.summary$sim_match_type <- factor(data.summary$sim_match_type, levels=c("TP_known", "FN_known", "TP_novel", "FN_novel"))
-  
-  data.summary$match_type <- "FN"
-  data.summary$match_type[which(data.summary$transcript_id %in% known.matches$transcript_id | data.summary$transcript_id %in% novel.matches$transcript_id)] <- "PTP"
-  data.summary$match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id | data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <- "TP"
+  if (nrow(data.summary) > 0){
+    data.summary$sim_match_type <- "FN"
+    data.summary$sim_match_type[which(data.summary$transcript_id %in% data.known$transcript_id)] <-  "FN_known"
+    data.summary$sim_match_type[which(data.summary$transcript_id %in% data.novel$transcript_id)] <-  "FN_novel"
+    data.summary$sim_match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id)] <-  "TP_known"
+    data.summary$sim_match_type[which(data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <-  "TP_novel"
+    data.summary$sim_match_type <- factor(data.summary$sim_match_type, levels=c("TP_known", "FN_known", "TP_novel", "FN_novel"))
+    
+    data.summary$match_type <- "FN"
+    data.summary$match_type[which(data.summary$transcript_id %in% known.matches$transcript_id | data.summary$transcript_id %in% novel.matches$transcript_id)] <- "PTP"
+    data.summary$match_type[which(data.summary$transcript_id %in% known.perfect.matches$transcript_id | data.summary$transcript_id %in% novel.perfect.matches$transcript_id)] <- "TP"
+  }
   
   data.summary <- merge(data.summary, perfect.matches[,c("isoform", "transcript_id")], by="transcript_id", all.x=T)
   
@@ -491,27 +493,28 @@ p5.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=exons, fill=sim_ma
   guides(fill="none") +
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
-p5.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=exons, fill=match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
-  ylab("Number of exons") +
-  xlab("") +
-  ggtitle("Number of exons") +
-  guides(fill="none")
-
-p5.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=exons, fill=sim_match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
-  ylab("Number of exons") +
-  xlab("") +
-  ggtitle("Number of exons") +
-  guides(fill="none") +
-  theme(axis.text.x = element_text(angle = 45, hjust=1))
-
+if (nrow(res.min$data.summary) > 0){
+  p5.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=exons, fill=match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
+    ylab("Number of exons") +
+    xlab("") +
+    ggtitle("Number of exons") +
+    guides(fill="none")
+  
+  p5.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=exons, fill=sim_match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$exons, c(0.1, 0.9))) +
+    ylab("Number of exons") +
+    xlab("") +
+    ggtitle("Number of exons") +
+    guides(fill="none") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+}
 
 # PLOT 6: Length of transcripts
 p6.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=length, fill=match_type)) +
@@ -535,26 +538,29 @@ p6.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=length, fill=sim_m
   guides(fill="none") +
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
-p6.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=length, fill=match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
-  ylab("Transcript length (bp)") +
-  xlab("") +
-  ggtitle("Transcript length") +
-  guides(fill="none")
+if (nrow(res.min$data.summary) > 0){
+  p6.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=length, fill=match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
+    ylab("Transcript length (bp)") +
+    xlab("") +
+    ggtitle("Transcript length") +
+    guides(fill="none")
+  
+  p6.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=length, fill=sim_match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
+    ylab("Transcript length (bp)") +
+    xlab("") +
+    ggtitle("Transcript length") +
+    guides(fill="none") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+}
 
-p6.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=length, fill=sim_match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$length, c(0.1, 0.9))) +
-  ylab("Transcript length (bp)") +
-  xlab("") +
-  ggtitle("Transcript length") +
-  guides(fill="none") +
-  theme(axis.text.x = element_text(angle = 45, hjust=1))
 
 # PLOT 7: Expression level
 p7.1 <- ggplot(res.full$data.summary, aes(x=match_type, y=sim_counts, fill=match_type)) +
@@ -578,26 +584,28 @@ p7.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=sim_counts, fill=s
   guides(fill="none") +
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
-p7.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=sim_counts, fill=match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
-  ylab("Number of simulated reads") +
-  xlab("") +
-  ggtitle("Expression level") +
-  guides(fill="none")
-
-p7.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=sim_counts, fill=sim_match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
-  ylab("Number of simulated reads") +
-  xlab("") +
-  ggtitle("Expression level") +
-  guides(fill="none") +
-  theme(axis.text.x = element_text(angle = 45, hjust=1))
+if (nrow(res.min$data.summary) > 0){
+  p7.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=sim_counts, fill=match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
+    ylab("Number of simulated reads") +
+    xlab("") +
+    ggtitle("Expression level") +
+    guides(fill="none")
+  
+  p7.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=sim_counts, fill=sim_match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$sim_counts, c(0.1, 0.9))) +
+    ylab("Number of simulated reads") +
+    xlab("") +
+    ggtitle("Expression level") +
+    guides(fill="none") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+}
 
 
 # PLOT 8: Transcripts per gene
@@ -627,31 +635,33 @@ p8.2 <- ggplot(res.full$data.summary, aes(x=sim_match_type, y=trans_per_gene, fi
   guides(fill="none") +
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
-trans.per.gene <- res.min$data.summary %>%
-  group_by(gene_id) %>%
-  summarise(trans_per_gene=n())
-res.min$data.summary <- merge(res.min$data.summary, trans.per.gene, by = "gene_id")
-
-p8.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=trans_per_gene, fill=match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
-  ylab("Number of transcripts per gene") +
-  xlab("") +
-  ggtitle("Isoform complexity") +
-  guides(fill="none")
-
-p8.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=trans_per_gene, fill=sim_match_type)) +
-  geom_boxplot(alpha=1, outlier.shape = NA) +
-  mytheme +
-  scale_fill_manual(values=myPalette, name='Stats') +
-  scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
-  ylab("Number of transcripts per gene") +
-  xlab("") +
-  ggtitle("Isoform complexity") +
-  guides(fill="none") +
-  theme(axis.text.x = element_text(angle = 45, hjust=1))
+if (nrow(res.min$data.summary) > 0){
+  trans.per.gene <- res.min$data.summary %>%
+    group_by(gene_id) %>%
+    summarise(trans_per_gene=n())
+  res.min$data.summary <- merge(res.min$data.summary, trans.per.gene, by = "gene_id")
+  
+  p8.min.1 <- ggplot(res.min$data.summary, aes(x=match_type, y=trans_per_gene, fill=match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
+    ylab("Number of transcripts per gene") +
+    xlab("") +
+    ggtitle("Isoform complexity") +
+    guides(fill="none")
+  
+  p8.min.2 <- ggplot(res.min$data.summary, aes(x=sim_match_type, y=trans_per_gene, fill=sim_match_type)) +
+    geom_boxplot(alpha=1, outlier.shape = NA) +
+    mytheme +
+    scale_fill_manual(values=myPalette, name='Stats') +
+    scale_y_continuous(limits = quantile(res.min$data.summary$trans_per_gene, c(0.1, 0.9))) +
+    ylab("Number of transcripts per gene") +
+    xlab("") +
+    ggtitle("Isoform complexity") +
+    guides(fill="none") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+}
 
 
 if ('within_CAGE_peak' %in% colnames(data.index)){
