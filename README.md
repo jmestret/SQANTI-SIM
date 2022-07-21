@@ -16,7 +16,7 @@
 
 *SQANTISIM* is a simulator of controlled novelty and degradation of transcripts sequenced by long reads. It is a wrapper tool for RNA-Seq long-reads simulators such as [IsoSeqSim](https://github.com/yunhaowang/IsoSeqSim) and [NanoSim](https://github.com/bcgsc/NanoSim) (formerly Trans-NanoSim) to simulate transcripts based on the SQANTI3 structural categories ([publication](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5848618/) and [code repository](https://github.com/ConesaLab/SQANTI3)).
 
-SQANTISIM aims to simulate novel and degraded transcripts in a controlled way using ground-truth present transcripts in the reference annotation that fit the description of the different SQANTI3 structural categories.
+SQANTISIM uses NanoSim and IsoSeqSim to simulate PacBio cDNA reads and Nanopore cDNA and dRNA reads, and implements a strategy to simulate novel transcripts based on SQANTI structural categories. Unlike current lrRNA-seq simulators, SQANTISIM simulates well-grounded novel transcripts and permits the assessment of the capacity of any lrRNA-seq transcript reconstruction tool to detect different types of transcripts not yet present in reference annotations.
 
 ![small_workflow](https://github.com/jmestret/SQANTISIM/blob/main/docs/small_workflow.png)
 
