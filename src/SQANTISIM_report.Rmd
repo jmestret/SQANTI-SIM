@@ -195,11 +195,10 @@ if (nrow(res.min$data.summary) > 0){
   cat('\n\n#### Isoform complexity\n\n')
   print(grid.arrange(p8.min.1, p8.min.2, ncol = 2, nrow = 1))
 }
-```
 
-### Evaluation of quantification
-
-```{r}
-p13
+if (quant.file != "none"){
+  cat('\n\n### Evaluation of quantification\n\n')
+  print(p13)
+}
 ```
 

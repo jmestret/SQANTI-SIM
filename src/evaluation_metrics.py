@@ -12,7 +12,7 @@ import pandas
 import subprocess
 import sys
 from collections import defaultdict
-from src.SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS
+from src.SQANTI3.utilities.short_reads import get_TSS_bed, get_ratio_TSS, get_bam_header
 from src.SQANTI3.sqanti3_qc import CAGEPeak, STARcov_parser
 from time import strftime
 
@@ -71,7 +71,7 @@ def sqanti3_stats(args):
     MIN_REF_LEN = 0
     cmd = [
         sqanti3,
-        args.isoforms,
+        args.transcriptome,
         args.gtf,
         args.genome,
         "-o",
@@ -167,7 +167,7 @@ def sqanti3_stats(args):
             for file in b:
                 bams.append(file.rstrip())
         chr_order = get_bam_header(bams[0])
-        inside_bed, outside_bed = get_TSS_bed(corrGTF, chr_order)
+        inside_bed, outside_bed = get_TSS_bed(args.gtf, chr_order)
         ratio_TSS_dict = get_ratio_TSS(inside_bed, outside_bed, bams, chr_order)
         trans_index["ratio_TSS"] = trans_index.apply(write_ratio_TSS, axis=1)
 
