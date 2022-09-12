@@ -2,7 +2,7 @@
 """
 evaluation_metrics.py
 
-Generate SQANTISIM report and metrics
+Generate SQANTI-SIM report and metrics
 
 Author: Jorge Mestre Tomas (jormart2@alumni.uv.es)
 """
@@ -18,10 +18,10 @@ from time import strftime
 
 
 def sqanti3_stats(args):
-    """Runs SQANTI3 and generates SQANTISIM report
+    """Runs SQANTI3 and generates SQANTI-SIM report
 
     Given the reconstructed transcripts in GTF format it runs the SQANTI3
-    pipeline and computes the SQANTISIM metrics to evaluate how well it
+    pipeline and computes the SQANTI-SIM metrics to evaluate how well it
     recovered the novel transcripts
 
     Args:
@@ -64,7 +64,7 @@ def sqanti3_stats(args):
     def write_TTS(row):
         return trans_start_end[row["isoform"]][1]
 
-    print("[SQANTISIM][%s] Running SQANTI3" %(strftime("%d-%m-%Y %H:%M:%S")))
+    print("[SQANTI-SIM][%s] Running SQANTI3" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
     sqanti3 = os.path.join(src_dir, "SQANTI3/sqanti3_qc.py")
 
@@ -104,12 +104,12 @@ def sqanti3_stats(args):
     cmd = " ".join(cmd)
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTISIM] ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTI-SIM] ERROR running SQANTI3: {0}".format(cmd), file=sys.stderr)
         #sys.exit(1)
 
     trans_index = pandas.read_csv(args.trans_index, sep="\t", header=0, dtype={"chrom":str})
     if args.CAGE_peak:
-        print("[SQANTISIM][%s] Parsing CAGE Peak data" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("[SQANTI-SIM][%s] Parsing CAGE Peak data" %(strftime("%d-%m-%Y %H:%M:%S")))
         cage_peak_data = CAGEPeak(args.CAGE_peak)
 
         within_cage_dict = defaultdict(lambda: False)
@@ -139,13 +139,13 @@ def sqanti3_stats(args):
 
     # Short Read Coverage
     if args.coverage:
-        print("[SQANTISIM][%s] Parsing Coverage data" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("[SQANTI-SIM][%s] Parsing Coverage data" %(strftime("%d-%m-%Y %H:%M:%S")))
         
         SJcovNames, SJcovInfo = STARcov_parser(args.coverage)
         trans_index["min_cov"] = trans_index.apply(write_SJ_cov, axis=1)
 
     elif args.short_reads:
-        print("[SQANTISIM][%s] Parsing Short Read data" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("[SQANTI-SIM][%s] Parsing Short Read data" %(strftime("%d-%m-%Y %H:%M:%S")))
         star_out = os.path.join(args.dir, "sqanti3/STAR_mapping/")
         star_index = os.path.join(args.dir, "sqanti3/STAR_index/")
 
@@ -154,7 +154,7 @@ def sqanti3_stats(args):
     
     # Short reads ratio TSS - Code adapted from SQANTI3
     if args.SR_bam:
-        print("[SQANTISIM][%s] Calculating ratio TSS from provided BAM" %(strftime("%d-%m-%Y %H:%M:%S")))
+        print("[SQANTI-SIM][%s] Calculating ratio TSS from provided BAM" %(strftime("%d-%m-%Y %H:%M:%S")))
 
         if os.path.isdir(args.SR_bam):
             bams = []
@@ -185,7 +185,7 @@ def sqanti3_stats(args):
         args.trans_index, sep="\t", na_rep="NA", header=True, index=False
     )
 
-    print("[SQANTISIM][%s] Generating SQANTISIM report" %(strftime("%d-%m-%Y %H:%M:%S")))
+    print("[SQANTI-SIM][%s] Generating SQANTI-SIM report" %(strftime("%d-%m-%Y %H:%M:%S")))
     src_dir = os.path.dirname(os.path.realpath(__file__))
     classification_file = os.path.join(args.dir, "sqanti3/",(args.output + "_classification.txt"))
     junctions_file = os.path.join(args.dir, "sqanti3/", (args.output + "_junctions.txt"))
@@ -213,10 +213,10 @@ def sqanti3_stats(args):
     classif_f["TTS_genomic_coord"] = classif_f.apply(write_TTS, axis=1)
     classif_f.to_csv(classification_file, sep="\t", header=True, index=False, na_rep="NA")
 
-    # Generate SQANTISIM report
+    # Generate SQANTI-SIM report
     cmd = [
         "Rscript",
-        os.path.join(src_dir, "SQANTISIM_report.R"),
+        os.path.join(src_dir, "SQANTI-SIM_report.R"),
         classification_file,
         junctions_file,
         args.trans_index,
@@ -228,7 +228,7 @@ def sqanti3_stats(args):
     cmd = " ".join(cmd)
     if subprocess.check_call(cmd, shell=True) != 0:
         print(
-            "[SQANTISIM] ERROR running SQANTISIM report generation: {0}".format(cmd),
+            "[SQANTI-SIM] ERROR running SQANTI-SIM report generation: {0}".format(cmd),
             file=sys.stderr,
         )
         sys.exit(1)

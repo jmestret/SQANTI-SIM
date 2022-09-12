@@ -56,7 +56,7 @@ def pb_simulation(args):
         os.makedirs(args.dir)
 
     # PacBio Sequel simulation -> error rates from IsoSeqSim GitHub
-    print("[SQANTISIM] Simulating PacBio reads with IsoSeqSim")
+    print("[SQANTI-SIM] Simulating PacBio reads with IsoSeqSim")
     src_dir = os.path.dirname(os.path.realpath(__file__))
     isoseqsim = os.path.join(src_dir, "IsoSeqSim/bin/isoseqsim")
     util_dir = os.path.join(src_dir, "IsoSeqSim/utilities/")
@@ -101,7 +101,7 @@ def pb_simulation(args):
         sys.exit(1)
     os.remove(expr_f)
 
-    print("[SQANTISIM] Counting PacBio reads")
+    print("[SQANTI-SIM] Counting PacBio reads")
     read_to_iso = os.path.join(args.dir, "PacBio_simulated.read_to_isoform.tsv")
     output_read_info = open(read_to_iso, "w")
     id_counts = defaultdict(lambda: 0)
@@ -124,7 +124,7 @@ def pb_simulation(args):
         args.trans_index, sep="\t", header=True, index=False, na_rep="NA"
     )
 
-    print("[SQANTISIM] IsoSeqSim simulation done")
+    print("[SQANTI-SIM] IsoSeqSim simulation done")
     return
 
 
@@ -171,7 +171,7 @@ def ont_simulation(args):
         uracil = False
     else:
         print(
-            "[SQANTISIM] ERROR not valid read_type value %s" % (args.read_type), file=sys.stderr)
+            "[SQANTI-SIM] ERROR not valid read_type value %s" % (args.read_type), file=sys.stderr)
         return
 
     src_dir = os.path.dirname(os.path.realpath(__file__))
@@ -180,30 +180,30 @@ def ont_simulation(args):
     model_dir = models + model_name + "/"
 
     if not os.path.exists(model_dir):
-        print("[SQANTISIM] Untar NanoSim model")
+        print("[SQANTI-SIM] Untar NanoSim model")
         cwd = os.getcwd()
         os.chdir(models)
         sys.stdout.flush()
         res = subprocess.run(["tar", "-xzf", model_name + ".tar.gz"])
         os.chdir(cwd)
         if res.returncode != 0:
-            print("[SQANTISIM] ERROR: Unpacking NanoSim pre-trained model failed", file=sys.stderr)
+            print("[SQANTI-SIM] ERROR: Unpacking NanoSim pre-trained model failed", file=sys.stderr)
             sys.exit(1)
 
     # Extract fasta transcripts
-    print("[SQANTISIM] Extracting transcript sequences")
-    ref_t = os.path.join(os.path.dirname(args.genome), "sqantisim.transcripts.fa")
+    print("[SQANTI-SIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti-sim.transcripts.fa")
     if os.path.exists(ref_t):
-        print("[SQANTISIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
 
     cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
     cmd = " ".join(cmd)
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTISIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
-    print("[SQANTISIM] Simulating ONT reads with NanoSim")
+    print("[SQANTI-SIM] Simulating ONT reads with NanoSim")
     cmd = [
         nanosim,
         "transcriptome",
@@ -241,7 +241,7 @@ def ont_simulation(args):
         sys.exit(1)
     os.remove(expr_f)
 
-    print("[SQANTISIM] Counting and renaming ONT reads")
+    print("[SQANTI-SIM] Counting and renaming ONT reads")
     fastqs = [
         os.path.join(args.dir, "ONT_simulated_aligned_reads.fastq"),
         os.path.join(args.dir, "ONT_simulated_unaligned_reads.fastq"),
@@ -283,7 +283,7 @@ def ont_simulation(args):
     trans_index["sim_counts"] = trans_index["sim_counts"].fillna(0)
     trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("[SQANTISIM] NanoSim simulation done")
+    print("[SQANTI-SIM] NanoSim simulation done")
     return
 
 
@@ -294,16 +294,16 @@ def illumina_simulation(args):
         return id_counts[row["transcript_id"]]
 
     # Extract fasta transcripts
-    print("[SQANTISIM] Extracting transcript sequences")
-    ref_t = os.path.join(os.path.dirname(args.genome), "sqantisim.transcripts.fa")
+    print("[SQANTI-SIM] Extracting transcript sequences")
+    ref_t = os.path.join(os.path.dirname(args.genome), "sqanti-sim.transcripts.fa")
     if os.path.exists(ref_t):
-        print("[SQANTISIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
+        print("[SQANTI-SIM] WARNING: %s already exists, it will be overwritten" %(ref_t))
 
     cmd = ["gffread", "-w", str(ref_t), "-g", str(args.genome), str(args.gtf)]
     cmd = " ".join(cmd)
     sys.stdout.flush()
     if subprocess.check_call(cmd, shell=True) != 0:
-        print("[SQANTISIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
+        print("[SQANTI-SIM] ERROR running gffread: {0}".format(cmd), file=sys.stderr)
         sys.exit(1)
 
     # Generate Polyester template expression file
@@ -339,7 +339,7 @@ def illumina_simulation(args):
     rt.close()
     f_out.close()
 
-    print("[SQANTISIM] Simulating Illumina reads with Polyester")
+    print("[SQANTI-SIM] Simulating Illumina reads with Polyester")
     src_dir = os.path.dirname(os.path.realpath(__file__))
 
     cmd = [
@@ -360,7 +360,7 @@ def illumina_simulation(args):
         sys.exit(1)
     os.remove(expr_f)
 
-    print("[SQANTISIM] Counting Illumina reads")
+    print("[SQANTI-SIM] Counting Illumina reads")
     os.rename(
         os.path.join(args.dir, "sample_01_1.fasta"),
         os.path.join(args.dir, "Illumina_simulated_1.fasta"),
@@ -387,5 +387,5 @@ def illumina_simulation(args):
     trans_index["illumina_counts"] = trans_index["illumina_counts"].fillna(0)
     trans_index.to_csv(args.trans_index, sep="\t", header=True, index=False, na_rep="NA")
 
-    print("[SQANTISIM] Polyester simulation done")
+    print("[SQANTI-SIM] Polyester simulation done")
     return

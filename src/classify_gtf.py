@@ -1310,11 +1310,11 @@ def classify_gtf(args):
         min_ref_len = 0
 
     # parsing transcripts from GTF
-    print("[SQANTISIM] Parsing transcripts from GTF reference annotation file")
+    print("[SQANTI-SIM] Parsing transcripts from GTF reference annotation file")
     trans_by_chr = gtf_parser(args.gtf)
 
     # classify transcripts
-    print("[SQANTISIM] Classifying transcripts according to its SQANTI3 structural category")
+    print("[SQANTI-SIM] Classifying transcripts according to its SQANTI3 structural category")
     trans_info = defaultdict(lambda: [])
 
     if args.cores <= 1:
@@ -1339,7 +1339,7 @@ def classify_gtf(args):
                 trans_info[k].extend(v)
 
     # Write category file
-    print("[SQANTISIM] Writting structural category file")
+    print("[SQANTI-SIM] Writting structural category file")
     cat_out = os.path.join(args.dir, (args.output + "_index.tsv"))
     write_category_file(trans_info, cat_out)
 

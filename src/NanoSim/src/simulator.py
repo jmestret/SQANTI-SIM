@@ -2,7 +2,7 @@
 """
 @author: Chen Yang, Saber Hafezqorani, Ka Ming Nip, and Theodora Lo
 This script generates simulated Oxford Nanopore reads (genomic, transcriptomic, and metagenomic).
-Last modified: 26/04/2022 by Jorge Mestre SQANTISIM (
+Last modified: 26/04/2022 by Jorge Mestre SQANTI-SIM (
     fix: str.traslate to str.translate method line 1456,
     adapt: only sim aligned reads line 519,
     adapt: sim for each transcript (tpm*total_reads_to_sim)/1000000 reads
@@ -519,7 +519,7 @@ def read_profile(ref_g, number_list, model_prefix, per, mode, strandness, ref_t=
                 number_aligned_l = number_list
             else:
                 #number_aligned_l = [int(round(x * float(rate) / (float(rate) + 1))) for x in number_list]
-                number_aligned_l = number_list # All aligned reads (Modified for SQANTISIM)
+                number_aligned_l = number_list # All aligned reads (Modified for SQANTI-SIM)
             number_unaligned_l = [x - y for x, y in zip(number_list, number_aligned_l)]
 
         if min(number_unaligned_l) > 0:
@@ -1053,7 +1053,7 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
                 ref_len_aligned = select_nearest_kde2d(sampled_2d_lengths, ref_trx_len)
                 if ref_len_aligned < ref_trx_len:
                     break
-                else: # If selected length is bigger, simulate the whole transcript (Modified for SQANTISIM)
+                else: # If selected length is bigger, simulate the whole transcript (Modified for SQANTI-SIM)
                     ref_len_aligned = ref_trx_len
                     break
 
@@ -1102,7 +1102,7 @@ def simulation_aligned_transcriptome(model_ir, out_reads, out_error, kmer_bias, 
 
             # if middle_ref > ref_trx_len:    
                 #continue
-            while middle_ref > ref_trx_len: # Sample until you get valid middle_ref (Modified for SQANTISIM)
+            while middle_ref > ref_trx_len: # Sample until you get valid middle_ref (Modified for SQANTI-SIM)
                 middle_read, middle_ref, error_dict, error_count = error_list(ref_len_aligned, match_markov_model,
                                                                               match_ht_list, error_par, trans_error_pr,
                                                                               fastq)
@@ -1505,7 +1505,7 @@ def simulation_gap(ref, basecaller, read_type, dna_type, fastq):
 
 def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l, min_l, num_threads, fastq,
                median_l=None, sd_l=None, model_ir=False, uracil=False, polya=None, chimeric=False, exp=None):
-    # exp argument added by Jorge Mestre (SQANTISIM)
+    # exp argument added by Jorge Mestre (SQANTI-SIM)
     global total_simulated  # Keeps track of number of reads that have been simulated so far
     total_simulated = mp.Value("i", 0, lock=True)
 
@@ -1522,7 +1522,7 @@ def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l
     error_subfiles = []
     #num_simulate = int(number_aligned / num_threads)
     
-    # Get expression dictionary(Modified for SQANTISIM)
+    # Get expression dictionary(Modified for SQANTI-SIM)
     dict_exp = {}
     with open(exp, 'r') as exp_file:
         header = exp_file.readline()
@@ -1538,7 +1538,7 @@ def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l
                 dict_exp[transcript_id] = tpm
     exp_file.close()
 
-    # Simulate x reads for each trans (Modified for SQANTISIM)
+    # Simulate x reads for each trans (Modified for SQANTI-SIM)
     dict_ref_len = {}
     reads_to_sim = []
     for ref_trx, ref_trx_len in ecdf_length_list:
@@ -1547,7 +1547,7 @@ def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l
         reads_to_sim.extend([ref_trx]*trans_n_reads)
     random.shuffle(reads_to_sim)
 
-    num_simulate = int(math.ceil(len(reads_to_sim) / num_threads) + 1) # Modified for SQANTISIM
+    num_simulate = int(math.ceil(len(reads_to_sim) / num_threads) + 1) # Modified for SQANTI-SIM
 
     for i in range(num_threads):
         np.random.seed()
@@ -1578,7 +1578,7 @@ def simulation(mode, out, dna_type, per, kmer_bias, basecaller, read_type, max_l
             p = mp.Process(target=simulation_aligned_transcriptome,
                            args=(model_ir, aligned_subfile, error_subfile, kmer_bias, basecaller, read_type,
                                  num_simulate, polya, fastq, per, uracil,
-                                 reads_to_sim_thread, dict_ref_len)) # Add exp file and num_threads (Modified for SQANTISIM)
+                                 reads_to_sim_thread, dict_ref_len)) # Add exp file and num_threads (Modified for SQANTI-SIM)
             procs.append(p)
             p.start()
 
