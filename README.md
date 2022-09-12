@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/jmestret/SQANTI-SIM/blob/main/docs/SQANTI-SIM_logo.png" alt="" width="300">
+  <img src="https://github.com/jmestret/SQANTI-SIM/blob/main/docs/SQANTI-SIM_logo.svg" alt="" width="300">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 SQANTI-SIM uses NanoSim and IsoSeqSim to simulate PacBio cDNA reads and Nanopore cDNA and dRNA reads, and implements a strategy to simulate novel transcripts based on SQANTI structural categories. Unlike current lrRNA-seq simulators, SQANTI-SIM simulates well-grounded novel transcripts and permits the assessment of the capacity of any lrRNA-seq transcript reconstruction tool to detect different types of transcripts not yet present in reference annotations.
 
-![small_workflow](https://github.com/jmestret/SQANTI-SIM/blob/main/docs/small_workflow.png)
+![small_workflow](https://github.com/jmestret/SQANTI-SIM/blob/main/docs/small_workflow.svg)
 
 ## Documentation
 
