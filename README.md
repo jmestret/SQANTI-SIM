@@ -1,3 +1,7 @@
+# This repository is no longer active
+
+## For the latest updates for this software please use the official SQANTI-SIM repository: https://github.com/ConesaLab/SQANTI-SIM
+
 <p align="center">
   <img src="https://github.com/jmestret/SQANTI-SIM/blob/main/docs/SQANTI-SIM_logo.png" alt="" width="300">
 </p>
